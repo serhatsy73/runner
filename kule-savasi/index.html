@@ -1,0 +1,1094 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Kule Savaşı</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#c4ebaa">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --grass: #c4ebaa;
+    --ink: #4b4560;
+    --muted: #7d768e;
+    --card: #fffdf7;
+    --line: #e7e1d3;
+    --blue: #7db9f2;
+    --blue-d: #4d8fd6;
+    --red: #f59b9b;
+    --yellow: #f6d26b;
+    --gray: #cdd0d8;
+    --pink: #ff9fb3;
+    --font: "Fredoka", "Baloo 2", "Segoe UI", system-ui, sans-serif;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: var(--grass); }
+  body {
+    font-family: var(--font); color: var(--ink);
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+  .hud {
+    position: fixed; left: 0; right: 0; top: 0;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 0;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+    pointer-events: none;
+  }
+  .chip {
+    background: rgba(255,253,247,.9); border-radius: 999px; padding: 6px 14px;
+    font-size: 16px; font-weight: 700; line-height: 1.3; white-space: nowrap;
+    box-shadow: 0 3px 0 rgba(75,69,96,.14);
+    font-variant-numeric: tabular-nums;
+  }
+  .power {
+    height: 14px; min-width: 40px; border-radius: 999px; overflow: hidden; display: flex;
+    background: rgba(255,253,247,.7); box-shadow: 0 3px 0 rgba(75,69,96,.14);
+    border: 3px solid rgba(255,253,247,.9);
+  }
+  .power i { display: block; height: 100%; transition: flex-grow .35s ease; }
+  .btn {
+    pointer-events: auto; cursor: pointer; font: 700 16px/1 var(--font); color: #fff;
+    background: var(--blue-d); border: 0; border-radius: 999px; padding: 11px 18px;
+    box-shadow: 0 4px 0 #3a73b3;
+  }
+  .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #3a73b3; }
+  .btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  .btn.small { font-size: 14px; padding: 9px 14px; }
+  .btn.ghost { color: var(--ink); background: #efeadf; box-shadow: 0 4px 0 #d6cfbf; }
+  .btn.ghost:active { box-shadow: 0 2px 0 #d6cfbf; }
+
+  .overlay {
+    position: fixed; inset: 0; display: grid; place-items: center; padding: 16px;
+    background: rgba(120,160,100,.38); overflow-y: auto;
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  }
+  .card {
+    width: min(400px, 100%); box-sizing: border-box; text-align: center;
+    background: var(--card); border-radius: 28px; padding: 24px 20px 22px;
+    box-shadow: 0 8px 0 rgba(75,69,96,.14), 0 20px 40px rgba(75,69,96,.12);
+    display: flex; flex-direction: column; gap: 14px; align-items: stretch;
+    animation: pop .35s cubic-bezier(.3,1.6,.5,1);
+  }
+  @keyframes pop { from { transform: scale(.85); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .card { animation: none; } }
+  .card canvas { position: static; width: 96px; height: 96px; margin: -4px auto -6px; }
+  .card h1 { margin: 0; font-size: 34px; line-height: 1.05; font-weight: 700; text-wrap: balance; }
+  .card p { margin: 0; font-size: 16px; line-height: 1.45; color: var(--muted); font-weight: 500; }
+  .card ul { margin: 0; padding: 0; list-style: none; text-align: left; display: grid; gap: 8px; }
+  .card li { font-size: 15px; line-height: 1.4; color: var(--ink); font-weight: 500; display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: start; }
+  .card li b { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #e3f0fc; color: var(--blue-d); font-size: 14px; }
+  .card .row { display: grid; gap: 10px; }
+  .card .btn { font-size: 18px; padding: 14px 18px; }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<header class="hud">
+  <div class="chip" id="lvl">Seviye 1</div>
+  <div class="power" id="power" role="img" aria-label="Güç dengesi"></div>
+  <button class="btn small" id="restart" type="button">↻ Yeniden Başlat</button>
+</header>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+    <canvas id="ovArt" width="192" height="192" aria-hidden="true"></canvas>
+    <h1 id="ovTitle"></h1>
+    <div id="ovBody"></div>
+    <div class="row" id="ovBtns"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- Sabitler ----------
+  const NEUTRAL = 0, PLAYER = 1, RED = 2, YELLOW = 3;
+  const TEAMS = [
+    { name: 'Tarafsız', fill: '#cdd0d8', dark: '#9ba1ad', light: '#e9ebf0' },
+    { name: 'Sen',      fill: '#7db9f2', dark: '#4d8fd6', light: '#d3e8fc' },
+    { name: 'Kırmızı',  fill: '#f59b9b', dark: '#dd6a6a', light: '#fcdcdc' },
+    { name: 'Sarı',     fill: '#f6d26b', dark: '#d5a93a', light: '#fbefc2' },
+  ];
+  const INK = '#4b4560';
+  const CHEEK = 'rgba(255,140,165,.55)';
+  const FONT = '"Fredoka", "Baloo 2", "Segoe UI", system-ui, sans-serif';
+  const CAP = 99;                     // üretimin durduğu asker sayısı
+  const RATE = [0, 1, 1.4, 1.8];      // seviyeye göre saniyede üretilen asker
+  const SEND = [0, .5, .4, .32];      // seviyeye göre asker gönderme aralığı (sn)
+  const STORE_KEY = 'kuleSavasi.level';
+
+  // Kule: [x, y, takım, asker]  (x,y oyun alanında 0..1)
+  const LEVELS = [
+    { ai: [RED], towers: [
+      [.5, .86, PLAYER, 20], [.5, .13, RED, 15],
+      [.2, .62, NEUTRAL, 5], [.8, .62, NEUTRAL, 5], [.2, .36, NEUTRAL, 5], [.8, .36, NEUTRAL, 5], [.5, .5, NEUTRAL, 14],
+    ]},
+    { ai: [RED], towers: [
+      [.25, .86, PLAYER, 20], [.75, .14, RED, 25],
+      [.75, .72, NEUTRAL, 8], [.25, .28, NEUTRAL, 8], [.5, .5, NEUTRAL, 20], [.18, .58, NEUTRAL, 6], [.82, .42, NEUTRAL, 6],
+    ]},
+    { ai: [RED, YELLOW], towers: [
+      [.5, .87, PLAYER, 25], [.18, .13, RED, 20], [.82, .13, YELLOW, 20],
+      [.5, .62, NEUTRAL, 12], [.2, .45, NEUTRAL, 8], [.8, .45, NEUTRAL, 8], [.5, .33, NEUTRAL, 25], [.26, .74, NEUTRAL, 6], [.74, .74, NEUTRAL, 6],
+    ]},
+    { ai: [RED], towers: [
+      [.2, .86, PLAYER, 18], [.8, .86, PLAYER, 12], [.5, .12, RED, 40],
+      [.5, .72, NEUTRAL, 15], [.18, .58, NEUTRAL, 10], [.82, .58, NEUTRAL, 10], [.3, .36, NEUTRAL, 12], [.7, .36, NEUTRAL, 12], [.5, .46, NEUTRAL, 30],
+    ]},
+    { ai: [RED, YELLOW], towers: [
+      [.5, .9, PLAYER, 30], [.15, .1, RED, 25], [.18, .38, RED, 12], [.85, .1, YELLOW, 25], [.82, .38, YELLOW, 12],
+      [.5, .24, NEUTRAL, 30], [.5, .56, NEUTRAL, 18], [.24, .7, NEUTRAL, 8], [.76, .7, NEUTRAL, 8],
+    ]},
+  ];
+
+  function rng(seed) {
+    return () => {
+      seed = seed + 0x6D2B79F5 | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  // 5. seviyeden sonrası rastgele (ama her seviye için sabit) üretilir
+  function genLevel(n) {
+    const R = rng(n * 7919 + 13);
+    const two = n % 2 === 0;
+    const T = [[.5, .88, PLAYER, 22]];
+    if (two) T.push([.18, .12, RED, Math.min(45, 14 + n)], [.82, .12, YELLOW, Math.min(45, 14 + n)]);
+    else T.push([.5, .11, RED, Math.min(60, 18 + 2 * n)], [.22 + R() * .56, .32, RED, 10]);
+    const want = T.length + 5 + Math.min(4, Math.floor((n - 5) / 2));
+    for (let tries = 0; T.length < want && tries < 3000; tries++) {
+      const x = .12 + R() * .76, y = .24 + R() * .52;
+      if (T.every(o => Math.hypot(o[0] - x, (o[1] - y) * 1.55) >= .23)) {
+        T.push([x, y, NEUTRAL, Math.min(40, 4 + Math.floor(R() * (6 + n)))]);
+      }
+    }
+    return { ai: two ? [RED, YELLOW] : [RED], towers: T };
+  }
+
+  // ---------- Durum ----------
+  const cv = document.getElementById('game');
+  const mainCtx = cv.getContext('2d');
+  let ctx = mainCtx;
+  const hud = document.querySelector('.hud');
+  const lvlEl = document.getElementById('lvl');
+  const powerEl = document.getElementById('power');
+  const overlay = document.getElementById('overlay');
+  const ovTitle = document.getElementById('ovTitle');
+  const ovBody = document.getElementById('ovBody');
+  const ovBtns = document.getElementById('ovBtns');
+  const ovArt = document.getElementById('ovArt');
+
+  let W = 0, H = 0, DPR = 1, baseR = 24, speed = 70;
+  const area = { x: 0, y: 0, w: 0, h: 0 };
+  let bg = null;
+
+  let levelNo = 1, cfg = null, state = 'menu';
+  let towers = [], lanes = [], soldiers = [], particles = [], trail = [];
+  let time = 0, playTime = 0, endTimer = 0, powerTimer = 0;
+  let ai = [], aiInterval = 3, aiMargin = 4, aiAggro = 3;
+  let drag = null, playerLinked = false;
+
+  const lvlOf = c => c >= 40 ? 3 : c >= 20 ? 2 : 1;
+  const towerR = t => baseR * (1 + .14 * (t.lvl - 1)) * (1 + .22 * Math.sin(Math.min(1, t.pop) * Math.PI));
+  const dist = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+
+  function loadStored() {
+    try { return Math.max(1, parseInt(localStorage.getItem(STORE_KEY), 10) || 1); } catch (e) { return 1; }
+  }
+  function store(n) {
+    try { localStorage.setItem(STORE_KEY, String(n)); } catch (e) { /* depolama kapalı olabilir */ }
+  }
+
+  function loadLevel(n) {
+    levelNo = n;
+    cfg = n <= LEVELS.length ? LEVELS[n - 1] : genLevel(n);
+    towers = cfg.towers.map((d, i) => ({
+      id: i, nx: d[0], ny: d[1], team: d[2], count: d[3], x: 0, y: 0,
+      lvl: lvlOf(d[3]), pop: 0, shake: 0, squish: 0,
+    }));
+    lanes = []; soldiers = []; particles = []; trail = [];
+    drag = null; playerLinked = false;
+    time = 0; playTime = 0; endTimer = 0;
+    aiInterval = Math.max(1.3, 3.2 - (n - 1) * .22);
+    aiMargin = Math.max(0, 5 - (n - 1) * .7);
+    aiAggro = 2 + n * .5;
+    ai = cfg.ai.map((team, i) => ({ team, timer: 1.5 + i * .7 }));
+    lvlEl.textContent = 'Seviye ' + n;
+    buildPower();
+    layout();
+  }
+
+  // ---------- Yerleşim ----------
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    layout();
+  }
+
+  function layout() {
+    const top = hud.getBoundingClientRect().bottom + 22;
+    const bottom = H - 26;
+    area.h = Math.max(200, bottom - top);
+    area.w = Math.min(W - 32, area.h * .68);
+    area.x = (W - area.w) / 2;
+    area.y = top;
+    baseR = Math.max(15, Math.min(42, area.w * .068, area.h * .046));
+    speed = area.h * .15;
+    for (const t of towers) { t.x = area.x + t.nx * area.w; t.y = area.y + t.ny * area.h; }
+    buildBackground();
+  }
+
+  function buildBackground() {
+    bg = document.createElement('canvas');
+    bg.width = cv.width; bg.height = cv.height;
+    const b = bg.getContext('2d');
+    b.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const g = b.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#cdefb5'); g.addColorStop(1, '#b8e39c');
+    b.fillStyle = g; b.fillRect(0, 0, W, H);
+
+    // oyun alanı: biraz daha açık, yumuşak bir çayır
+    b.fillStyle = 'rgba(236,250,222,.45)';
+    roundRect(b, area.x - 12, area.y - 14, area.w + 24, area.h + 22, 36); b.fill();
+
+    const R = rng(Math.round(W * 7 + H));
+    const n = Math.round(W * H / 2600);
+    b.lineCap = 'round';
+    for (let i = 0; i < n; i++) {
+      const x = R() * W, y = R() * H, s = 3 + R() * 4;
+      b.strokeStyle = R() < .5 ? 'rgba(120,180,90,.45)' : 'rgba(150,200,110,.5)';
+      b.lineWidth = 1.6;
+      b.beginPath();
+      b.moveTo(x - s * .6, y - s); b.lineTo(x, y);
+      b.lineTo(x + s * .6, y - s);
+      b.moveTo(x, y); b.lineTo(x + s * .1, y - s * 1.2);
+      b.stroke();
+    }
+    const flowers = Math.round(n / 7);
+    const petals = ['#ffffff', '#ffd3df', '#fff1a8', '#e3d7ff'];
+    for (let i = 0; i < flowers; i++) {
+      const x = R() * W, y = R() * H, s = 2 + R() * 1.6;
+      b.fillStyle = petals[Math.floor(R() * petals.length)];
+      for (let k = 0; k < 5; k++) {
+        const a = k / 5 * Math.PI * 2;
+        b.beginPath(); b.arc(x + Math.cos(a) * s, y + Math.sin(a) * s, s * .8, 0, Math.PI * 2); b.fill();
+      }
+      b.fillStyle = '#f6c34a';
+      b.beginPath(); b.arc(x, y, s * .6, 0, Math.PI * 2); b.fill();
+    }
+  }
+
+  function roundRect(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r);
+    c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r);
+    c.arcTo(x, y, x + w, y, r);
+    c.closePath();
+  }
+
+  // ---------- Bağlantılar ----------
+  const lanesFrom = t => lanes.filter(l => l.from === t);
+  const findLane = (a, b) => lanes.find(l => l.from === a && l.to === b);
+
+  function removeLane(l) {
+    const i = lanes.indexOf(l);
+    if (i >= 0) lanes.splice(i, 1);
+  }
+
+  function addLane(from, to, team) {
+    if (from === to || from.team !== team) return false;
+    const existing = findLane(from, to);
+    if (existing) { removeLane(existing); return false; }
+    // kendi takımının ters yöndeki yolu kalkar
+    const back = findLane(to, from);
+    if (back && back.team === team) removeLane(back);
+    const out = lanesFrom(from);
+    if (out.length >= from.lvl) removeLane(out[0]);
+    lanes.push({ from, to, team, timer: SEND[from.lvl] * .6, born: time });
+    return true;
+  }
+
+  // ---------- Güncelleme ----------
+  function update(dt) {
+    time += dt;
+    if (state === 'play') playTime += dt;
+
+    for (const t of towers) {
+      if (t.team !== NEUTRAL && t.count < CAP) t.count = Math.min(CAP, t.count + RATE[t.lvl] * dt);
+      const nl = lvlOf(Math.floor(t.count));
+      if (nl > t.lvl) { t.pop = .001; sparkle(t); }
+      t.lvl = nl;
+      if (t.pop > 0) { t.pop += dt * 2.2; if (t.pop >= 1) t.pop = 0; }
+      t.shake = Math.max(0, t.shake - dt * 5);
+      t.squish = Math.max(0, t.squish - dt * 5);
+    }
+
+    // sahibi değişen kulenin yolları kalkar
+    lanes = lanes.filter(l => l.from.team === l.team);
+
+    for (const l of lanes) {
+      l.timer += dt;
+      const iv = SEND[l.from.lvl];
+      if (l.timer >= iv) {
+        if (l.from.count >= 1) {
+          l.from.count -= 1;
+          l.timer -= iv;
+          const len = dist(l.from, l.to);
+          soldiers.push({
+            from: l.from, to: l.to, team: l.team,
+            p: Math.min(.45, towerR(l.from) * .8 / len),
+            off: (Math.random() * 2 - 1) * .55, age: Math.random() * 3, dead: false,
+          });
+        } else {
+          l.timer = iv;
+        }
+      }
+    }
+
+    for (const s of soldiers) {
+      s.p += speed * dt / Math.max(1, dist(s.from, s.to));
+      s.age += dt;
+    }
+    collide();
+
+    for (const s of soldiers) {
+      if (s.dead) continue;
+      const len = dist(s.from, s.to);
+      if (s.p >= 1 - towerR(s.to) * .75 / len) { s.dead = true; arrive(s); }
+    }
+    soldiers = soldiers.filter(s => !s.dead);
+
+    for (const p of particles) {
+      p.life -= dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vy += (p.g || 0) * dt;
+      p.vx *= .98;
+    }
+    particles = particles.filter(p => p.life > 0);
+    trail = trail.filter(p => time - p.t < .28);
+
+    if (state === 'play') {
+      for (const a of ai) {
+        a.timer -= dt;
+        if (a.timer <= 0) { a.timer = aiInterval * (.75 + Math.random() * .5); aiThink(a.team); }
+      }
+      checkEnd(dt);
+    }
+
+    powerTimer -= dt;
+    if (powerTimer <= 0) { powerTimer = .25; updatePower(); }
+  }
+
+  // Aynı iki kule arasında zıt yönde yürüyen farklı takım askerleri buluşunca ikisi de yok olur
+  function collide() {
+    const groups = new Map();
+    for (const s of soldiers) {
+      const a = s.from.id, b = s.to.id;
+      const key = a < b ? a * 256 + b : b * 256 + a;
+      let g = groups.get(key);
+      if (!g) { g = { fwd: [], back: [] }; groups.set(key, g); }
+      (a < b ? g.fwd : g.back).push(s);
+    }
+    for (const g of groups.values()) {
+      if (!g.fwd.length || !g.back.length) continue;
+      g.fwd.sort((a, b) => b.p - a.p);
+      g.back.sort((a, b) => b.p - a.p);
+      for (const A of g.fwd) {
+        const B = g.back.find(s => !s.dead && s.team !== A.team);
+        if (!B) break;
+        if (A.p + B.p < 1) continue;
+        A.dead = B.dead = true;
+        const pos = soldierPos(A);
+        burst(pos.x, pos.y, '#ffffff', 5, .6);
+      }
+    }
+  }
+
+  function arrive(s) {
+    const t = s.to;
+    if (t.team === s.team) {
+      t.count += 1;
+      t.squish = 1;
+      return;
+    }
+    t.count -= 1;
+    t.shake = 1;
+    const pos = soldierPos(s);
+    burst(pos.x, pos.y, TEAMS[s.team].fill, 3, .45);
+    if (t.count <= 0) capture(t, s.team);
+  }
+
+  function capture(t, team) {
+    t.team = team;
+    t.count = 0;
+    t.lvl = 1;
+    t.pop = .001;
+    confetti(t.x, t.y, team);
+    particles.push({ type: 'ring', x: t.x, y: t.y, vx: 0, vy: 0, life: .5, max: .5, color: TEAMS[team].dark });
+    if (team === PLAYER) floatText(t.x, t.y - baseR * 1.8, 'Ele geçti!', TEAMS[PLAYER].dark);
+    if (navigator.vibrate && team === PLAYER) { try { navigator.vibrate(15); } catch (e) { /* yok say */ } }
+  }
+
+  function checkEnd(dt) {
+    const hasEnemy = towers.some(t => t.team === RED || t.team === YELLOW);
+    const hasPlayer = towers.some(t => t.team === PLAYER);
+    if (hasEnemy && hasPlayer) { endTimer = 0; return; }
+    endTimer += dt;
+    if (endTimer < .9) return;
+    if (!hasEnemy) {
+      state = 'won';
+      store(Math.max(loadStored(), levelNo + 1));
+      showWin();
+    } else {
+      state = 'lost';
+      showLose();
+    }
+  }
+
+  // ---------- Yapay zeka ----------
+  function incoming(t) {
+    const byTeam = [0, 0, 0, 0];
+    for (const s of soldiers) if (s.to === t) byTeam[s.team]++;
+    return byTeam;
+  }
+  const hostile = (t, inc) => inc.reduce((sum, n, team) => team === t.team ? sum : sum + n, 0);
+
+  function aiThink(team) {
+    const mine = towers.filter(t => t.team === team);
+    if (!mine.length) return;
+    const inc = new Map(towers.map(t => [t, incoming(t)]));
+
+    // Toparlanma: gereksiz takviyeleri kes, zor durumda geri çekil
+    for (const l of lanes.slice()) {
+      if (l.team !== team) continue;
+      const f = l.from, to = l.to;
+      const fThreat = hostile(f, inc.get(f));
+      if (to.team === team) {
+        if (hostile(to, inc.get(to)) < to.count + 2) removeLane(l);
+      } else if ((f.count < 3 && to.count > 8) || fThreat > f.count + 2) {
+        removeLane(l);
+      }
+    }
+
+    let made = 0;
+    for (const f of shuffle(mine)) {
+      if (made >= 2) break;
+      if (lanesFrom(f).length >= f.lvl || f.count < 6) continue;
+      let best = null, bestScore = 0;
+      for (const to of towers) {
+        if (to === f || findLane(f, to)) continue;
+        const d = dist(f, to) / area.h;
+        const tInc = inc.get(to);
+        let score;
+        if (to.team === team) {
+          const threat = hostile(to, tInc);
+          if (threat <= to.count || f.count < 12) continue;
+          score = 25 + threat - to.count - d * 10;
+        } else {
+          const travel = dist(f, to) / speed;
+          const growth = to.team === NEUTRAL ? 0 : RATE[to.lvl] * travel;
+          const need = to.count + growth - tInc[team];
+          const full = f.count >= CAP * .8;
+          if (!full && f.count < need + aiMargin) continue;
+          score = 1 + (f.count - need) * .5 - d * 12 - to.count * .4
+            + (to.team === PLAYER ? aiAggro : to.team === NEUTRAL ? 3 : -3);
+          if (full) score = Math.max(score, .5);
+        }
+        if (score > bestScore) { bestScore = score; best = to; }
+      }
+      if (best && addLane(f, best, team)) made++;
+    }
+  }
+
+  function shuffle(a) {
+    a = a.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // ---------- Parçacıklar ----------
+  function burst(x, y, color, n, life) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, v = baseR * (1.5 + Math.random() * 2.5);
+      particles.push({ type: 'dot', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, max: life, color, size: baseR * .12 });
+    }
+  }
+  function confetti(x, y, team) {
+    const cols = [TEAMS[team].fill, TEAMS[team].dark, '#ffffff', '#ffd3df'];
+    for (let i = 0; i < 22; i++) {
+      const a = Math.random() * Math.PI * 2, v = baseR * (3 + Math.random() * 4);
+      particles.push({
+        type: 'dot', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - baseR * 3, g: baseR * 10,
+        life: .9, max: .9, color: cols[i % cols.length], size: baseR * (.1 + Math.random() * .1),
+      });
+    }
+  }
+  function sparkle(t) {
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      particles.push({
+        type: 'star', x: t.x + Math.cos(a) * baseR, y: t.y + Math.sin(a) * baseR,
+        vx: Math.cos(a) * baseR * 1.5, vy: Math.sin(a) * baseR * 1.5 - baseR, life: .7, max: .7, color: '#fff3a0', size: baseR * .22,
+      });
+    }
+  }
+  function floatText(x, y, text, color) {
+    particles.push({ type: 'text', x, y, vx: 0, vy: -baseR * 1.2, life: 1.1, max: 1.1, color, text });
+  }
+
+  // ---------- Çizim ----------
+  function soldierPos(s) {
+    const dx = s.to.x - s.from.x, dy = s.to.y - s.from.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const o = s.off * baseR * .28;
+    return { x: s.from.x + dx * s.p - dy / len * o, y: s.from.y + dy * s.p + dx / len * o };
+  }
+
+  function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (bg) ctx.drawImage(bg, 0, 0); else { ctx.fillStyle = '#c4ebaa'; ctx.fillRect(0, 0, cv.width, cv.height); }
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    for (const l of lanes) drawLane(l.from, l.to, l.team, 1);
+    if (drag && drag.type === 'link') drawDrag();
+    if (state === 'play' && levelNo === 1 && !playerLinked) drawHint();
+
+    for (const s of soldiers) drawSoldier(s);
+    const sorted = towers.slice().sort((a, b) => a.y - b.y);
+    for (const t of sorted) drawTower(t);
+
+    drawParticles();
+    drawTrail();
+  }
+
+  function drawLane(a, b, team, alpha, toPoint) {
+    const c = TEAMS[team];
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+    if (len < 1) return;
+    const ux = dx / len, uy = dy / len;
+    const r0 = towerR(a) * .95, r1 = toPoint ? 0 : towerR(b) * 1.05;
+    if (len < r0 + r1 + 4) return;
+    const x0 = a.x + ux * r0, y0 = a.y + uy * r0;
+    const x1 = b.x - ux * r1, y1 = b.y - uy * r1;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = c.light;
+    ctx.globalAlpha = alpha * .8;
+    ctx.lineWidth = baseR * .55;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = c.dark;
+    ctx.lineWidth = Math.max(2, baseR * .13);
+    ctx.setLineDash([baseR * .34, baseR * .3]);
+    ctx.lineDashOffset = -time * baseR * 1.6;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ok uçları: ortada ve sonda
+    const segLen = Math.hypot(x1 - x0, y1 - y0);
+    ctx.fillStyle = c.dark;
+    arrowHead(x1, y1, ux, uy, baseR * .42);
+    if (segLen > baseR * 5) arrowHead(x0 + (x1 - x0) * .5, y0 + (y1 - y0) * .5, ux, uy, baseR * .34);
+    ctx.restore();
+  }
+
+  function arrowHead(x, y, ux, uy, s) {
+    const px = -uy, py = ux;
+    ctx.beginPath();
+    ctx.moveTo(x + ux * s * .5, y + uy * s * .5);
+    ctx.lineTo(x - ux * s * .7 + px * s * .65, y - uy * s * .7 + py * s * .65);
+    ctx.lineTo(x - ux * s * .7 - px * s * .65, y - uy * s * .7 - py * s * .65);
+    ctx.closePath();
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = s * .25;
+    ctx.strokeStyle = ctx.fillStyle;
+    ctx.fill(); ctx.stroke();
+  }
+
+  function drawDrag() {
+    const from = drag.from;
+    const target = drag.over;
+    if (target) drawLane(from, target, PLAYER, .75);
+    else drawLane(from, { x: drag.x, y: drag.y }, PLAYER, .6, true);
+    // kaynak kule çevresinde dönen halka
+    ctx.save();
+    ctx.strokeStyle = TEAMS[PLAYER].dark;
+    ctx.lineWidth = 3;
+    ctx.setLineDash([6, 6]);
+    ctx.lineDashOffset = -time * 30;
+    ctx.beginPath(); ctx.arc(from.x, from.y, towerR(from) * 1.45, 0, Math.PI * 2); ctx.stroke();
+    if (target) {
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([]);
+      ctx.globalAlpha = .7 + .3 * Math.sin(time * 10);
+      ctx.beginPath(); ctx.arc(target.x, target.y, towerR(target) * 1.4, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawHint() {
+    const p = towers.find(t => t.team === PLAYER);
+    if (!p) return;
+    let best = null, bd = Infinity;
+    for (const t of towers) if (t.team === NEUTRAL && dist(p, t) < bd) { bd = dist(p, t); best = t; }
+    if (!best) return;
+    const k = (time * .6) % 1;
+    const e = k < .75 ? k / .75 : 1;
+    const hx = p.x + (best.x - p.x) * e, hy = p.y + (best.y - p.y) * e;
+    ctx.save();
+    ctx.globalAlpha = .55;
+    drawLane(p, { x: hx, y: hy }, PLAYER, .6, true);
+    ctx.globalAlpha = k < .75 ? .9 : .9 * (1 - (k - .75) / .25);
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = TEAMS[PLAYER].dark;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(hx, hy, baseR * .45, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.globalAlpha = 1;
+    const label = 'Sürükle ve bırak!';
+    ctx.font = `700 ${Math.round(baseR * .62)}px ${FONT}`;
+    const tw = ctx.measureText(label).width;
+    const lx = (p.x + best.x) / 2, ly = Math.max(p.y, best.y) + baseR * 1.9;
+    ctx.fillStyle = 'rgba(255,253,247,.92)';
+    roundRect(ctx, lx - tw / 2 - 12, ly - baseR * .55, tw + 24, baseR * 1.1, 999); ctx.fill();
+    ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, lx, ly + 1);
+    ctx.restore();
+  }
+
+  function drawSoldier(s) {
+    const c = TEAMS[s.team];
+    const pos = soldierPos(s);
+    const sr = Math.max(3.5, baseR * .2);
+    const hop = Math.abs(Math.sin(s.age * 12)) * sr * .55;
+    ctx.fillStyle = 'rgba(60,90,40,.18)';
+    ctx.beginPath(); ctx.ellipse(pos.x, pos.y + sr * .9, sr * .8, sr * .3, 0, 0, Math.PI * 2); ctx.fill();
+    const y = pos.y - hop;
+    ctx.fillStyle = c.fill;
+    ctx.strokeStyle = c.dark;
+    ctx.lineWidth = Math.max(1.2, sr * .28);
+    ctx.beginPath(); ctx.arc(pos.x, y, sr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (sr >= 4) {
+      const dx = Math.sign(s.to.x - s.from.x) * sr * .15;
+      ctx.fillStyle = INK;
+      ctx.beginPath();
+      ctx.arc(pos.x - sr * .35 + dx, y - sr * .1, sr * .16, 0, Math.PI * 2);
+      ctx.arc(pos.x + sr * .35 + dx, y - sr * .1, sr * .16, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawTower(t) {
+    const c = TEAMS[t.team];
+    const r = towerR(t);
+    const x = t.x + Math.sin(time * 70) * t.shake * r * .07;
+    const sq = t.squish * .08;
+    const y = t.y;
+
+    // gölge
+    ctx.fillStyle = 'rgba(60,90,40,.2)';
+    ctx.beginPath(); ctx.ellipse(x, y + r * .82, r * 1.02, r * .3, 0, 0, Math.PI * 2); ctx.fill();
+
+    ctx.save();
+    ctx.translate(x, y + r * .8);
+    ctx.scale(1 + sq, 1 - sq);
+    ctx.translate(-x, -(y + r * .8));
+
+    const bw = r * 1.62, left = x - bw / 2, right = x + bw / 2;
+    const top = y - r * .45, bot = y + r * .8;
+    const cw = r * .42, ch = r * .34, rad = r * .38;
+
+    // bayraklar (seviye 2 ve 3)
+    if (t.team !== NEUTRAL && t.lvl >= 2) {
+      const sides = t.lvl >= 3 ? [-1, 1] : [1];
+      for (const sd of sides) {
+        const px = x + sd * (bw / 2 - cw / 2);
+        const wave = Math.sin(time * 5 + sd) * r * .05;
+        ctx.strokeStyle = INK; ctx.lineWidth = Math.max(1.5, r * .07); ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(px, top - ch); ctx.lineTo(px, top - ch - r * .62); ctx.stroke();
+        ctx.fillStyle = c.dark;
+        ctx.beginPath();
+        ctx.moveTo(px, top - ch - r * .62);
+        ctx.quadraticCurveTo(px + sd * r * .22, top - ch - r * .55 + wave, px + sd * r * .42, top - ch - r * .5 + wave);
+        ctx.lineTo(px, top - ch - r * .36);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+
+    // gövde + mazgallar tek parça
+    ctx.beginPath();
+    ctx.moveTo(left, bot - rad);
+    ctx.lineTo(left, top - ch);
+    ctx.lineTo(left + cw, top - ch);
+    ctx.lineTo(left + cw, top);
+    ctx.lineTo(x - cw / 2, top);
+    ctx.lineTo(x - cw / 2, top - ch);
+    ctx.lineTo(x + cw / 2, top - ch);
+    ctx.lineTo(x + cw / 2, top);
+    ctx.lineTo(right - cw, top);
+    ctx.lineTo(right - cw, top - ch);
+    ctx.lineTo(right, top - ch);
+    ctx.lineTo(right, bot - rad);
+    ctx.arcTo(right, bot, right - rad, bot, rad);
+    ctx.lineTo(left + rad, bot);
+    ctx.arcTo(left, bot, left, bot - rad, rad);
+    ctx.closePath();
+    ctx.fillStyle = c.fill;
+    ctx.fill();
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(2, r * .1);
+    ctx.strokeStyle = c.dark;
+    ctx.stroke();
+
+    // parlaklık
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    roundRect(ctx, left + r * .16, top + r * .08, r * .18, r * .62, r * .09); ctx.fill();
+
+    // kapı
+    const dw = r * .19;
+    ctx.fillStyle = c.dark;
+    ctx.beginPath();
+    ctx.moveTo(x - dw, bot);
+    ctx.lineTo(x - dw, bot - r * .14);
+    ctx.arc(x, bot - r * .14, dw, Math.PI, 0);
+    ctx.lineTo(x + dw, bot);
+    ctx.closePath(); ctx.fill();
+
+    drawFace(t, x, y + r * .08, r);
+    ctx.restore();
+
+    // seviye noktaları (yol kapasitesi)
+    if (t.team !== NEUTRAL) {
+      const used = lanesFrom(t).length;
+      const pr = Math.max(2.5, r * .1), gap = pr * 3;
+      for (let i = 0; i < t.lvl; i++) {
+        const px = x + (i - (t.lvl - 1) / 2) * gap, py = bot + pr * 2.6;
+        ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2);
+        ctx.fillStyle = i < used ? c.dark : '#ffffff';
+        ctx.fill();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = c.dark; ctx.stroke();
+      }
+    }
+
+    // asker sayısı rozeti
+    const n = String(Math.floor(t.count));
+    const fs = Math.max(12, Math.round(baseR * .58));
+    ctx.font = `700 ${fs}px ${FONT}`;
+    const tw = ctx.measureText(n).width;
+    const bh = fs * 1.3, bwid = Math.max(bh * 1.25, tw + fs * .9);
+    const by = top - ch - bh * .15;
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = c.dark;
+    ctx.lineWidth = Math.max(2, r * .08);
+    roundRect(ctx, x - bwid / 2, by - bh / 2, bwid, bh, bh / 2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = INK;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(n, x, by + fs * .05);
+  }
+
+  function drawFace(t, x, y, r) {
+    const ex = r * .32, er = Math.max(1.6, r * .085);
+    ctx.fillStyle = CHEEK;
+    ctx.beginPath();
+    ctx.ellipse(x - r * .52, y + r * .16, r * .14, r * .09, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + r * .52, y + r * .16, r * .14, r * .09, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = INK; ctx.fillStyle = INK;
+    ctx.lineWidth = Math.max(1.5, r * .07); ctx.lineCap = 'round';
+    const blink = (Math.sin(time * 1.3 + t.id * 2.1) > .985);
+    if (t.team === NEUTRAL || blink) {
+      // uykulu gözler
+      for (const s of [-1, 1]) {
+        ctx.beginPath(); ctx.arc(x + s * ex, y - r * .02, er * 1.1, .15 * Math.PI, .85 * Math.PI); ctx.stroke();
+      }
+    } else {
+      ctx.beginPath();
+      ctx.arc(x - ex, y, er, 0, Math.PI * 2);
+      ctx.arc(x + ex, y, er, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x - ex + er * .35, y - er * .35, er * .38, 0, Math.PI * 2);
+      ctx.arc(x + ex + er * .35, y - er * .35, er * .38, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (t.team === RED) {
+      ctx.beginPath();
+      ctx.moveTo(x - ex - er * 1.3, y - er * 2.2); ctx.lineTo(x - ex + er * 1.1, y - er * 1.4);
+      ctx.moveTo(x + ex + er * 1.3, y - er * 2.2); ctx.lineTo(x + ex - er * 1.1, y - er * 1.4);
+      ctx.stroke();
+    } else if (t.team === YELLOW) {
+      ctx.beginPath();
+      ctx.moveTo(x - ex - er * 1.2, y - er * 1.5); ctx.lineTo(x - ex + er * 1.2, y - er * 2.1);
+      ctx.moveTo(x + ex + er * 1.2, y - er * 1.5); ctx.lineTo(x + ex - er * 1.2, y - er * 2.1);
+      ctx.stroke();
+    }
+    // ağız
+    ctx.beginPath();
+    if (t.shake > .3) ctx.arc(x, y + r * .2, r * .07, 0, Math.PI * 2);
+    else if (t.team === NEUTRAL) { ctx.moveTo(x - r * .07, y + r * .2); ctx.lineTo(x + r * .07, y + r * .2); }
+    else ctx.arc(x, y + r * .13, r * .1, .15 * Math.PI, .85 * Math.PI);
+    if (t.shake > .3) { ctx.fillStyle = INK; ctx.fill(); } else ctx.stroke();
+  }
+
+  function drawParticles() {
+    for (const p of particles) {
+      const k = p.life / p.max;
+      ctx.globalAlpha = Math.min(1, k * 1.5);
+      if (p.type === 'dot') {
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (.5 + k * .5), 0, Math.PI * 2); ctx.fill();
+      } else if (p.type === 'star') {
+        ctx.fillStyle = p.color;
+        ctx.strokeStyle = '#e8b93a'; ctx.lineWidth = 1.2;
+        star(p.x, p.y, p.size * (.6 + k * .4));
+        ctx.fill(); ctx.stroke();
+      } else if (p.type === 'ring') {
+        ctx.strokeStyle = p.color; ctx.lineWidth = 4 * k;
+        ctx.beginPath(); ctx.arc(p.x, p.y, baseR * (1 + (1 - k) * 2), 0, Math.PI * 2); ctx.stroke();
+      } else if (p.type === 'text') {
+        ctx.font = `700 ${Math.round(baseR * .6)}px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 4; ctx.strokeStyle = '#ffffff'; ctx.lineJoin = 'round';
+        ctx.strokeText(p.text, p.x, p.y);
+        ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function star(x, y, s) {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? s * .45 : s;
+      ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    }
+    ctx.closePath();
+  }
+
+  function drawTrail() {
+    if (trail.length < 2) return;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (let i = 1; i < trail.length; i++) {
+      const a = trail[i - 1], b = trail[i];
+      const k = 1 - (time - b.t) / .28;
+      ctx.globalAlpha = Math.max(0, k);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2 + 5 * k;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ---------- HUD ----------
+  function buildPower() {
+    powerEl.innerHTML = '';
+    const teams = [PLAYER, NEUTRAL, ...cfg.ai];
+    for (const team of teams) {
+      const i = document.createElement('i');
+      i.style.background = TEAMS[team].fill;
+      i.dataset.team = team;
+      powerEl.appendChild(i);
+    }
+    updatePower();
+  }
+
+  function updatePower() {
+    const sum = [0, 0, 0, 0];
+    for (const t of towers) sum[t.team] += t.count + 2;
+    for (const s of soldiers) sum[s.team] += 1;
+    const label = [];
+    for (const el of powerEl.children) {
+      const team = +el.dataset.team;
+      el.style.flexGrow = sum[team].toFixed(1);
+      label.push(TEAMS[team].name + ' ' + Math.round(sum[team]));
+    }
+    powerEl.setAttribute('aria-label', 'Güç dengesi: ' + label.join(', '));
+  }
+
+  // ---------- Ekranlar ----------
+  function showOverlay(title, bodyHTML, buttons, artTeam, mood) {
+    ovTitle.textContent = title;
+    ovBody.innerHTML = bodyHTML;
+    ovBtns.innerHTML = '';
+    for (const b of buttons) {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'btn' + (b.ghost ? ' ghost' : '');
+      el.textContent = b.label;
+      el.addEventListener('click', b.onClick);
+      ovBtns.appendChild(el);
+    }
+    drawArt(artTeam, mood);
+    overlay.hidden = false;
+  }
+
+  function hideOverlay() { overlay.hidden = true; }
+
+  // Kart üstündeki küçük kule: aynı çizim kodu, geçici olarak kartın kanvasına yönlendirilir
+  function drawArt(team, mood) {
+    const a = ovArt.getContext('2d');
+    a.setTransform(1, 0, 0, 1, 0, 0);
+    a.clearRect(0, 0, ovArt.width, ovArt.height);
+    const sad = mood === 'sad';
+    const fake = { id: 0, x: 96, y: 108, team, count: sad ? 0 : 42, lvl: 3, pop: 0, shake: sad ? 1 : 0, squish: 0 };
+    const keep = { ctx, baseR, time, lanes };
+    ctx = a; baseR = 40; time = sad ? 0 : 1; lanes = [];
+    drawTower(fake);
+    ({ ctx, baseR, time, lanes } = keep);
+  }
+
+  function showMenu() {
+    state = 'menu';
+    const saved = loadStored();
+    const buttons = [{ label: saved > 1 ? `Seviye ${saved}'den devam` : 'Oyna', onClick: () => startLevel(saved) }];
+    if (saved > 1) buttons.push({ label: 'Baştan başla', ghost: true, onClick: () => startLevel(1) });
+    showOverlay('Kule Savaşı', `
+      <ul>
+        <li><b>1</b><span>Mavi kulenden başka bir kuleye <strong>sürükle</strong>. Bıraktığında askerler yola çıkar.</span></li>
+        <li><b>2</b><span>Düşman ya da gri kulenin askerleri 0'a inince kule <strong>senin</strong> olur.</span></li>
+        <li><b>3</b><span>20 ve 40 askerde kule büyür, hızlı üretir ve daha çok yol açar. Alttaki noktalar yol sayısını gösterir.</span></li>
+        <li><b>4</b><span>Bir yolu kesmek için boş alandan çizginin üstünden <strong>kaydır</strong>.</span></li>
+      </ul>`, buttons, PLAYER, 'happy');
+  }
+
+  function showWin() {
+    const sec = Math.round(playTime);
+    showOverlay('Level Clear!',
+      `<p>Seviye ${levelNo} ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')} sürede fethedildi.</p>`,
+      [
+        { label: 'Sonraki Seviye', onClick: () => startLevel(levelNo + 1) },
+        { label: 'Tekrar Oyna', ghost: true, onClick: () => startLevel(levelNo) },
+      ], PLAYER, 'happy');
+  }
+
+  function showLose() {
+    const foe = towers.find(t => t.team !== PLAYER && t.team !== NEUTRAL);
+    showOverlay('Defeat!',
+      '<p>Bütün kulelerin düştü. Önce zayıf gri kuleleri toplayıp güçlenmeyi dene.</p>',
+      [{ label: 'Tekrar Dene', onClick: () => startLevel(levelNo) }],
+      foe ? foe.team : RED, 'sad');
+  }
+
+  function startLevel(n) {
+    loadLevel(n);
+    state = 'play';
+    hideOverlay();
+  }
+
+  // ---------- Girdi ----------
+  function hitTower(x, y) {
+    let best = null, bd = Infinity;
+    for (const t of towers) {
+      const d = Math.hypot(t.x - x, t.y - y);
+      const reach = Math.max(towerR(t) * 1.3, 30);
+      if (d < reach && d < bd) { bd = d; best = t; }
+    }
+    return best;
+  }
+
+  function segCross(a, b, c, d) {
+    const d1 = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    const d2 = (b.x - a.x) * (d.y - a.y) - (b.y - a.y) * (d.x - a.x);
+    const d3 = (d.x - c.x) * (a.y - c.y) - (d.y - c.y) * (a.x - c.x);
+    const d4 = (d.x - c.x) * (b.y - c.y) - (d.y - c.y) * (b.x - c.x);
+    return (d1 > 0) !== (d2 > 0) && (d3 > 0) !== (d4 > 0);
+  }
+
+  function cutAcross(p0, p1) {
+    for (const l of lanes.slice()) {
+      if (l.team !== PLAYER) continue;
+      if (segCross(p0, p1, l.from, l.to)) {
+        removeLane(l);
+        burst((p0.x + p1.x) / 2, (p0.y + p1.y) / 2, TEAMS[PLAYER].fill, 8, .5);
+      }
+    }
+  }
+
+  cv.addEventListener('pointerdown', e => {
+    if (state !== 'play' || drag) return;
+    e.preventDefault();
+    cv.setPointerCapture(e.pointerId);
+    const x = e.clientX, y = e.clientY;
+    const t = hitTower(x, y);
+    if (t && t.team === PLAYER) drag = { type: 'link', id: e.pointerId, from: t, x, y, over: null };
+    else {
+      drag = { type: 'cut', id: e.pointerId, last: { x, y } };
+      trail.push({ x, y, t: time });
+    }
+  });
+
+  cv.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const x = e.clientX, y = e.clientY;
+    if (drag.type === 'link') {
+      drag.x = x; drag.y = y;
+      const t = hitTower(x, y);
+      drag.over = t && t !== drag.from ? t : null;
+    } else {
+      const p = { x, y };
+      cutAcross(drag.last, p);
+      drag.last = p;
+      trail.push({ x, y, t: time });
+    }
+  });
+
+  function endDrag(e, cancel) {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (!cancel && drag.type === 'link' && drag.over && state === 'play') {
+      if (addLane(drag.from, drag.over, PLAYER)) playerLinked = true;
+    }
+    drag = null;
+  }
+  cv.addEventListener('pointerup', e => endDrag(e, false));
+  cv.addEventListener('pointercancel', e => endDrag(e, true));
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+
+  document.getElementById('restart').addEventListener('click', () => startLevel(levelNo));
+  window.addEventListener('keydown', e => {
+    if ((e.key === 'r' || e.key === 'R') && !e.metaKey && !e.ctrlKey) startLevel(levelNo);
+  });
+  window.addEventListener('resize', resize);
+
+  // ---------- Döngü ----------
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(.05, (now - last) / 1000);
+    last = now;
+    if (state !== 'menu') update(dt);
+    else time += dt;
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  resize();
+  loadLevel(loadStored());
+  showMenu();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!overlay.hidden) drawArt(PLAYER, 'happy'); });
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
