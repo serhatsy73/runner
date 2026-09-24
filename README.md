@@ -18,10 +18,12 @@ HTML Canvas ile yazılmış, koşarken ateş edilen zombi süpürme oyunu protot
 
 ## Kule Savaşı
 
-`kule-savasi/index.html`: pastel/şirin görünümlü, dikey ekran için yapılmış bir kule ele geçirme oyunu. Tek dosyadır, tarayıcıda açmanız yeterli.
+`kule-savasi/`: pastel/şirin görünümlü, dikey ekran için yapılmış bir kule ele geçirme oyunu. Açmak için `kule-savasi/index.html` yeterli.
 
-- Mavi kulenden başka bir kuleye sürükle: aralarında oklu bir yol açılır ve askerler yürümeye başlar.
+- Mavi kulenden başka bir kuleye sürükle: aralarında oklu bir yol açılır ve askerler yürümeye başlar. Sürüklerken diğer mavi kulelerinin üstünden geçersen hepsi birden saldırır.
 - Dost kuleye varan asker sayıyı artırır. Düşman ya da gri kuleye varan asker sayıyı 1 azaltır; sayı 0'a inince kule senin olur.
 - Kuleler saniyede asker üretir. 20 ve 40 askerde büyür, daha hızlı üretir ve daha çok yol açabilir.
 - Bir yolu kesmek için boş alandan çizginin üstünden kaydır.
-- Kırmızı ve sarı rakipler yapay zekâ ile oynar. İlk 5 seviye elle tasarlandı, sonrakiler otomatik üretilir.
+- Her seviyede 3 yıldız kazanılabilir: kazan, hiç kule kaybetme, hedef süreden hızlı bitir.
+
+Yol haritası ve verilen kararlar `kule-savasi/PLAN.md` dosyasında. Seviye dengesini ölçmek için `kule-savasi/tools/denge.html` açılabilir.

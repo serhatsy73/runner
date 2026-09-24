@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Denge Simülasyonu</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: light; --ink: #4b4560; --muted: #7d768e; --line: #e7e1d3; --bg: #fffdf7; --bad: #d9534f; --warn: #c98a00; --ok: #3f9a5e; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p { margin: 0 0 12px; color: var(--muted); max-width: 70ch; }
+  form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 14px; }
+  label { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+  input { width: 70px; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  button { font: inherit; font-weight: 600; padding: 8px 16px; border: 0; border-radius: 999px; background: #4d8fd6; color: #fff; cursor: pointer; }
+  .wrap { overflow-x: auto; }
+  table { border-collapse: collapse; min-width: 560px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .bad { color: var(--bad); font-weight: 700; } .warn { color: var(--warn); font-weight: 700; } .ok { color: var(--ok); }
+</style>
+</head>
+<body>
+<h1>Denge simülasyonu</h1>
+<p>Oyuncunun yerine iki farklı tarzda bot oynar (saldırgan ve sabırlı) ve her seviyeyi birkaç kez hızlandırılmış olarak oynatır.
+Kazanma oranı çok düşük olan seviye fazla zordur. Medyan süre hedef süreye (par) çok yakın ya da üstündeyse 3. yıldız fazla zordur.</p>
+<form id="f">
+  <label>İlk seviye <input id="from" type="number" min="1" value="1"></label>
+  <label>Son seviye <input id="to" type="number" min="1" value="12"></label>
+  <label>Deneme <input id="runs" type="number" min="1" max="50" value="10"></label>
+  <button type="submit">Çalıştır</button>
+  <span id="status"></span>
+</form>
+<div class="wrap"><table>
+  <thead><tr><th>Seviye</th><th>Bot</th><th>Kazanma</th><th>Zaman aşımı</th><th>Medyan</th><th>En hızlı</th><th>Par</th></tr></thead>
+  <tbody id="rows"></tbody>
+</table></div>
+
+<script src="../js/config.js"></script>
+<script src="../js/storage.js"></script>
+<script src="../js/levels.js"></script>
+<script src="../js/game.js"></script>
+<script src="../js/ai.js"></script>
+<script>
+(() => {
+  'use strict';
+  const G = KS.G, V = KS.V;
+  // ekran yok: tipik bir telefon ölçüsünü taklit et
+  Object.assign(V, { W: 390, H: 780, DPR: 1, baseR: 24, speed: 700 * .15 });
+  Object.assign(V.area, { x: 21, y: 110, w: 348, h: 700 });
+
+  const PROFILES = {
+    'saldırgan': { interval: 1.2, margin: 2, aggro: 6, grace: 0, firstMove: .3 },
+    'sabırlı':   { interval: 1.2, margin: 4, aggro: 1, grace: 0, firstMove: .3 },
+  };
+  const STEP = 1 / 30, LIMIT = 400;   // saniye
+
+  let result = null;
+  G.on('win', r => { result = result || { win: true, t: r.time }; });
+  G.on('lose', () => { result = result || { win: false }; });
+
+  function playOnce(n, bot) {
+    G.loadLevel(n); G.state = 'play'; result = null;
+    let botT = bot.firstMove;
+    for (let i = 0; i < LIMIT / STEP && !result; i++) {
+      G.update(STEP);
+      botT -= STEP;
+      if (botT <= 0 && G.state === 'play') {
+        botT = bot.interval;
+        const keep = G.aiParams; G.aiParams = bot; KS.AI.think(KS.PLAYER); G.aiParams = keep;
+      }
+    }
+    return result || { timeout: true };
+  }
+
+  const rows = document.getElementById('rows'), status = document.getElementById('status');
+  const cell = (v, cls) => `<td${cls ? ` class="${cls}"` : ''}>${v}</td>`;
+
+  document.getElementById('f').addEventListener('submit', e => {
+    e.preventDefault();
+    const from = +document.getElementById('from').value, to = +document.getElementById('to').value;
+    const runs = +document.getElementById('runs').value;
+    rows.innerHTML = '';
+    const jobs = [];
+    for (let n = from; n <= to; n++) for (const name of Object.keys(PROFILES)) jobs.push([n, name]);
+    const next = () => {
+      const job = jobs.shift();
+      if (!job) { status.textContent = 'Bitti.'; return; }
+      const [n, name] = job;
+      status.textContent = `Seviye ${n} (${name})…`;
+      const times = []; let wins = 0, timeouts = 0;
+      for (let r = 0; r < runs; r++) {
+        const res = playOnce(n, PROFILES[name]);
+        if (res.win) { wins++; times.push(res.t); } else if (res.timeout) timeouts++;
+      }
+      times.sort((a, b) => a - b);
+      const par = KS.Levels.get(n).par, med = times[times.length >> 1];
+      const rate = wins / runs;
+      rows.insertAdjacentHTML('beforeend', '<tr>' + cell(n) + cell(name)
+        + cell(Math.round(rate * 100) + '%', rate < .4 ? 'bad' : rate < .7 ? 'warn' : 'ok')
+        + cell(timeouts || '–')
+        + cell(med ? KS.fmtTime(med) : '–', med > par ? 'bad' : med > par * .8 ? 'warn' : '')
+        + cell(times.length ? KS.fmtTime(times[0]) : '–')
+        + cell(KS.fmtTime(par)) + '</tr>');
+      setTimeout(next, 0);
+    };
+    next();
+  });
+})();
+</script>
+</body>
+</html>
