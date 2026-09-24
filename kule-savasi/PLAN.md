@@ -142,17 +142,24 @@ Seviye ortasında hiçbir zaman reklam çıkmaz.
 - **Hedef zorluk** (iki botun kazanma oranı): tanıtım ve nefes seviyeleri %90+, normal seviyeler %60–90, zor seviyeler %40–60, boss %30–60.
 - **Par** ≈ saldırgan botun medyan süresinin 1,3 katı (5 saniyeye yuvarlanmış).
 
-### Güncel denge (12'şer deneme)
+### Güncel denge (12–16'şar deneme)
 
 | Seviye | Kazanma (saldırgan / sabırlı) | | Seviye | Kazanma |
 |---|---|---|---|---|
-| 1–3, 5–7 | %100 / %83–100 | | 11 | %83 / %75 |
-| 4 | %75 / %92 | | 12–15 | %83–100 |
-| 8 | %50 / %42 | | 16 | %42–58 / %33–42 |
-| 9 | %92 / %83 | | 17 | %58 / %42 |
-| 10 (boss) | %33 / %58 | | 18 | %42 / %42 |
-| | | | 19 | %56 / %81 |
-| | | | 20 (boss) | %44 / %56 |
+| 1–3, 5–7 | %100 | | 11–13, 15 | %92–100 |
+| 4 | %67 / %67 | | 14 | %75 / %100 |
+| 8 | %67 / %75 | | 16 | %81 / %44 |
+| 9 | %92 / %83 | | 17 | %100 / %67 |
+| 10 (boss) | %50 / %17 | | 18 | %67 / %42 |
+| | | | 19 | %83 / %58 |
+| | | | 20 (boss) | %56 / %75 |
+
+## Oyuncu geri bildirimleri
+
+| Geri bildirim | Sebep | Çözüm |
+|---|---|---|
+| "2. seviyeyi geçemedim, kulem 0'a düşünce asker üretmiyor" | Kule üretiyordu ama açık yollar her askeri anında gönderiyordu; sayı 0'da kalıyor ve kule savunmasız görünüyordu | Kuleye dokununca yolları durur; ilk boşalmada bir kez ipucu; rozetin altında üretim çubuğu; 1–2. seviyede rakip kişiliği kapalı, 2. seviye kolaylaştı |
+| "Rakibin askerleri daha hızlı gibi" | Yürüme hızı aynı (ölçüldü); ama 20'den 19'a inen kule hemen 1. seviyeye düşüp yavaş üretiyor ve seyrek gönderiyordu | Küçülme eşikleri büyümeden düşük (20'de büyür, 15'in altında küçülür; 40 / 33) |
 
 ## Geliştirme notları
 

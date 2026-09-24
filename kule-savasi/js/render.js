@@ -456,16 +456,30 @@
     const fs = Math.max(12, Math.round(V.baseR * .58));
     ctx.font = `700 ${fs}px ${FONT}`;
     const tw = ctx.measureText(n).width;
-    const bh = fs * 1.3, bwid = Math.max(bh * 1.25, tw + fs * .9);
+    const bh = fs * 1.5, bwid = Math.max(bh * 1.15, tw + fs * .9);
     const by = top - ch - bh * .15;
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = c.dark;
     ctx.lineWidth = Math.max(2, r * .08);
     roundRect(ctx, x - bwid / 2, by - bh / 2, bwid, bh, bh / 2);
     ctx.fill(); ctx.stroke();
+    // üretim çubuğu: sıradaki askerin ne kadar hazır olduğunu gösterir (kule 0'dayken bile üretim görünür)
+    if (t.team !== NEUTRAL && t.count < KS.CAP) {
+      const frac = t.count - Math.floor(t.count), inset = bh * .42, len = bwid - inset * 2;
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(2, bh * .13);
+      ctx.strokeStyle = c.light;
+      ctx.beginPath(); ctx.moveTo(x - len / 2, by + bh * .3); ctx.lineTo(x + len / 2, by + bh * .3); ctx.stroke();
+      if (frac > .02) {
+        ctx.strokeStyle = c.dark;
+        ctx.beginPath(); ctx.moveTo(x - len / 2, by + bh * .3); ctx.lineTo(x - len / 2 + len * frac, by + bh * .3); ctx.stroke();
+      }
+      ctx.restore();
+    }
     ctx.fillStyle = INK;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(n, x, by + fs * .05);
+    ctx.fillText(n, x, by - fs * .1);
   }
 
   function drawFace(t, x, y, r) {

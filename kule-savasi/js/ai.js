@@ -25,10 +25,11 @@
       interval: Math.max(1.4, 4.4 - (n - 1) * .18),  // kaç saniyede bir düşünür
       margin: Math.max(1, 7 - (n - 1) * .5),          // saldırmak için ne kadar fazlası olmalı
       aggro: n <= 2 ? 0 : Math.min(8, 1.5 + n * .35), // asıl düşmana saldırmayı ne kadar sever
-      grace: n === 1 ? 25 : n === 2 ? 12 : 0,         // ilk saniyelerde oyuncuya dokunmaz
+      grace: n === 1 ? 25 : n === 2 ? 20 : 0,         // ilk saniyelerde oyuncuya dokunmaz
       firstMove: n <= 2 ? 3 : 1.5,
     }),
     personaOf: team => {
+      if (G.levelNo <= 2) return PERSONAS.balanced;   // ilk seviyelerde karakter yok, sadece öğrenme
       const over = G.cfg && G.cfg.persona && G.cfg.persona[team];
       return PERSONAS[over || KS.PERSONA[team]] || PERSONAS.balanced;
     },

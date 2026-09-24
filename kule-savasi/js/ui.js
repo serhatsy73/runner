@@ -26,6 +26,11 @@
     G.on('win', showWin);
     G.on('lose', showLose);
     G.on('capture', () => UI.updatePower());
+    G.on('drain', () => {
+      if (Save.data.seen.drain) return;
+      Save.markSeen('drain');
+      G.showBanner('Kulen bütün askerini gönderiyor', 'Durdurmak için kuleye dokun', 4.5);
+    });
   };
 
   // ---------- Kilitler ----------
@@ -160,7 +165,7 @@
       <li><b>1</b><span>Mavi kulenden bir kuleye <strong>sürükle</strong>. Bıraktığında askerler yola çıkar.</span></li>
       <li><b>2</b><span>Sürüklerken diğer mavi kulelerinin <strong>üstünden geç</strong>: hepsi birden saldırır.</span></li>
       <li><b>3</b><span>Bir kulenin askerleri 0'a inince kule <strong>senin</strong> olur. 20 ve 40 askerde kule büyür, daha çok yol açar.</span></li>
-      <li><b>4</b><span>Bir yolu kesmek için boş alandan çizginin üstünden <strong>kaydır</strong>.</span></li>
+      <li><b>4</b><span>Kendi kulene <strong>dokun</strong>: ondan çıkan yollar durur. Tek bir yolu kesmek için çizginin üstünden <strong>kaydır</strong>.</span></li>
       <li><b>5</b><span>60 askerin üstünde kule yavaş üretir. 3 dakikadan sonra <strong>Son Hücum</strong> başlar, herkes hızlanır.</span></li>
     </ul>`;
 

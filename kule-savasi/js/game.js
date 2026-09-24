@@ -130,9 +130,14 @@
         const rate = RATE[t.lvl] * prodMul * (t.count >= OVERPROD ? OVERPROD_RATE : 1);
         t.count = Math.min(CAP, t.count + rate * dt);
       }
-      const nl = lvlOf(Math.floor(t.count));
-      if (nl > t.lvl) { t.pop = .001; fx.sparkle(t); G.emit('levelup', t); }
-      t.lvl = nl;
+      const up = lvlOf(Math.floor(t.count));
+      if (up > t.lvl) { t.lvl = up; t.pop = .001; fx.sparkle(t); G.emit('levelup', t); }
+      while (t.lvl > 1 && t.count < KS.LVL_DOWN[t.lvl]) t.lvl--;
+      // oyuncunun kulesi yollar yüzünden boşta kalıyorsa arayüz bir kez ipucu gösterir
+      if (playing && t.team === PLAYER && t.count < 2 && G.lanes.some(l => l.from === t)) {
+        t.drain = (t.drain || 0) + dt;
+        if (t.drain > 2) { t.drain = -1e9; G.emit('drain', t); }
+      } else if (t.drain > 0) t.drain = 0;
       if (t.pop > 0) { t.pop += dt * 2.2; if (t.pop >= 1) t.pop = 0; }
       t.shake = Math.max(0, t.shake - dt * 5);
       t.squish = Math.max(0, t.squish - dt * 5);

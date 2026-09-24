@@ -2,6 +2,7 @@
 // - Kendi kulenden sürükle: yol aç. Sürüklerken geçtiğin diğer mavi kuleler de kaynak olur (çoklu saldırı).
 // - Parmak bir kuleye yaklaşınca hedef ona yapışır, böylece parmağın altındaki kuleyi tam tutturmak gerekmez.
 // - Boş alandan kaydır: üstünden geçtiğin kendi yollarını keser.
+// - Kendi kulene dokun (sürüklemeden): o kuleden çıkan bütün yollar durur.
 (function (KS) {
   'use strict';
   const { PLAYER } = KS;
@@ -29,6 +30,14 @@
     }
   }
 
+  function stopTower(t) {
+    const out = G.lanes.filter(l => l.from === t && l.team === PLAYER);
+    if (!out.length) return;
+    out.forEach(G.removeLane);
+    G.fx.text(t.x, t.y - G.towerR(t) * 1.9, 'Durdu', KS.TEAMS[PLAYER].dark);
+    G.emit('cut');
+  }
+
   KS.Input = {
     init(cv) {
       cv.addEventListener('pointerdown', e => {
@@ -38,7 +47,7 @@
         const x = e.clientX, y = e.clientY;
         const t = G.nearestTower(x, y, startReach, mine);
         if (t) {
-          G.drag = { type: 'link', id: e.pointerId, sources: [t], x, y, over: null };
+          G.drag = { type: 'link', id: e.pointerId, sources: [t], x, y, sx: x, sy: y, moved: false, over: null };
           G.emit('select', t);
         } else {
           G.drag = { type: 'cut', id: e.pointerId, last: { x, y } };
@@ -52,6 +61,7 @@
         const x = e.clientX, y = e.clientY;
         if (d.type === 'link') {
           d.x = x; d.y = y;
+          if (Math.hypot(x - d.sx, y - d.sy) > 14) d.moved = true;
           const passed = G.nearestTower(x, y, passReach, mine);
           if (passed && !d.sources.includes(passed)) { d.sources.push(passed); G.emit('select', passed); }
           const over = G.nearestTower(x, y, snapReach);
@@ -69,7 +79,10 @@
         const d = G.drag;
         if (!d || e.pointerId !== d.id) return;
         G.drag = null;
-        if (cancel || d.type !== 'link' || !d.over || G.state !== 'play') return;
+        if (cancel || d.type !== 'link' || G.state !== 'play') return;
+        // kendi kulene dokunmak (sürüklemeden): o kuleden çıkan bütün yollar durur
+        if (!d.moved && d.sources.length === 1) { stopTower(d.sources[0]); return; }
+        if (!d.over) return;
         let made = 0, tried = 0;
         for (const s of d.sources) {
           if (s === d.over) continue;
