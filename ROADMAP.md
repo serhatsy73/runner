@@ -10,7 +10,8 @@ Hedef: gerçek oyuncuların online oynadığı, kuralları eksiksiz, hilesi zor 
 2. **Oyun motorunda DOM kullanılmaz.** Kurallar, çözücüler ve botlar tarayıcıda da Node.js'te de aynı kodla çalışır.
 3. **Gizli bilgi istemciye gitmez.** Rakip taşları, kartları ve deste sırası sunucuda kalır.
 4. **Her kuralın testi vardır.** Yazılı kural listesi ve ona karşılık gelen test birlikte yürür.
-5. **Gerçek para yok.** Çipler sanaldır, satın alınamaz ve paraya çevrilemez. Aksi bir karar lisans gerektirir, hukuki görüş alınmadan konuşulmaz.
+5. **Gerçek para yok.** Jeton satın alınabilir ama paraya çevrilemez, oyuncular arasında transfer edilemez, ödül olarak para ya da para değerinde bir şey dağıtılmaz. Bu çizgi hem hukuki hem de mağaza politikası sınırıdır (bkz. Faz 3).
+6. **Önce global kural, sonra masa ayarı.** Her oyunun tek bir varsayılan kural seti vardır. Farklı varyantlar masa açarken seçilen ayarlardır, ayrı kod dalları değil.
 
 ## "Kusursuz"un ölçütleri
 
@@ -47,12 +48,21 @@ Tek dosyada kalarak kural eksiklerini ve bilinen hataları kapatmak.
 - [ ] Yandan alınan taşla o turda açma zorunluluğu
 - [ ] Ceza puanları (okey atma, işlek taş atma)
 
+**Kural altyapısı**
+- [x] `RULESETS`: her oyunun global varsayılanı ve masa ayarları tek yerde tanımlı
+- [x] Lobide "Masanı kur" penceresi: seçenekler tanımdan otomatik oluşuyor
+- [ ] Okey ve 101 masa ayarları (yerel kural farkları, bkz. aşağıdaki maddeler)
+
 **Batak**
-- [ ] İhale turu: teklif, koz seçimi, kontrat, batma puanı
-- [ ] Eşli batak seçeneği
-- [ ] Koz ve ihale kuralı masa ayarı olsun
+- [x] Tekli / eşli (karşılıklı oturanlar ortak, eşli puanlama)
+- [x] Koz maça (sabit) / ihaleli (ihaleyi alan kozu seçer)
+- [x] İhale turu: teklif, pas, herkes pas derse dağıtanın en düşük ihaleyle alması, koz seçimi, batma puanı
+- [x] Eşli botlar ortağının aldığı ele üst atmıyor, ortağının ihalesini geçmiyor
+- [ ] Koz renginin açılışı için yerel kural seçeneği (ilk elden koz atılabilir mi)
+- [ ] Oyunun kaç el ya da kaç puana kadar süreceği
 
 **Poker**
+- [x] Masa ayarı: kör seviyesi (10/20, 25/50, 50/100) ve başlangıç çipi
 - [ ] Tam olmayan all-in artırması bahsi yeniden açmasın
 - [ ] El sonu özeti: kazanan beş kart vurgusu, kicker
 - [ ] El geçmişi
@@ -88,18 +98,50 @@ Online'a geçmeden önce kodu sunucunun da kullanabileceği hale getirmek.
 - [ ] Sunucu zamanlayıcıları: hamle süresi, dağıtım beklemeleri
 - [ ] Yeniden bağlanma: oturum jetonu, kopan oyuncunun yerine geçici bot, dönünce tam durum
 - [ ] Güvenlik: girdi doğrulama, hız sınırı, sunucu tarafında rastgelelik
-- [ ] Ölçek: önce tek süreç, sonra masalar süreçlere dağıtılır. Yük testi hedefi 1.000 eşzamanlı masa
+- [ ] Düşük bütçeli başlangıç: tek küçük sanal sunucu üzerinde tek Node.js süreci + aynı sunucuda PostgreSQL (ya da başta SQLite). Redis, çoklu sunucu ve yönetilen servisler ancak ölçüm ihtiyaç gösterince
+- [ ] Günlük otomatik veritabanı yedeği sunucu dışına
+- [ ] Ölçek: oyuncu sayısı arttıkça masalar süreçlere, sonra sunuculara dağıtılır. Tek sunucuda kaç masa kaldırdığımız yük testiyle ölçülür
 - [ ] İzleme: hata kaydı, masa başına gecikme ölçümü
 
 Çıkış ölçütü: iki gerçek cihaz ve iki bot aynı masada oynuyor, bağlantı kesme testleri geçiyor, güvenlik kapısı yeşil.
 
-## Faz 3: Hesaplar, sanal çip, canlı lobi
+## Faz 3: Hesaplar, jeton ekonomisi, gelir
 
-- [ ] Misafir girişi, sonra hesap (e-posta ya da Google)
-- [ ] Sanal çip, günlük hediye çip, iflas eden oyuncuya yardım çipi
-- [ ] Canlı lobi: gerçek doluluk, seviye filtreleri, özel masa ve davet bağlantısı
+Amaç: oyunun kendi masrafını çıkarması, kazancın oyuna geri yatırılması.
+
+**Giriş**
+- [ ] Misafir girişi (tek dokunuşla oyna, sonra hesaba bağla)
+- [ ] Kendi kayıt sistemimiz: e-posta + şifre, e-posta doğrulama, şifre sıfırlama
+- [ ] Facebook ile giriş. Meta uygulama incelemesi, gizlilik politikası adresi ve veri silme isteği adresi gerektirir
+- [ ] Android oyuncuları için Google ile giriş eklemek düşünülmeli (en düşük sürtünme)
+- [ ] Bir hesaba birden çok giriş yöntemi bağlanabilmeli
+
+**Jeton ekonomisi**
+- [ ] Tek sanal para: jeton. Masalar jetonla oynanır, seviye arttıkça giriş jetonu artar
+- [ ] Ücretsiz kaynaklar: günlük hediye, saatlik hediye, iflas yardımı, ödüllü reklam
+- [ ] Jeton paketleri satışı (mağaza içi satın alma / web ödemesi)
+- [ ] Oyuncular arası jeton transferi **yok**. Transfer olursa jeton karaborsası oluşur ve jeton fiilen paraya dönüşür
+- [ ] Jeton harcama/kazanma kayıtları (denetim ve hile tespiti için)
+
+**Reklam**
+- [ ] Ödüllü video: izleyene jeton. En yüksek gelir ve en az rahatsızlık bu formatta
+- [ ] Geçiş reklamı yalnızca el aralarında ve sıklık sınırıyla (ör. en fazla 3 elde bir)
+- [ ] Oyun sırasında hiçbir reklam yok
+- [ ] Reklamsız paket / VIP abonelik (reklamsız + günlük ekstra jeton + profil süsleri)
+
+**Hukuk ve mağaza (yayından önce şart)**
+- [ ] Türkiye'deki şans oyunları mevzuatı açısından hukuki görüş: satın alınabilir jetonlu poker ve okey
+- [ ] Google Play ve App Store'un "simüle kumar" politikaları: yaş sınırı, içerik derecelendirmesi, bölge kısıtları
+- [ ] KVKK aydınlatma metni, gizlilik politikası, kullanım koşulları, ödeme ve iade koşulları
+
+**Ölçülecekler** (yatırım kararları bunlara göre verilir)
+- 1. gün / 7. gün / 30. gün geri dönen oyuncu oranı
+- Günlük aktif oyuncu başına gelir (reklam + satış ayrı ayrı)
+- Ödeme yapan oyuncu oranı, ödüllü reklam izlenme oranı
+
+**Canlı lobi ve profil**
+- [ ] Gerçek doluluk, seviye filtreleri, özel masa ve davet bağlantısı
 - [ ] Profil, istatistik, haftalık sıralama
-- [ ] KVKK aydınlatma metni ve gizlilik politikası
 
 ## Faz 4: Topluluk
 
@@ -115,9 +157,18 @@ Online'a geçmeden önce kodu sunucunun da kullanabileceği hale getirmek.
 - [ ] İsteğe bağlı: Google Play / App Store paketleri
 - [ ] Kapalı beta, geri bildirim, genel açılış
 
+## Alınan kararlar
+
+| Konu | Karar |
+|---|---|
+| Kural setleri | Global kurallar varsayılan. Yetersiz görülen yerlerde masa ayarı ya da ayrı kurallı masa |
+| Batak | Tekli, eşli, koz maça, ihaleli: hepsi masa ayarı olarak |
+| Sunucu | Düşük bütçeli tek sunucuyla başla, kullanım arttıkça bütçe ayır |
+| Giriş | Facebook, e-posta ve kendi kayıt sistemimiz |
+| Gelir | Reklam + jeton satışı. Gelir oyuna yeniden yatırılır |
+
 ## Karar bekleyen konular
 
-1. **Kural setleri:** Okey ve 101 bölgeden bölgeye değişiyor. Varsayılan kural seti hangisi olacak, hangileri masa ayarı olacak?
-2. **Batak:** tekli, eşli, ya da ikisi birden?
-3. **Sunucu barındırma:** hangi bulut sağlayıcı ve bütçe?
-4. **Hesap sistemi:** misafir girişi yeterli mi, telefon numarası doğrulaması istenecek mi?
+1. **Okey ve 101 yerel kuralları:** hangi farklar masa ayarı olarak sunulacak? (12-13-1, çiftten açma, okeyle bitirme puanı vb.)
+2. **Jeton fiyatları ve paketleri:** mağaza bölge fiyatlandırmasına göre sonra belirlenecek.
+3. **Hukuki görüş:** jeton satışı açılmadan önce alınmalı.

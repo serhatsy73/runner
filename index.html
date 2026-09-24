@@ -59,7 +59,8 @@
   .tab span:last-child { font-size: 13px; font-weight: 700; }
   .tab[aria-selected="true"] { background: var(--felt); border-color: var(--brass); box-shadow: inset 0 0 0 1px rgba(217,165,75,.45); }
 
-  .mode-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 0 2px; }
+  .mode-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 2px; }
+  .mode-head > div { display: grid; gap: 4px; }
   .mode-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 26px; }
   .mode-head p { margin: 0; color: var(--muted); font-size: 14px; }
   .tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
@@ -128,7 +129,7 @@
   .per.ok { color: #9be3a7; }
 
   /* ---------- El sonu penceresi, bildirim ---------- */
-  #modal { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(10,6,3,.55); }
+  #modal, #setup { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(10,6,3,.55); }
   .modal-card {
     width: min(380px, 100%); background: linear-gradient(180deg, #4a2b16, #2d1a0d); border: 1px solid var(--line);
     border-radius: 16px; padding: 18px 18px 16px; display: grid; gap: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.6);
@@ -139,6 +140,19 @@
   .rows div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,.25); font-size: 14.5px; font-variant-numeric: tabular-nums; }
   .rows div.win { background: rgba(217,165,75,.2); color: #ffe2a8; font-weight: 700; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .fields { display: grid; gap: 14px; }
+  .fields fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .fields legend { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--brass); font-weight: 700; padding: 0; margin-bottom: 6px; }
+  .choice-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; }
+  .choice { position: relative; display: grid; gap: 2px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,.25); cursor: pointer; }
+  .choice input { position: absolute; opacity: 0; pointer-events: none; }
+  .choice b { font-size: 14.5px; }
+  .choice small { font-size: 12px; color: var(--muted); line-height: 1.35; }
+  .choice:has(input:checked) { background: var(--felt); border-color: var(--brass); }
+  .choice:has(input:focus-visible) { outline: 2px solid var(--brass); outline-offset: 2px; }
+  .bidrow { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; flex: 1 1 100%; }
+  .act.bid { min-width: 44px; padding: 8px 11px; }
+  .act .red { color: #e0574a; }
   #toast {
     position: fixed; z-index: 11; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 62px);
     max-width: calc(100vw - 32px); padding: 9px 14px; border-radius: 10px; background: #5a1f15; border: 1px solid #b3361f;
@@ -172,7 +186,10 @@
       <button class="tab" role="tab" data-mode="poker" aria-selected="false"><span class="glyph">₺</span><span>Poker</span></button>
     </nav>
 
-    <div class="mode-head"><h2 id="modeTitle">Okey Masaları</h2><p id="modeDesc"></p></div>
+    <div class="mode-head">
+      <div><h2 id="modeTitle">Okey Masaları</h2><p id="modeDesc"></p></div>
+      <button class="act" id="setupBtn" type="button">Masanı kur</button>
+    </div>
     <section class="tables" id="tableList" aria-live="polite"></section>
     <p class="lobby-note">Prototip notu: her hamle <code>dispatchAction({ type, seat, payload })</code> ile gönderilir. Şu an <code>LocalTransport</code> hamleyi tarayıcıdaki oyun motoruna iletiyor. Online sürümde aynı mesajlar <code>WebSocketTransport</code> ile sunucuya gidecek. Masada sağ üstteki “Olaylar” düğmesi bu akışı canlı gösterir.</p>
   </div>
@@ -199,6 +216,17 @@
       <button class="act primary" id="modalNext">Yeni el</button>
     </div>
   </div>
+</div>
+<div id="setup" hidden>
+  <form class="modal-card" id="setupForm" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+    <h2 id="setupTitle">Masanı kur</h2>
+    <p>Global kurallar seçili gelir. Değiştirmek istediğini seç.</p>
+    <div class="fields" id="setupFields"></div>
+    <div class="modal-actions">
+      <button type="button" class="act" id="setupCancel">Vazgeç</button>
+      <button type="submit" class="act primary">Masayı aç</button>
+    </div>
+  </form>
 </div>
 <div id="toast" role="status" hidden></div>
 
@@ -654,9 +682,35 @@ const SEATS = () => [
   { name: 'Sevim Abla', bot: true, color: '#b0593a', initials: 'SA' },
 ];
 
+/* Kural setleri: her oyunun global varsayılanı + masa açarken değiştirilebilen seçenekler.
+   Sunucuda da aynı tanım kullanılır; masa kuralları masa oluşturulurken bir kez sabitlenir. */
+const RULESETS = {
+  okey: { defaults: {}, options: [] },
+  '101': { defaults: {}, options: [] },
+  batak: {
+    defaults: { teams: false, bidding: false },
+    options: [
+      { id: 'teams', label: 'Oyun', choices: [[false, 'Tekli', 'Herkes kendine oynar'], [true, 'Eşli', 'Karşılıklı oturanlar ortak']] },
+      { id: 'bidding', label: 'Koz', choices: [[false, 'Koz maça', 'Her el koz maça'], [true, 'İhaleli', 'İhaleyi alan kozu seçer']] },
+    ],
+  },
+  poker: {
+    defaults: { blinds: 10, stack: 1000 },
+    options: [
+      { id: 'blinds', label: 'Kör', choices: [[10, '10/20'], [25, '25/50'], [50, '50/100']] },
+      { id: 'stack', label: 'Başlangıç çipi', choices: [[1000, '₺1.000'], [2500, '₺2.500'], [5000, '₺5.000']] },
+    ],
+  },
+};
+function ruleLabel(mode, rules) {
+  const rs = RULESETS[mode], r = { ...rs.defaults, ...rules };
+  return rs.options.map(o => { const c = o.choices.find(c => c[0] === r[o.id]); return o.id === 'blinds' ? 'Kör ' + c[1] : c[1]; }).join(' · ');
+}
+
 class BaseGame {
   constructor(key, title, table) {
     this.key = key; this.title = title; this.table = table;
+    this.rules = Object.assign({}, (RULESETS[key] || {}).defaults, table.rules || {});
     this.seats = SEATS(); this.phase = 'idle'; this.turn = null; this.roundId = 0; this.version = 0;
     this.timers = []; this.bot = { v: -1, t: 0 }; this.time = 0; this.drag = null; this.sel = null;
     this.handlers = { NEW_ROUND: 'onNewRound' };
@@ -687,12 +741,20 @@ class BaseGame {
     }
     // Botlar sunucu tarafında yaşar; hamlelerini insan gibi dispatchAction ile yollarlar
     const s = this.turn;
-    if (this.phase !== 'play' || s == null || !this.seats[s].bot) return;
+    if (!this.actingPhase() || s == null || !this.seats[s].bot) return;
     if (this.bot.v !== this.version) { this.bot.v = this.version; this.bot.t = 0.55 + Math.random() * 0.55; }
     this.bot.t -= dt;
     if (this.bot.t <= 0) { this.bot.t = 1.5; const a = this.botDecide(s); if (a) dispatchAction({ ...a, seat: s }); }
   }
   isMyTurn() { return this.phase === 'play' && this.turn === 0; }
+  actingPhase() { return this.phase === 'play'; }
+  seatPill(g, s, text, color) {
+    const L = this.L, av = L.avatar[s]; g.save(); g.font = `700 11px ${F_BODY}`; g.textAlign = 'center';
+    const w = g.measureText(text).width + 12, top = s === 2;
+    const y = top ? av.y : av.y - L.ar - 18, x = top ? av.x + L.ar + 36 + w / 2 : clamp(av.x, L.felt.x + w / 2 + 2, L.felt.r - w / 2 - 2);
+    rr(g, x - w / 2, y - 8, w, 16, 8); g.fillStyle = color; g.fill();
+    g.fillStyle = '#f5ecd7'; g.fillText(text, x, y + 4); g.restore();
+  }
 
   // ---- Görünüm ----
   layout(W, H, topH, botH) {
@@ -723,7 +785,7 @@ class BaseGame {
     const L = this.L;
     for (let s = 0; s < 4; s++) {
       const p = L.avatar[s]; if (!p) continue;
-      const seat = this.seats[s], on = this.turn === s && (this.phase === 'play');
+      const seat = this.seats[s], on = this.turn === s && this.actingPhase();
       g.save();
       if (on) {
         const pulse = REDUCED ? 0.6 : 0.5 + 0.5 * Math.sin(this.time * 5);
@@ -756,23 +818,62 @@ class BaseGame {
 }
 
 /* ======================= BATAK ======================= */
+const SUIT_SYM = { S: '♠︎', H: '♥︎', D: '♦︎', C: '♣︎' };
 class BatakGame extends BaseGame {
   constructor(table) {
     super('batak', 'Batak', table);
-    this.handlers.PLAY_CARD = 'onPlayCard';
+    Object.assign(this.handlers, { PLAY_CARD: 'onPlayCard', BID: 'onBid', CHOOSE_TRUMP: 'onChooseTrump' });
     this.trump = 'S'; this.totals = [0, 0, 0, 0]; this.dealer = 3; this.wordmark = true;
+    this.minBid = this.rules.teams ? 7 : 5;
+    this.title = `${this.rules.teams ? 'Eşli ' : ''}${this.rules.bidding ? 'İhaleli ' : ''}Batak`;
+  }
+  actingPhase() { return this.phase === 'play' || this.phase === 'bid' || this.phase === 'trump'; }
+  partner(s) { return (s + 2) % 4; }
+  sameSide(a, b) { return a === b || (this.rules.teams && a === this.partner(b)); }
+  sideTricks(s) { return this.tricks[s] + (this.rules.teams ? this.tricks[this.partner(s)] : 0); }
+  sortHand(h) {
+    const order = this.trump ? [this.trump, ...['S', 'H', 'C', 'D'].filter(x => x !== this.trump)] : ['S', 'H', 'C', 'D'];
+    h.sort((a, b) => order.indexOf(a.suit) - order.indexOf(b.suit) || a.rank - b.rank);
   }
   newRound() {
     this.roundId++; this.dealer = (this.dealer + 1) % 4;
     const deck = shuffle(makeDeck());
     this.hands = [[], [], [], []]; this.dealIdx = {};
     for (let i = 0; i < 52; i++) { const s = (this.dealer + 1 + i) % 4, c = deck[i]; this.hands[s].push(c); this.dealIdx[c.id] = i; }
-    const order = { S: 0, H: 1, C: 2, D: 3 };
-    this.hands[0].sort((a, b) => order[a.suit] - order[b.suit] || a.rank - b.rank);
+    this.trump = this.rules.bidding ? null : 'S';
+    this.sortHand(this.hands[0]);
     this.trick = []; this.captured = [[], [], [], []]; this.tricks = [0, 0, 0, 0]; this.trumpBroken = false;
-    this.turn = (this.dealer + 1) % 4; this.lastWinner = null; this.sel = null;
-    this.phase = 'deal'; this.after(52 * 0.028 + 0.5, () => { this.phase = 'play'; });
+    this.bids = [null, null, null, null]; this.passed = [false, false, false, false]; this.contract = null;
+    this.turn = (this.dealer + 1) % 4; this.sel = null;
+    this.phase = 'deal';
+    this.after(52 * 0.028 + 0.5, () => { this.phase = this.rules.bidding ? 'bid' : 'play'; });
   }
+  // ---- İhale ----
+  highBid() { let best = null; this.bids.forEach((v, s) => { if (v != null && (!best || v > best.value)) best = { seat: s, value: v }; }); return best; }
+  onBid(a) {
+    if (this.phase !== 'bid') return 'Şu an ihale yok';
+    if (a.seat !== this.turn) return 'Sıra sende değil';
+    const v = a.payload && a.payload.value, hb = this.highBid();
+    if (v == null) this.passed[a.seat] = true;
+    else {
+      if (!Number.isInteger(v) || v < this.minBid || v > 13) return `İhale ${this.minBid} ile 13 arasında olmalı`;
+      if (hb && v <= hb.value) return `${hb.value}'den yüksek söylemelisin`;
+      this.bids[a.seat] = v;
+    }
+    const open = [0, 1, 2, 3].filter(s => !this.passed[s]), top = this.highBid();
+    if (!open.length) { this.bids[this.dealer] = this.minBid; this.startTrump(); return; } // herkes pas: dağıtan en düşük ihaleyle alır
+    if (open.length === 1 && top && top.seat === open[0]) { this.startTrump(); return; }
+    for (let i = 1; i <= 4; i++) { const s = (a.seat + i) % 4; if (!this.passed[s]) { this.turn = s; break; } }
+  }
+  startTrump() { this.contract = this.highBid(); this.phase = 'trump'; this.turn = this.contract.seat; }
+  onChooseTrump(a) {
+    if (this.phase !== 'trump') return 'Şu an koz seçilmiyor';
+    if (a.seat !== this.turn) return 'Kozu ihaleyi alan seçer';
+    const suit = a.payload && a.payload.suit; if (!SUITS.includes(suit)) return 'Geçersiz koz';
+    this.trump = suit; this.sortHand(this.hands[0]);
+    this.phase = 'play'; this.turn = this.contract.seat;
+  }
+  // ---- Oyun ----
   beats(a, b) { return a.suit === b.suit ? a.rank > b.rank : a.suit === this.trump; }
   winnerOfTrick() { let best = this.trick[0]; for (const t of this.trick) if (this.beats(t.card, best.card)) best = t; return best; }
   legalCards(seat) {
@@ -795,10 +896,11 @@ class BatakGame extends BaseGame {
     return hand;
   }
   legalReason(seat) {
-    if (!this.trick.length) return 'Koz (maça) henüz kırılmadı, başka renkle başla';
+    const k = SUIT_NAME[this.trump].toLocaleLowerCase('tr');
+    if (!this.trick.length) return `Koz (${k}) henüz kırılmadı, başka renkle başla`;
     const lead = this.trick[0].card.suit;
     if (this.hands[seat].some(c => c.suit === lead)) return `${SUIT_NAME[lead]} vermek ve yükseltebiliyorsan yükseltmek zorundasın`;
-    return 'Elinde istenen renk yok, koz (maça) atmak zorundasın';
+    return `Elinde istenen renk yok, koz (${k}) atmak zorundasın`;
   }
   onPlayCard(a) {
     const e = this.turnCheck(a); if (e) return e;
@@ -816,19 +918,46 @@ class BatakGame extends BaseGame {
   resolveTrick() {
     const w = this.winnerOfTrick().seat;
     this.tricks[w]++; this.captured[w].push(...this.trick.map(t => t.card)); this.trick = [];
-    this.turn = w; this.lastWinner = w;
-    if (this.hands[0].length === 0) {
-      this.totals = this.totals.map((v, i) => v + this.tricks[i]);
-      const best = Math.max(...this.tricks);
-      const winners = this.seats.filter((_, i) => this.tricks[i] === best).map(s => s.name).join(' ve ');
-      this.endRound({
-        title: `${winners} en çok eli aldı`,
-        text: 'Koz maça. Her el 1 puan. İhale turu sonraki sürümde.',
-        rows: this.seats.map((s, i) => [s.name, `${this.tricks[i]} el · toplam ${this.totals[i]}`, this.tricks[i] === best]),
-      });
-    } else this.phase = 'play';
+    this.turn = w;
+    if (this.hands[0].length) { this.phase = 'play'; return; }
+    // Puanlama: ihalesiz her el 1 puan. İhaleli: ihaleyi alan taraf tuttuysa aldığı eli, tutmadıysa -ihale yazar.
+    const c = this.contract, T = this.rules.teams;
+    const made = c ? this.sideTricks(c.seat) >= c.value : true;
+    const pts = [0, 1, 2, 3].map(s => c && this.sameSide(s, c.seat) ? (made ? this.sideTricks(s) : -c.value) : this.sideTricks(s));
+    this.totals = this.totals.map((v, i) => v + pts[i]);
+    const sides = T ? [0, 1] : [0, 1, 2, 3];
+    const nameOf = s => T ? `${this.seats[s % 2].name} + ${this.seats[s % 2 + 2].name}` : this.seats[s].name;
+    const best = Math.max(...sides.map(s => pts[s]));
+    const title = c
+      ? `${nameOf(c.seat)} ${made ? 'ihaleyi çıkardı' : 'battı'} (${this.sideTricks(c.seat)}/${c.value})`
+      : `${sides.filter(s => pts[s] === best).map(nameOf).join(' ve ')} en çok eli aldı`;
+    const text = c
+      ? 'İhaleyi alan taraf tuttuysa aldığı el kadar yazar, tutmadıysa ihale kadar düşer. Diğerleri aldıkları eli yazar.'
+      : `Her el 1 puan${T ? ', eşlerin elleri toplanır' : ''}.`;
+    this.endRound({ title, text, rows: sides.map(s => [nameOf(s), `${pts[s] > 0 ? '+' : ''}${pts[s]} · toplam ${this.totals[s]}`, pts[s] === best]) });
+  }
+  // ---- Botlar ----
+  estimate(hand) {
+    let est = 0, best = null;
+    for (const suit of SUITS) {
+      const r = hand.filter(c => c.suit === suit).map(c => c.rank), len = r.length;
+      if (r.includes(14)) est += 1;
+      if (r.includes(13)) est += len >= 2 ? 0.8 : 0.3;
+      if (r.includes(12)) est += len >= 3 ? 0.4 : 0.1;
+      const score = len * 2 + r.filter(x => x >= 11).length;
+      if (!best || score > best.score) best = { suit, score, len };
+    }
+    return { est: est + Math.max(0, best.len - 3), trump: best.suit };
+  }
+  botBid(s) {
+    const hb = this.highBid(), pass = { type: 'BID', payload: {} };
+    if (this.rules.teams && hb && hb.seat === this.partner(s)) return pass;
+    const need = hb ? hb.value + 1 : this.minBid, mine = this.estimate(this.hands[s]).est + (this.rules.teams ? 3 : 0);
+    return mine >= need && need <= 13 ? { type: 'BID', payload: { value: need } } : pass;
   }
   botDecide(s) {
+    if (this.phase === 'bid') return this.botBid(s);
+    if (this.phase === 'trump') return { type: 'CHOOSE_TRUMP', payload: { suit: this.estimate(this.hands[s]).trump } };
     const legal = this.legalCards(s).slice();
     const val = c => c.rank + (c.suit === this.trump ? 20 : 0);
     legal.sort((a, b) => val(a) - val(b));
@@ -838,7 +967,10 @@ class BatakGame extends BaseGame {
       if (ace) return this.play(ace);
       return this.play(Math.random() < 0.3 ? high : low);
     }
-    const win = this.winnerOfTrick().card, winners = legal.filter(c => this.beats(c, win));
+    const w = this.winnerOfTrick(), win = w.card;
+    // Eşli: eli ortağın alıyorsa üstüne çıkma, en küçüğü ver
+    if (this.rules.teams && w.seat === this.partner(s) && (this.trick.length === 3 || win.rank >= 13 || win.suit === this.trump)) return this.play(low);
+    const winners = legal.filter(c => this.beats(c, win));
     if (winners.length) return this.play(this.trick.length === 3 ? winners[0] : winners[winners.length - 1]);
     return this.play(low);
   }
@@ -898,16 +1030,50 @@ class BatakGame extends BaseGame {
     g.restore();
   }
   dropOk(p) { return p.y < this.L.handY - this.L.ch * 0.55; }
-  seatInfo(s) { return `${this.tricks ? this.tricks[s] : 0} el`; }
-  hudSub() { return `Koz ♠︎ Maça · ${13 - this.hands[0].length}/13 · ${this.table.name}`; }
-  buildBar(el) { el.innerHTML = `<span class="hint" id="bHint"></span>`; this.hintEl = el.querySelector('#bHint'); }
+  drawOverlay(g) {
+    for (let s = 0; s < 4; s++) {
+      let m = '';
+      if (this.phase === 'bid' || this.phase === 'trump') m = this.passed[s] ? 'Pas' : this.bids[s] != null ? `İhale ${this.bids[s]}` : '';
+      else if (this.contract && this.contract.seat === s) m = `İhale ${this.contract.value}`;
+      if (m) this.seatPill(g, s, m, m === 'Pas' ? '#5a1f15' : '#7a5418');
+    }
+  }
+  seatInfo(s) { return `${this.tricks ? this.tricks[s] : 0} el${this.rules.teams ? (s % 2 ? ' · B' : ' · A') : ''}`; }
+  hudSub() {
+    const k = this.trump ? `Koz ${SUIT_SYM[this.trump]} ${SUIT_NAME[this.trump]}` : 'Koz ihalede';
+    const c = this.contract ? ` · İhale ${this.seats[this.contract.seat].name} ${this.contract.value}` : '';
+    return `${k}${c} · ${13 - this.hands[0].length}/13 · ${this.table.name}`;
+  }
+  buildBar(el) {
+    el.innerHTML = `<div class="bidrow" id="bidRow" hidden></div><span class="hint" id="bHint"></span>`;
+    this.hintEl = el.querySelector('#bHint'); this.bidEl = el.querySelector('#bidRow');
+    this.bidEl.onclick = e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.suit) dispatchAction({ type: 'CHOOSE_TRUMP', seat: 0, payload: { suit: b.dataset.suit } });
+      else dispatchAction({ type: 'BID', seat: 0, payload: b.dataset.v ? { value: +b.dataset.v } : {} });
+    };
+  }
   refreshBar() {
+    const mine = this.turn === 0, hb = this.phase === 'bid' ? this.highBid() : null;
+    let row = '';
+    if (this.phase === 'bid' && mine) {
+      const from = hb ? hb.value + 1 : this.minBid;
+      row = `<button class="act danger bid">Pas</button>` + Array.from({ length: Math.max(0, 14 - from) }, (_, k) => `<button class="act bid" data-v="${from + k}">${from + k}</button>`).join('');
+    } else if (this.phase === 'trump' && mine) {
+      row = SUITS.map(s => `<button class="act bid" data-suit="${s}"><span class="${isRed(s) ? 'red' : ''}">${SUIT_SYM[s]}</span> ${SUIT_NAME[s]}</button>`).join('');
+    }
+    if (row !== this.lastRow) { this.bidEl.innerHTML = row; this.bidEl.hidden = !row; this.lastRow = row; }
     let t;
+    const who = this.turn != null ? this.seats[this.turn].name : '';
     if (this.phase === 'deal') t = 'Kartlar dağıtılıyor…';
+    else if (this.phase === 'bid') t = mine
+      ? `<b>İhale sende.</b> ${hb ? `En yüksek ${this.seats[hb.seat].name}: ${hb.value}.` : `En az ${this.minBid}.`} ${this.rules.teams ? 'Eşinle birlikte kaç el alacağınızı söyle.' : 'Kaç el alacağını söyle.'}`
+      : `${who} ihale düşünüyor…`;
+    else if (this.phase === 'trump') t = mine ? '<b>İhaleyi aldın.</b> Kozu seç.' : `${who} kozu seçiyor…`;
     else if (this.isMyTurn()) t = '<b>Sıra sende.</b> Parlayan bir kartı ortaya sürükle ya da iki kez dokun.';
     else if (this.phase === 'trick') t = `El <b>${this.seats[this.winnerOfTrick().seat].name}</b> tarafına gidiyor`;
     else if (this.phase === 'end') t = 'El bitti.';
-    else t = `${this.seats[this.turn].name} düşünüyor…`;
+    else t = `${who} düşünüyor…`;
     if (t !== this.lastHint) { this.hintEl.innerHTML = t; this.lastHint = t; }
   }
   pointer(type, p) {
@@ -1350,11 +1516,11 @@ class PokerGame extends BaseGame {
   constructor(table) {
     super('poker', "Texas Hold'em", table);
     this.handlers.POKER_ACTION = 'onPoker';
-    this.wordmark = true; this.stacks = [1000, 1000, 1000, 1000]; this.sb = 10; this.bb = 20; this.dealer = rand(4); this.chipFx = [];
+    this.wordmark = true; this.stacks = Array(4).fill(this.rules.stack); this.sb = this.rules.blinds; this.bb = this.sb * 2; this.dealer = rand(4); this.chipFx = [];
   }
   newRound() {
     this.roundId++;
-    for (let s = 0; s < 4; s++) if (this.stacks[s] < this.bb) this.stacks[s] = 1000;
+    for (let s = 0; s < 4; s++) if (this.stacks[s] < this.bb) this.stacks[s] = this.rules.stack;
     this.dealer = (this.dealer + 1) % 4;
     const deck = shuffle(makeDeck()); this.hole = [[], [], [], []]; this.dealIdx = {}; let k = 0;
     for (let r = 0; r < 2; r++) for (let i = 1; i <= 4; i++) { const s = (this.dealer + i) % 4, c = deck.pop(); this.hole[s].push(c); this.dealIdx[c.id] = k++; }
@@ -1538,12 +1704,7 @@ class PokerGame extends BaseGame {
     }
     // son hamle etiketleri
     for (let s = 1; s < 4; s++) {
-      const m = this.lastMove[s]; if (!m) continue;
-      const av = L.avatar[s]; g.save(); g.font = `700 11px ${F_BODY}`; g.textAlign = 'center';
-      const w = g.measureText(m).width + 12, top = s === 2;
-      const y = top ? av.y : av.y - L.ar - 18, x = top ? av.x + L.ar + 36 + w / 2 : clamp(av.x, L.felt.x + w / 2 + 2, L.felt.r - w / 2 - 2);
-      rr(g, x - w / 2, y - 8, w, 16, 8); g.fillStyle = m === 'Pas' ? '#5a1f15' : '#2f5a3e'; g.fill();
-      g.fillStyle = '#f5ecd7'; g.fillText(m, x, y + 4); g.restore();
+      const m = this.lastMove[s]; if (m) this.seatPill(g, s, m, m === 'Pas' ? '#5a1f15' : '#2f5a3e');
     }
   }
   drawOverlay(g) {
@@ -1661,12 +1822,12 @@ const TABLES = {
   '101': { title: '101 Masaları', desc: '21 taşla başla, perlerin 101 sayıyı bulunca elini aç.', list: [
     { name: 'Emekliler Masası', level: 'Orta', seated: 3 }, { name: 'Bahçe', level: 'Acemi', seated: 2 },
     { name: 'Arka Oda', level: 'Usta', seated: 3 }] },
-  batak: { title: 'Batak Masaları', desc: "52'lik deste, koz maça. Renk ver, yükselt, el topla.", list: [
-    { name: 'Semaver Yanı', level: 'Acemi', seated: 3 }, { name: 'Radyo Altı', level: 'Orta', seated: 2 },
-    { name: 'Kapı Önü', level: 'Usta', seated: 1 }] },
+  batak: { title: 'Batak Masaları', desc: "52'lik deste. Tekli ya da eşli, koz maça ya da ihaleli.", list: [
+    { name: 'Semaver Yanı', seated: 3, rules: { teams: false, bidding: false } }, { name: 'Radyo Altı', seated: 2, rules: { teams: true, bidding: false } },
+    { name: 'Kapı Önü', seated: 1, rules: { teams: false, bidding: true } }, { name: 'Ocak Başı', seated: 3, rules: { teams: true, bidding: true } }] },
   poker: { title: 'Poker Masaları', desc: "Texas Hold'em. Elde iki kart, ortada beş kart.", list: [
-    { name: 'Kadife Masa', level: 'Kör 10/20', seated: 3 }, { name: 'Gece Masası', level: 'Kör 10/20', seated: 2 },
-    { name: 'Loca', level: 'Kör 10/20', seated: 3 }] },
+    { name: 'Kadife Masa', seated: 3, rules: { blinds: 10, stack: 1000 } }, { name: 'Gece Masası', seated: 2, rules: { blinds: 25, stack: 2500 } },
+    { name: 'Loca', seated: 3, rules: { blinds: 50, stack: 5000 } }] },
 };
 const LobbyState = {
   mode: 'okey',
@@ -1683,9 +1844,18 @@ const LobbyState = {
     $('tableList').innerHTML = m.list.map((t, i) => `
       <article class="table-card">
         <h3>${t.name}</h3>
-        <div class="table-meta"><span>${t.level}</span><span class="seats" aria-label="${t.seated} dolu, ${4 - t.seated} boş koltuk">${[0, 1, 2, 3].map(k => `<b class="${k < t.seated ? 'on' : ''}"></b>`).join('')}</span></div>
+        <div class="table-meta"><span>${t.level || ruleLabel(this.mode, t.rules)}</span><span class="seats" aria-label="${t.seated} dolu, ${4 - t.seated} boş koltuk">${[0, 1, 2, 3].map(k => `<b class="${k < t.seated ? 'on' : ''}"></b>`).join('')}</span></div>
         <div class="table-foot"><small>${t.seated} müdavim · ${4 - t.seated} boş</small><button class="sit" data-i="${i}">Otur</button></div>
       </article>`).join('');
+    $('setupBtn').hidden = !RULESETS[this.mode].options.length;
+  },
+  openSetup() {
+    const rs = RULESETS[this.mode];
+    $('setupTitle').textContent = `${TABLES[this.mode].title.replace(' Masaları', '')} masanı kur`;
+    $('setupFields').innerHTML = rs.options.map(o => `<fieldset><legend>${o.label}</legend><div class="choice-row">${o.choices.map(([v, lbl, sub], k) =>
+      `<label class="choice"><input type="radio" name="${o.id}" id="rule-${o.id}-${k}" value="${k}"${v === rs.defaults[o.id] ? ' checked' : ''}><b>${lbl}</b>${sub ? `<small>${sub}</small>` : ''}</label>`).join('')}</div></fieldset>`).join('');
+    $('setup').hidden = false;
+    const first = $('setupFields').querySelector('input:checked'); if (first) first.focus();
   },
   resize() { this.bg = null; },
   buildBg() {
@@ -1726,6 +1896,15 @@ document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () =>
   LobbyState.mode = b.dataset.mode; try { localStorage.setItem('kiraathane.tab', b.dataset.mode); } catch (e) {}
   LobbyState.renderList();
 }));
+$('setupBtn').onclick = () => LobbyState.openSetup();
+$('setupCancel').onclick = () => { $('setup').hidden = true; };
+$('setupForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const mode = LobbyState.mode, rules = {};
+  for (const o of RULESETS[mode].options) rules[o.id] = o.choices[+e.target.elements[o.id].value][0];
+  $('setup').hidden = true;
+  app.change(TableState, { mode, table: { name: 'Senin masan', rules } });
+});
 $('tableList').addEventListener('click', e => {
   const b = e.target.closest('.sit'); if (!b) return;
   app.change(TableState, { mode: LobbyState.mode, table: TABLES[LobbyState.mode].list[+b.dataset.i] });
