@@ -1,17 +1,22 @@
-# Süpürücü Tim
+# Piksel Toplayıcı
 
-HTML Canvas ile yazılmış, koşarken ateş edilen zombi süpürme oyunu prototipi.
+HTML5 Canvas ve saf JavaScript ile yazılmış, dikey ekranlı "Pixel Art Color Collector" bulmaca oyunu. Tüm kod tek dosyada (`index.html`); harici resim, font ya da kütüphane yok.
 
 ## Çalıştırma
 
-`index.html` dosyasını tarayıcıda açmanız yeterli. Kurulum ya da derleme gerekmez.
+`index.html` dosyasını tarayıcıda açmanız yeterli. Kurulum ya da derleme gerekmez. Mobilde dokunma, masaüstünde tıklama ile oynanır.
 
 ## Oynanış
 
-- Tim otomatik ateş eder. Sağa-sola sürükleyerek (veya ← →) yönlendirirsin.
-- Kapıları vurdukça değerleri artar (asker, atış hızı, hasar). Geçtiğin tarafın etkisini alırsın.
-- Sandıkları kırınca yeni silah alırsın. Varilleri vurunca patlar.
-- Zombi öldürdükçe SÜPÜR barı dolar. Dolunca butona (veya Boşluk tuşuna) bas.
-- Altınla bölüm başında yeni silah açılır: Tabanca, Tüfek, Pompalı, Minigun, Lazer, Roketatar.
+- En alttaki üç sütunda sıralanan renkli toplayıcılardan en öndekine dokun. Toplayıcı, tablonun solundan başlayıp altından geçerek sağına uzanan U şeklindeki banda girer.
+- Bantta ilerlerken tablonun dışarıdan görünen, kendi rengindeki bloklarını içine çeker. Üzerindeki sayı kalan kapasitesidir.
+- Kapasitesi 0'a inen toplayıcı hızlanıp sahneden ayrılır. Dolmadan bant sonuna varan toplayıcı 5'lik bekleme yuvasına geçer; oradan dokunarak yeniden gönderebilirsin.
+- Dıştaki bloklar temizlendikçe içteki katmanlar açığa çıkar.
+- Tüm bloklar toplanınca "Level Completed!" ekranı konfetiyle açılır. Bekleme yuvaları doluyken bir toplayıcı daha banttan dönerse bant tıkanır ve "Game Over" olur.
+- Bantta aynı anda en fazla 5 toplayıcı bulunabilir.
 
-`eski/suru-ustasi.html` ilk denediğimiz kalabalık koşu prototipidir.
+Bölümler: Mantar (16×16), Çilek (16×16), Kedi (20×20). Toplayıcı sırası her bölüm için tohumlu üretilir ve bir çözücüyle çözülebilir olduğu doğrulanır; yeniden denemede aynı bulmaca gelir.
+
+## Eski prototipler
+
+`eski/` klasöründe önceki denemeler durur: `suru-ustasi.html` (kalabalık koşu) ve `supurucu-tim.html` (zombi süpürme shooter-runner).
