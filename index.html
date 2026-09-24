@@ -519,7 +519,8 @@ function isOkeyTile(t, okey) { return !t.fake && t.c === okey.c && t.n === okey.
 function effTile(t, okey) { return t.fake ? { c: okey.c, n: okey.n } : t; }
 function tileKey(t, okey) { const e = effTile(t, okey); return e.c * 13 + e.n - 1; }
 
-/* allowLeftover=false → tüm taşlar per olmalı (okey bitişi). true → en yüksek sayı toplamı (101 açma). */
+/* allowLeftover=false → tüm taşlar per olmalı (okey bitişi). true → en yüksek sayı toplamı (101 açma).
+   Dönüş: melds (taş id dizileri, seride sıra = sayı sırası) ve kinds ('run' | 'set'). */
 function solveMelds(tiles, okey, allowLeftover) {
   const counts = new Array(52).fill(0), pools = {}, jokers = [];
   for (const t of tiles) {
@@ -543,7 +544,7 @@ function solveMelds(tiles, okey, allowLeftover) {
       for (let jk = 0; jk <= Math.min(j, 2); jk++) {
         const size = 1 + mem.length + jk; if (size < 3 || size > 4) continue;
         counts[i]--; mem.forEach(x => counts[x]--); j -= jk;
-        tryMeld([i, ...mem, ...Array(jk).fill(-1)], n * size);
+        tryMeld({ k: 'set', a: [i, ...mem, ...Array(jk).fill(-1)] }, n * size);
         counts[i]++; mem.forEach(x => counts[x]++); j += jk;
       }
     }
@@ -553,14 +554,14 @@ function solveMelds(tiles, okey, allowLeftover) {
       const meld = [...Array(lead).fill(-1), i], taken = [i]; let jU = lead, sum = 0;
       counts[i]--;
       for (let q = s; q <= n; q++) sum += q;
-      if (n - s + 1 >= 3) { j -= jU; tryMeld(meld.slice(), sum); j += jU; }
+      if (n - s + 1 >= 3) { j -= jU; tryMeld({ k: 'run', a: meld.slice() }, sum); j += jU; }
       for (let p = n + 1; p <= 13; p++) {
         const idx = c * 13 + p - 1;
         if (counts[idx] > 0) { counts[idx]--; taken.push(idx); meld.push(idx); }
         else if (jU < j) { jU++; meld.push(-1); }
         else break;
         sum += p;
-        if (p - s + 1 >= 3) { j -= jU; tryMeld(meld.slice(), sum); j += jU; }
+        if (p - s + 1 >= 3) { j -= jU; tryMeld({ k: 'run', a: meld.slice() }, sum); j += jU; }
       }
       taken.forEach(x => counts[x]++);
     }
@@ -568,7 +569,7 @@ function solveMelds(tiles, okey, allowLeftover) {
   }
   const r = rec(); if (!r) return null;
   const pc = {}; for (const k in pools) pc[k] = pools[k].slice(); const jp = jokers.slice();
-  return { v: r.v, melds: r.m.map(m => m.map(x => x < 0 ? jp.pop() : pc[x].pop())) };
+  return { v: r.v, melds: r.m.map(m => m.a.map(x => x < 0 ? jp.pop() : pc[x].pop())), kinds: r.m.map(m => m.k) };
 }
 function pairsWin(tiles, okey) {
   let j = 0; const cnt = {};
@@ -1364,7 +1365,9 @@ class OkeyGame extends BaseGame {
     if (type === 'down') {
       const sp = this.spriteAt(p, id => this.hands[0].includes(id));
       if (sp) { this.drag = { id: sp.id, from: 'rack', x: p.x, y: p.y, sx: p.x, sy: p.y, moved: false }; return; }
-      if (this.sel && this.zoneAt(p) === 'discard') { this.tryDiscard(this.sel); return; }
+      const z0 = this.sel ? this.zoneAt(p) : null;
+      if (z0 === 'discard') { this.tryDiscard(this.sel); return; }
+      if (z0 && typeof z0 === 'object') { this.tryLay(this.sel, z0); return; }
       if (this.canDrawNow()) {
         const pile = this.piles[3];
         if (pile.length && Math.hypot(p.x - L.pile[3].x, p.y - L.pile[3].y) < L.tw) { this.drag = { id: pile[pile.length - 1], from: 'pile', x: p.x, y: p.y, sx: p.x, sy: p.y, moved: false }; return; }
@@ -1382,6 +1385,7 @@ class OkeyGame extends BaseGame {
         if (z === 'discard') this.tryDiscard(d.id);
         else if (z === 'finish') this.tryFinish(d.id);
         else if (z === 'rack') this.moveInRack(d.id, this.slotAt(p));
+        else if (z && typeof z === 'object') this.tryLay(d.id, z);
       } else {
         const slot = this.slotAt(p);
         if (d.moved && slot == null) return;
@@ -1409,11 +1413,12 @@ class OkeyGame extends BaseGame {
 class Okey101Game extends OkeyGame {
   constructor(table) {
     super(table, '101', '101 Okey');
-    this.handSize = 21; this.handlers.OPEN_HAND = 'onOpen'; this.totals = [0, 0, 0, 0];
+    this.handSize = 21; this.totals = [0, 0, 0, 0]; this.meldBoxes = [];
+    Object.assign(this.handlers, { OPEN_HAND: 'onOpen', LAY_TILE: 'onLay' });
   }
   stagger() { return 0.016; }
   roundExtra() {
-    this.melds = [[], [], [], []];
+    this.melds = [[], [], [], []]; this.meldKinds = [[], [], [], []]; // 'run' | 'set' | 'pair'
     this.opened = [null, null, null, null]; // 'seri' | 'cift'
     this.openTurn = [-1, -1, -1, -1]; this.turnNo = 0; this.planCache = null;
   }
@@ -1431,23 +1436,22 @@ class Okey101Game extends OkeyGame {
   }
   openPlan(s) {
     const tiles = this.tilesOf(s), r = solveMelds(tiles, this.okey, true);
-    if (!r || !r.melds.length) return { v: 0, melds: [] };
-    let melds = r.melds.slice();
-    if (melds.flat().length >= tiles.length) { // atacak bir taş kalmalı
-      const val = m => m.reduce((a, id) => a + (this.isOkey(this.tileById[id]) ? 0 : effTile(this.tileById[id], this.okey).n), 0);
-      melds.sort((a, b) => val(b) - val(a)); melds.pop();
+    if (!r || !r.melds.length) return { v: 0, melds: [], kinds: [] };
+    const list = r.melds.map((ids, k) => ({ ids, kind: r.kinds[k] }));
+    if (list.reduce((n, x) => n + x.ids.length, 0) >= tiles.length) { // atacak bir taş kalmalı: en düşük per elde kalır
+      const val = x => this.meldValue([x.ids], [x.kind]);
+      list.sort((x, y) => val(y) - val(x)); list.pop();
     }
-    const v = this.meldValue(melds);
-    return { v, melds };
+    const melds = list.map(x => x.ids), kinds = list.map(x => x.kind);
+    return { v: this.meldValue(melds, kinds), melds, kinds };
   }
-  meldValue(melds) {
-    // seri/küt değeri: çözücüden gelen sıra korunur, okey komşularından çıkarılır
+  meldValue(melds, kinds) {
     let v = 0;
-    for (const m of melds) {
-      const ts = m.map(id => this.tileById[id]), real = ts.filter(t => !this.isOkey(t)).map(t => effTile(t, this.okey));
-      if (real.every(t => t.n === real[0].n) && new Set(real.map(t => t.c)).size === real.length && real.length > 1) v += real[0].n * m.length;
-      else { const idx = ts.findIndex(t => !this.isOkey(t)); const start = effTile(ts[idx], this.okey).n - idx; for (let k = 0; k < m.length; k++) v += start + k; }
-    }
+    melds.forEach((m, j) => {
+      const ts = m.map(id => this.tileById[id]), k0 = ts.findIndex(t => !this.isOkey(t)), f = effTile(ts[k0], this.okey);
+      if (kinds[j] === 'set') v += f.n * m.length;
+      else for (let k = 0; k < m.length; k++) v += f.n - k0 + k;
+    });
     return v;
   }
   onOpen(a) {
@@ -1456,19 +1460,102 @@ class Okey101Game extends OkeyGame {
     const kind = (a.payload && a.payload.kind) || 'seri', was = this.opened[a.seat];
     if (kind !== 'seri' && kind !== 'cift') return 'Geçersiz açma türü';
     if (was && was !== kind) return was === 'cift' ? 'Çiftten açtın, artık sadece çift ekleyebilirsin' : 'Seriden açtın, çift açamazsın';
-    let melds;
+    let melds, kinds;
     if (kind === 'cift') {
-      melds = this.pairPlan(a.seat);
+      melds = this.pairPlan(a.seat); kinds = melds.map(() => 'pair');
       if (!melds.length) return 'Açılacak çift yok';
       if (!was && melds.length < 5) return `Çiftten açmak için en az 5 çift gerek, ${melds.length} çiftin var`;
     } else {
-      const plan = this.openPlan(a.seat); melds = plan.melds;
+      const plan = this.openPlan(a.seat); melds = plan.melds; kinds = plan.kinds;
       if (!melds.length) return 'Açılacak per yok';
       if (!was && plan.v < 101) return `Açmak için en az 101 gerek, perlerin ${plan.v}`;
     }
     const h = this.hands[a.seat];
-    for (const m of melds) { for (const id of m) h.splice(h.indexOf(id), 1); this.melds[a.seat].push(m); }
+    melds.forEach((m, k) => { for (const id of m) h.splice(h.indexOf(id), 1); this.melds[a.seat].push(m); this.meldKinds[a.seat].push(kinds[k]); });
     if (!was) { this.opened[a.seat] = kind; this.openTurn[a.seat] = this.turnNo; }
+  }
+  // ---- İşleme: yerdeki perlere taş ekleme ----
+  // Seride okeyin tuttuğu taş işlenirse okey yerden alınır (7-okey-9 + 8).
+  // Kütte okey, eksik renklerin hepsi gerçek taşla tamamlanınca alınır (8 sarı, 8 kırmızı, okey + 8 mavi + 8 siyah).
+  layCheck(tileId, owner, mi) {
+    const meld = this.melds[owner] && this.melds[owner][mi], kind = meld && this.meldKinds[owner][mi];
+    if (!meld) return { error: 'Böyle bir per yok' };
+    if (kind === 'pair') return { error: 'Çiftlere taş işlenmez' };
+    const t = this.tileById[tileId], joker = this.isOkey(t), ts = meld.map(id => this.tileById[id]);
+    if (kind === 'run') {
+      const k0 = ts.findIndex(x => !this.isOkey(x)), f = effTile(ts[k0], this.okey), st = f.n - k0, en = st + meld.length - 1;
+      if (joker) return en < 13 ? { ids: [...meld, tileId] } : st > 1 ? { ids: [tileId, ...meld] } : { error: 'Bu seri daha uzayamaz' };
+      const e = effTile(t, this.okey);
+      if (e.c !== f.c) return { error: 'Seriye aynı renkten taş işlenir' };
+      if (e.n === st - 1) return { ids: [tileId, ...meld] };
+      if (e.n === en + 1 && e.n <= 13) return { ids: [...meld, tileId] };
+      if (e.n >= st && e.n <= en && this.isOkey(ts[e.n - st])) {
+        const ids = meld.slice(), reclaim = ids[e.n - st]; ids[e.n - st] = tileId; return { ids, reclaim };
+      }
+      return { error: 'Bu taş seriye uymuyor' };
+    }
+    const real = ts.filter(x => !this.isOkey(x)).map(x => effTile(x, this.okey)), n = real[0].n;
+    if (joker) return meld.length < 4 ? { ids: [...meld, tileId] } : { error: 'Küt en fazla 4 taş olur' };
+    const e = effTile(t, this.okey);
+    if (e.n !== n) return { error: `Bu küte sadece ${n} işlenir` };
+    if (real.some(r => r.c === e.c)) return { error: 'Bu renk kütte zaten var' };
+    if (meld.length < 4) return { ids: [...meld, tileId] };
+    const reclaim = meld.find(id => this.isOkey(this.tileById[id]));
+    return { ids: [...meld.filter(id => id !== reclaim), tileId], reclaim };
+  }
+  layBlock(s) {
+    if (!this.opened[s]) return 'Taş işlemek için önce elini açmalısın';
+    if (this.openTurn[s] === this.turnNo) return 'Elini açtığın turda taş işleyemezsin';
+    return null;
+  }
+  onLay(a) {
+    const e = this.turnCheck(a); if (e) return e;
+    if (!this.drawn) return 'Önce taş çek';
+    const b = this.layBlock(a.seat); if (b) return b;
+    const { tileId, owner, meld } = a.payload || {}, h = this.hands[a.seat];
+    if (!h.includes(tileId)) return 'Bu taş sende yok';
+    if (!Number.isInteger(owner) || !Number.isInteger(meld)) return 'Geçersiz per';
+    const r = this.layCheck(tileId, owner, meld); if (r.error) return r.error;
+    if (h.length - 1 + (r.reclaim ? 1 : 0) < 1) return 'Atacak bir taşın kalmalı';
+    h.splice(h.indexOf(tileId), 1); this.melds[owner][meld] = r.ids;
+    if (r.reclaim) h.push(r.reclaim);
+    this.lastLay = { seat: a.seat, tileId, owner, meld, reclaim: r.reclaim || null };
+  }
+  botLay(s) {
+    if (this.layBlock(s)) return null;
+    const h = this.hands[s]; let best = null;
+    for (const id of h) {
+      if (this.isOkey(this.tileById[id])) continue; // bot okeyi elinde tutar
+      for (let o = 0; o < 4; o++) this.melds[o].forEach((m, i) => {
+        const r = this.meldKinds[o][i] === 'pair' ? null : this.layCheck(id, o, i);
+        if (!r || r.error || (h.length < 2 && !r.reclaim)) return;
+        const score = r.reclaim ? 2 : 1;
+        if (!best || score > best.score) best = { score, id, o, i };
+      });
+    }
+    return best ? { type: 'LAY_TILE', payload: { tileId: best.id, owner: best.o, meld: best.i } } : null;
+  }
+  canLayNow() { return this.canDiscardNow() && !this.layBlock(0); }
+  tryLay(id, z) {
+    const b = this.layBlock(0);
+    if (!this.canDiscardNow() || b) { toast(!this.canDiscardNow() ? (this.isMyTurn() ? 'Önce taş çek' : 'Sıranı bekle') : b); return; }
+    this.sel = null; this.pendingSlot = this.rack.indexOf(id);
+    dispatchAction({ type: 'LAY_TILE', seat: 0, payload: { tileId: id, owner: z.owner, meld: z.meld } });
+  }
+  zoneAt(p) {
+    for (const b of this.meldBoxes) if (p.x > b.x0 - 6 && p.x < b.x1 + 6 && p.y > b.y0 - 8 && p.y < b.y1 + 8) return { owner: b.owner, meld: b.meld };
+    return super.zoneAt(p);
+  }
+  drawBoard(g) {
+    super.drawBoard(g);
+    const id = this.drag && this.drag.moved && this.drag.from === 'rack' ? this.drag.id : this.sel;
+    if (!id || !this.canLayNow()) return;
+    const pulse = REDUCED ? 0.7 : 0.55 + 0.45 * Math.sin(this.time * 4);
+    for (const b of this.meldBoxes) {
+      const r = this.layCheck(id, b.owner, b.meld); if (r.error) continue;
+      g.save(); g.strokeStyle = r.reclaim ? `rgba(242,196,106,${0.6 + pulse * 0.4})` : `rgba(155,227,167,${0.5 + pulse * 0.4})`; g.lineWidth = 2.5;
+      rr(g, b.x0 - 4, b.y0 - 4, b.x1 - b.x0 + 8, b.y1 - b.y0 + 8, 6); g.stroke(); g.restore();
+    }
   }
   onFinish(a) {
     const e = this.turnCheck(a); if (e) return e;
@@ -1518,7 +1605,7 @@ class Okey101Game extends OkeyGame {
     const was = this.opened[s];
     if (was !== 'cift') { const plan = this.openPlan(s); if (plan.melds.length && (was || plan.v >= 101)) return { type: 'OPEN_HAND', payload: { kind: 'seri' } }; }
     if (was !== 'seri') { const pairs = this.pairPlan(s); if (pairs.length && (was || pairs.length >= 5)) return { type: 'OPEN_HAND', payload: { kind: 'cift' } }; }
-    return null;
+    return this.botLay(s);
   }
   layoutGame(L) {
     super.layoutGame(L);
@@ -1539,16 +1626,17 @@ class Okey101Game extends OkeyGame {
       top,
       { x0: L.avatar[3].x + L.ar + L.sw + 12, x1: L.cx - L.tw * 1.5, y: L.cy - L.th * 0.3 },
     ];
-    const rowH = L.mh + 6;
+    const rowH = L.mh + 6; this.meldBoxes = [];
     this.melds.forEach((ms, s) => {
       const b = boxes[s], rows = [[]]; let x = b.x0;
       for (const m of ms) {
         const w = m.length * (L.mw + gap);
         if (x + w > b.x1 && x > b.x0) { rows.push([]); x = b.x0; }
-        rows[rows.length - 1].push({ m, x }); x += w + 8;
+        rows[rows.length - 1].push({ m, x, i: rows.flat().length }); x += w + 8;
       }
       rows.forEach((row, r) => {
         const y = b.up ? b.y - (rows.length - 1 - r) * rowH - L.mh / 2 : b.y + r * rowH + L.mh / 2;
+        for (const { m, x, i } of row) this.meldBoxes.push({ owner: s, meld: i, x0: x, x1: x + m.length * (L.mw + gap) - gap, y0: y - L.mh / 2, y1: y + L.mh / 2 });
         for (const { m, x } of row) m.forEach((id, k) => out.push({ id, kind: 'tile', data: this.tileById[id], x: x + k * (L.mw + gap) + L.mw / 2, y, w: L.mw, h: L.mh, faceUp: true, z: 60 + k, okey: this.isOkey(this.tileById[id]) }));
       });
     });
@@ -1568,6 +1656,7 @@ class Okey101Game extends OkeyGame {
   hintText() {
     if (this.canDiscardNow() && !this.opened[0]) return '<b>Taş at</b> ya da 101 sayıya veya 5 çifte ulaştıysan elini aç.';
     if (this.canDiscardNow() && this.finishAllowed()) return '<b>Son taş!</b> Göstergeye ya da sağ alttaki yığına at, el biter.';
+    if (this.canLayNow()) return '<b>İşle ya da at:</b> taşı yerdeki bir pere sürükle. Yeşil çerçeve uyar, altın çerçeve okeyi geri alır.';
     return super.hintText();
   }
   refreshBar() {

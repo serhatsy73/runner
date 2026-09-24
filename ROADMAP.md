@@ -49,7 +49,9 @@ Tek dosyada kalarak kural eksiklerini ve bilinen hataları kapatmak.
 - [x] Dikey ekranda açılmış perler üst üste binmeden dizilir
 - [ ] Masa ayarı olarak modlar: katlamalı, katlamasız, cezalı katlamalı, cezalı katlamasız (katlama kodda `rules.katlama` olarak hazır)
 - [ ] Cezalı modlar için: okey atma cezası, işlek taş atma cezası
-- [ ] Açılmış perlere taş işleme (kendi ve rakip perleri)
+- [x] Açılmış perlere taş işleme (kendi ve rakip perleri, seri uçları ve küte eksik renk). Sadece açmış oyuncu, açtığı turdan sonra; atacak bir taş kalmalı; çiftlere işlenmez
+- [x] Okeyi yerden alma: seride okeyin tuttuğu taş işlenince; kütte eksik renklerin hepsi gerçek taşla tamamlanınca (8 sarı, 8 kırmızı, okey → 8 mavi + 8 siyah)
+- [x] Sürükleyerek işleme: taşı tutunca uyan perler yeşil, okeyi geri aldıranlar altın çerçeveyle yanar
 - [ ] Perleri elle seçerek açma (şu an motor en iyisini seçiyor)
 - [ ] Yandan alınan taşla o turda açma zorunluluğu
 
