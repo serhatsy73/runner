@@ -70,9 +70,14 @@
         if (!d || e.pointerId !== d.id) return;
         G.drag = null;
         if (cancel || d.type !== 'link' || !d.over || G.state !== 'play') return;
-        let made = 0;
-        for (const s of d.sources) if (s !== d.over && G.addLane(s, d.over, PLAYER)) made++;
+        let made = 0, tried = 0;
+        for (const s of d.sources) {
+          if (s === d.over) continue;
+          tried++;
+          if (G.addLane(s, d.over, PLAYER)) made++;
+        }
         if (made) G.playerLinked = true;
+        else if (tried && d.sources.some(s => s !== d.over && !G.canLink(s, d.over))) G.emit('denied', d.over);
       };
       cv.addEventListener('pointerup', e => end(e, false));
       cv.addEventListener('pointercancel', e => end(e, true));

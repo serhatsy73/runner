@@ -25,5 +25,6 @@ HTML Canvas ile yazılmış, koşarken ateş edilen zombi süpürme oyunu protot
 - Kuleler saniyede asker üretir. 20 ve 40 askerde büyür, daha hızlı üretir ve daha çok yol açabilir.
 - Bir yolu kesmek için boş alandan çizginin üstünden kaydır.
 - Her seviyede 3 yıldız kazanılabilir: kazan, hiç kule kaybetme, hedef süreden hızlı bitir.
+- 2 dünya, 20 seviye: Çayır (hızlı tempo) ve Göl Kıyısı (menzil, kayalar, göller, nehirler ve köprüler). Dünya haritasından seviye seçilir.
 
 Yol haritası ve verilen kararlar `kule-savasi/PLAN.md` dosyasında. Seviye dengesini ölçmek için `kule-savasi/tools/denge.html` açılabilir.

@@ -56,9 +56,9 @@
     }
   });
 
-  G.loadLevel(KS.Save.data.unlocked);
+  G.loadLevel(Math.max(1, Math.min(KS.Save.data.unlocked, KS.Levels.count)));
   resize();
-  UI.showMenu();
+  UI.home();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(UI.redrawArt);
   requestAnimationFrame(frame);
 })(window.KS);

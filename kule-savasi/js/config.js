@@ -20,6 +20,17 @@ window.KS = window.KS || {};
   KS.RATE = [0, 1, 1.4, 1.8];     // kule seviyesine göre saniyede üretilen asker
   KS.SEND = [0, .5, .4, .32];     // kule seviyesine göre asker gönderme aralığı (sn)
   KS.lvlOf = c => c >= 40 ? 3 : c >= 20 ? 2 : 1;
+  KS.OVERPROD = 60;               // bu sayının üstünde üretim yavaşlar (önde olanın kaçmasını frenler)
+  KS.OVERPROD_RATE = .35;
+  KS.SURGE_AT = 180;              // bu saniyeden sonra "Son Hücum": herkes 2 kat üretir, kilitlenen oyunlar biter
+  KS.RANGE_PER_LVL = .12;         // kule seviyesi başına menzil artışı
+
+  // Tasarım birimi: x ekseni bu oranla küçültülür, böylece menzil ve engeller her ekranda aynı çalışır.
+  // (Seviye verisinde x ve y 0..1 aralığında; mesafe = hypot(dx * ASPECT, dy))
+  KS.ASPECT = .62;
+
+  // Varsayılan rakip kişilikleri (seviye verisinde değiştirilebilir)
+  KS.PERSONA = { 2: 'aggressive', 3: 'greedy' };
 
   // Oyun temposu: ilk dünyada hızlı ve refleks ağırlıklı, ilerledikçe sakinleşip stratejiye döner
   KS.tempo = n => {

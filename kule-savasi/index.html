@@ -29,6 +29,22 @@
   <div class="power" id="power" role="img" aria-label="Güç dengesi"></div>
 </header>
 
+<div class="map" id="map" hidden>
+  <div class="map-inner">
+    <header class="map-head">
+      <div class="map-title">
+        <h1>Kule Savaşı</h1>
+        <span class="total" id="mapStars"></span>
+      </div>
+      <div class="map-tools">
+        <button class="toggle" id="helpBtn" type="button">Nasıl oynanır?</button>
+        <span id="mapToggles" class="map-toggles"></span>
+      </div>
+    </header>
+    <div id="worlds"></div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay" hidden>
   <div class="card" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
     <canvas id="ovArt" width="192" height="192" aria-hidden="true"></canvas>
@@ -42,6 +58,7 @@
 <!-- Sıra önemli: her dosya window.KS üzerinden öncekileri kullanır -->
 <script src="js/config.js"></script>
 <script src="js/storage.js"></script>
+<script src="js/terrain.js"></script>
 <script src="js/levels.js"></script>
 <script src="js/game.js"></script>
 <script src="js/ai.js"></script>

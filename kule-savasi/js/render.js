@@ -11,19 +11,27 @@
     init(canvas) { cv = canvas; mainCtx = ctx = canvas.getContext('2d'); },
   };
 
+  const THEMES = {
+    meadow: { top: '#cdefb5', bottom: '#b8e39c', field: 'rgba(236,250,222,.45)', petals: ['#ffffff', '#ffd3df', '#fff1a8', '#e3d7ff'] },
+    lake:   { top: '#c9eec2', bottom: '#a9dfae', field: 'rgba(232,250,236,.45)', petals: ['#ffffff', '#cfe9ff', '#fff1a8', '#d9f0e0'] },
+  };
+
   // ---------- Arka plan ----------
   R.buildBackground = () => {
     const { W, H, DPR, area } = V;
+    if (!cv.width || !cv.height) return;
     bg = document.createElement('canvas');
     bg.width = cv.width; bg.height = cv.height;
     const b = bg.getContext('2d');
     b.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const world = G.cfg && KS.Levels.worldOf(G.levelNo);
+    const th = THEMES[world && world.theme] || THEMES.meadow;
     const g = b.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#cdefb5'); g.addColorStop(1, '#b8e39c');
+    g.addColorStop(0, th.top); g.addColorStop(1, th.bottom);
     b.fillStyle = g; b.fillRect(0, 0, W, H);
 
     // oyun alanı: biraz daha açık, yumuşak bir çayır
-    b.fillStyle = 'rgba(236,250,222,.45)';
+    b.fillStyle = th.field;
     roundRect(b, area.x - 12, area.y - 14, area.w + 24, area.h + 22, 36); b.fill();
 
     const rnd = KS.rng(Math.round(W * 7 + H));
@@ -39,7 +47,7 @@
       b.moveTo(x, y); b.lineTo(x + s * .1, y - s * 1.2);
       b.stroke();
     }
-    const petals = ['#ffffff', '#ffd3df', '#fff1a8', '#e3d7ff'];
+    const petals = th.petals;
     for (let i = 0, f = Math.round(n / 7); i < f; i++) {
       const x = rnd() * W, y = rnd() * H, s = 2 + rnd() * 1.6;
       b.fillStyle = petals[Math.floor(rnd() * petals.length)];
@@ -50,7 +58,15 @@
       b.fillStyle = '#f6c34a';
       b.beginPath(); b.arc(x, y, s * .6, 0, Math.PI * 2); b.fill();
     }
+    if (G.cfg && G.cfg.obstacles) {
+      // arazi oyun alanının çerçevesinden taşmasın
+      b.save();
+      roundRect(b, area.x - 12, area.y - 14, area.w + 24, area.h + 22, 36); b.clip();
+      KS.Terrain.paint(b, G.cfg.obstacles, area);
+      b.restore();
+    }
   };
+  G.on('loaded', () => { if (cv) R.buildBackground(); });
 
   function roundRect(c, x, y, w, h, r) {
     r = Math.min(r, w / 2, h / 2);
@@ -72,7 +88,7 @@
 
     for (const l of G.lanes) drawLane(l.from, l.to, l.team, 1);
     const d = G.drag;
-    if (d && d.type === 'link') drawDragLines(d);
+    if (d && d.type === 'link') { drawRanges(d); drawDragLines(d); }
     if (G.state === 'play' && G.levelNo === 1 && !G.playerLinked && !d) drawHint();
 
     const lod = G.soldiers.length > LOD_SOLDIERS;
@@ -84,6 +100,7 @@
     drawParticles();
     drawTrail();
     if (d && d.type === 'link') drawFingerLabel(d);
+    drawBanner();
   };
 
   function drawLane(a, b, team, alpha, toPoint) {
@@ -139,14 +156,63 @@
     const target = dragTarget(d);
     for (const s of d.sources) {
       if (s === target) continue;
-      if (target) drawLane(s, target, PLAYER, .75);
-      else drawLane(s, { x: d.x, y: d.y }, PLAYER, .55, true);
+      if (!target) drawLane(s, { x: d.x, y: d.y }, PLAYER, .55, true);
+      else if (G.canLink(s, target)) drawLane(s, target, PLAYER, .75);
+      else drawBlocked(s, target);
     }
+  }
+
+  // Menzil halkası: tasarım birimindeki daire, ekranda hafif elips olabilir
+  function drawRanges(d) {
+    if (!G.cfg.range) return;
+    const target = dragTarget(d);
+    ctx.save();
+    ctx.fillStyle = 'rgba(125,185,242,.13)';
+    ctx.strokeStyle = TEAMS[PLAYER].dark;
+    ctx.globalAlpha = .6;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 7]);
+    for (const s of d.sources) {
+      if (s === target) continue;
+      const r = G.rangeOf(s);
+      ctx.beginPath();
+      ctx.ellipse(s.x, s.y, r / KS.ASPECT * V.area.w, r * V.area.h, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Önü kapalı ya da menzil dışı hedef: gri kesik çizgi ve ortasında çarpı
+  function drawBlocked(a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+    if (len < 1) return;
+    const ux = dx / len, uy = dy / len, r0 = G.towerR(a), r1 = G.towerR(b) * 1.05;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, s = V.baseR * .3;
+    ctx.save();
+    ctx.strokeStyle = '#8f96a3'; ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(2, V.baseR * .12);
+    ctx.setLineDash([V.baseR * .25, V.baseR * .35]);
+    ctx.beginPath(); ctx.moveTo(a.x + ux * r0, a.y + uy * r0); ctx.lineTo(b.x - ux * r1, b.y - uy * r1); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(mx, my, s * 1.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#d9534f'; ctx.lineWidth = Math.max(2, s * .45);
+    ctx.beginPath(); ctx.moveTo(mx - s * .6, my - s * .6); ctx.lineTo(mx + s * .6, my + s * .6);
+    ctx.moveTo(mx + s * .6, my - s * .6); ctx.lineTo(mx - s * .6, my + s * .6); ctx.stroke();
+    ctx.restore();
   }
 
   function drawDragRings(d) {
     const target = dragTarget(d);
     ctx.save();
+    // hiçbir seçili kulenin ulaşamadığı kuleler soluklaşır
+    if (G.cfg.range || G.blocked.size) {
+      ctx.fillStyle = 'rgba(236,244,230,.55)';
+      for (const t of G.towers) {
+        if (d.sources.includes(t) || d.sources.some(s => G.canLink(s, t))) continue;
+        ctx.beginPath(); ctx.arc(t.x, t.y, G.towerR(t) * 1.25, 0, Math.PI * 2); ctx.fill();
+      }
+    }
     ctx.strokeStyle = TEAMS[PLAYER].dark;
     ctx.lineWidth = 3;
     ctx.setLineDash([6, 6]);
@@ -156,7 +222,7 @@
       ctx.beginPath(); ctx.arc(s.x, s.y, G.towerR(s) * 1.45, 0, Math.PI * 2); ctx.stroke();
     }
     if (target) {
-      ctx.strokeStyle = '#ffffff';
+      ctx.strokeStyle = d.sources.some(s => s !== target && G.canLink(s, target)) ? '#ffffff' : '#c9ccd3';
       ctx.lineWidth = 4;
       ctx.setLineDash([]);
       ctx.globalAlpha = .7 + .3 * Math.sin(G.time * 10);
@@ -168,21 +234,27 @@
   // Parmak hedefin üstünü kapattığı için ne olacağını parmağın biraz yukarısında yazıyoruz
   function drawFingerLabel(d) {
     const target = dragTarget(d);
-    const n = d.sources.filter(s => s !== target).length;
+    const srcs = d.sources.filter(s => s !== target);
     let label, color = INK;
     if (target) {
-      const verb = target.team === PLAYER ? 'Takviye' : target.team === NEUTRAL ? 'Ele geçir' : 'Saldır';
-      label = verb + ' · ' + Math.floor(target.count) + (n > 1 ? '  (' + n + ' kule)' : '');
-      color = TEAMS[target.team === NEUTRAL ? PLAYER : target.team].dark;
+      const able = srcs.filter(s => G.canLink(s, target));
+      if (able.length) {
+        const verb = target.team === PLAYER ? 'Takviye' : target.team === NEUTRAL ? 'Ele geçir' : 'Saldır';
+        label = verb + ' · ' + Math.floor(target.count) + (able.length > 1 ? '  (' + able.length + ' kule)' : '');
+        color = TEAMS[target.team === NEUTRAL ? PLAYER : target.team].dark;
+      } else {
+        label = srcs.some(s => G.linkProblem(s, target) === 'blocked') ? 'Yol kapalı' : 'Menzil dışında';
+        color = '#8a8499';
+      }
     } else {
-      label = n > 1 ? n + ' kule seçili' : 'Bir kuleye sürükle';
+      label = srcs.length > 1 ? srcs.length + ' kule seçili' : 'Bir kuleye sürükle';
     }
     const fs = Math.max(14, Math.round(V.baseR * .6));
     ctx.save();
     ctx.font = `700 ${fs}px ${FONT}`;
     const tw = ctx.measureText(label).width;
     const w = tw + fs * 1.4, h = fs * 1.9;
-    let lx = Math.min(V.W - w / 2 - 8, Math.max(w / 2 + 8, d.x));
+    const lx = Math.min(V.W - w / 2 - 8, Math.max(w / 2 + 8, d.x));
     let ly = d.y - 78;
     if (ly - h / 2 < 8) ly = d.y + 78;
     ctx.fillStyle = 'rgba(255,253,247,.96)';
@@ -192,6 +264,43 @@
     ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.stroke();
     ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(label, lx, ly + 1);
+    ctx.restore();
+  }
+
+  // Ekranın üstünde kısa duyuru (Son Hücum, seviye ipucu…)
+  function drawBanner() {
+    const b = G.banner;
+    if (!b) return;
+    const t = G.time - b.t0;
+    const k = Math.max(0, Math.min(1, t / .25, (b.dur - t) / .35));
+    let fs = Math.max(16, Math.round(V.baseR * .78)), fs2 = Math.max(12, Math.round(fs * .62));
+    ctx.save();
+    ctx.globalAlpha = k;
+    // uzun yazılar ekrana sığacak kadar küçülür
+    const maxW = V.W - 24 - fs * 1.6;
+    ctx.font = `700 ${fs}px ${FONT}`;
+    let w1 = ctx.measureText(b.text).width;
+    if (w1 > maxW) { fs = Math.floor(fs * maxW / w1); ctx.font = `700 ${fs}px ${FONT}`; w1 = ctx.measureText(b.text).width; }
+    ctx.font = `600 ${fs2}px ${FONT}`;
+    let w2 = b.sub ? ctx.measureText(b.sub).width : 0;
+    if (w2 > maxW) { fs2 = Math.floor(fs2 * maxW / w2); ctx.font = `600 ${fs2}px ${FONT}`; w2 = ctx.measureText(b.sub).width; }
+    const w = Math.min(V.W - 24, Math.max(w1, w2) + fs * 1.6), h = fs * 1.7 + (b.sub ? fs2 * 1.4 : 0);
+    // en üstteki kulelerin sayısını kapatmasın diye oyun alanının üst kenarına oturur
+    const cx = V.W / 2, cy = V.area.y - 16 + h / 2 - (1 - k) * 18;
+    ctx.fillStyle = 'rgba(255,253,247,.97)';
+    ctx.shadowColor = 'rgba(75,69,96,.25)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
+    roundRect(ctx, cx - w / 2, cy - h / 2, w, h, Math.min(h / 2, 22)); ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = '#f6c34a'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = INK;
+    ctx.font = `700 ${fs}px ${FONT}`;
+    ctx.fillText(b.text, cx, cy - (b.sub ? fs2 * .7 : 0));
+    if (b.sub) {
+      ctx.fillStyle = '#7d768e';
+      ctx.font = `600 ${fs2}px ${FONT}`;
+      ctx.fillText(b.sub, cx, cy + fs * .55);
+    }
     ctx.restore();
   }
 

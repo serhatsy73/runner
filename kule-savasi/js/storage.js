@@ -10,6 +10,7 @@
     stars: {},                                // { "3": 2, ... }
     settings: { sound: true, haptics: true },
     adsRemoved: false,
+    seen: {},                                 // görülen tanıtım kartları { range: true, ... }
     stats: { plays: 0, wins: 0, losses: 0 },
   });
 
@@ -36,7 +37,9 @@
       try { localStorage.setItem(KEY, JSON.stringify(Save.data)); } catch (e) { /* depolama kapalı olabilir */ }
     },
     starsFor: n => Save.data.stars[n] || 0,
-    totalStars: () => Object.values(Save.data.stars).reduce((a, b) => a + b, 0),
+    // sadece şu an oyunda olan seviyelerin yıldızları sayılır
+    starsIn: (from, to) => { let s = 0; for (let n = from; n <= to; n++) s += Save.starsFor(n); return s; },
+    totalStars: () => Save.starsIn(1, KS.Levels.count),
     // yeni rekor mu döndürür
     recordWin(n, stars) {
       const prev = Save.starsFor(n);
@@ -48,6 +51,7 @@
     },
     recordLoss() { Save.data.stats.losses++; Save.write(); },
     recordPlay() { Save.data.stats.plays++; Save.write(); },
+    markSeen(key) { Save.data.seen[key] = true; Save.write(); },
     setSetting(k, v) { Save.data.settings[k] = v; Save.write(); },
   };
 })(window.KS);

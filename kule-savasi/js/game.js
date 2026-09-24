@@ -2,7 +2,7 @@
 // Çizim, ses ve arayüz bu dosyayı sadece okur ya da G.on(...) ile olayları dinler.
 (function (KS) {
   'use strict';
-  const { NEUTRAL, PLAYER, RED, YELLOW, CAP, RATE, SEND, lvlOf } = KS;
+  const { NEUTRAL, PLAYER, RED, YELLOW, CAP, RATE, SEND, lvlOf, ASPECT, OVERPROD, OVERPROD_RATE, SURGE_AT, RANGE_PER_LVL } = KS;
 
   const V = KS.V = { W: 0, H: 0, DPR: 1, baseR: 24, speed: 70, area: { x: 0, y: 0, w: 0, h: 0 } };
 
@@ -14,6 +14,8 @@
     ai: [], aiParams: null,
     drag: null, playerLinked: false,
     lostTower: false, lastLost: null, revived: false,
+    surge: false, surgeWarned: false, banner: null,
+    blocked: new Set(),       // engel yüzünden yol açılamayan kule çiftleri
   };
 
   // ---------- Olaylar ----------
@@ -28,6 +30,20 @@
   G.findLane = (a, b) => G.lanes.find(l => l.from === a && l.to === b);
   G.removeLane = l => { const i = G.lanes.indexOf(l); if (i >= 0) G.lanes.splice(i, 1); };
 
+  // Tasarım birimiyle mesafe: ekran oranından bağımsız (bkz. KS.ASPECT)
+  G.ndist = (a, b) => Math.hypot((a.nx - b.nx) * ASPECT, a.ny - b.ny);
+  G.rangeOf = t => G.cfg && G.cfg.range ? G.cfg.range * (1 + RANGE_PER_LVL * (t.lvl - 1)) : Infinity;
+  const pairKey = (a, b) => a.id < b.id ? a.id * 256 + b.id : b.id * 256 + a.id;
+  // null: yol açılabilir · 'blocked': arada engel var · 'range': menzil dışında
+  G.linkProblem = (a, b) => {
+    if (G.blocked.has(pairKey(a, b))) return 'blocked';
+    if (G.ndist(a, b) > G.rangeOf(a) + 1e-9) return 'range';
+    return null;
+  };
+  G.canLink = (a, b) => a !== b && !G.linkProblem(a, b);
+
+  G.showBanner = (text, sub, dur) => { G.banner = { text, sub: sub || '', t0: G.time, dur: dur || 2.6 }; };
+
   // reach(t): kuleye ne kadar yakın dokunulursa sayılsın
   G.nearestTower = (x, y, reach, filter) => {
     let best = null, bd = Infinity;
@@ -40,14 +56,15 @@
   };
 
   G.addLane = (from, to, team) => {
-    if (from === to || from.team !== team || G.findLane(from, to)) return false;
+    if (from === to || from.team !== team || G.findLane(from, to) || !G.canLink(from, to)) return false;
     const back = G.findLane(to, from);
     if (back && back.team === team) G.removeLane(back);
     const out = G.lanesFrom(from);
     if (out.length >= from.lvl) G.removeLane(out[0]);
-    G.lanes.push({ from, to, team, timer: SEND[from.lvl] * .6 });
-    G.emit('lane', { from, to, team });
-    return true;
+    const lane = { from, to, team, timer: SEND[from.lvl] * .6 };
+    G.lanes.push(lane);
+    G.emit('lane', lane);
+    return lane;
   };
 
   // ---------- Seviye ----------
@@ -61,10 +78,17 @@
     G.lanes = []; G.soldiers = []; G.particles = []; G.trail = [];
     G.drag = null; G.playerLinked = false;
     G.lostTower = false; G.lastLost = null; G.revived = false;
+    G.surge = false; G.surgeWarned = false; G.banner = null;
     G.time = 0; G.playTime = 0; G.endTimer = 0;
+    G.blocked = new Set();
+    const obs = cfg.obstacles || [];
+    for (const a of G.towers) for (const b of G.towers) {
+      if (a.id < b.id && KS.Terrain.blocks(obs, a, b)) G.blocked.add(pairKey(a, b));
+    }
     G.aiParams = KS.AI.paramsFor(n);
     G.ai = cfg.ai.map((team, i) => ({ team, timer: G.aiParams.firstMove + i * .7 }));
     G.layout();
+    G.emit('loaded', cfg);
   };
 
   G.layout = () => {
@@ -91,8 +115,21 @@
     const playing = G.state === 'play';
     if (playing) G.playTime += dt;
 
+    if (playing && !G.surgeWarned && G.playTime >= SURGE_AT - 30) {
+      G.surgeWarned = true;
+      G.showBanner('30 sn sonra Son Hücum!', 'Sonra herkes 2 kat hızlı üretecek');
+    }
+    if (playing && !G.surge && G.playTime >= SURGE_AT) {
+      G.surge = true;
+      G.showBanner('Son Hücum!', 'Herkes 2 kat hızlı üretiyor', 3);
+      G.emit('surge');
+    }
+    const prodMul = G.tempo.prod * (G.surge ? 2 : 1);
     for (const t of G.towers) {
-      if (t.team !== NEUTRAL && t.count < CAP) t.count = Math.min(CAP, t.count + RATE[t.lvl] * G.tempo.prod * dt);
+      if (t.team !== NEUTRAL && t.count < CAP) {
+        const rate = RATE[t.lvl] * prodMul * (t.count >= OVERPROD ? OVERPROD_RATE : 1);
+        t.count = Math.min(CAP, t.count + rate * dt);
+      }
       const nl = lvlOf(Math.floor(t.count));
       if (nl > t.lvl) { t.pop = .001; fx.sparkle(t); G.emit('levelup', t); }
       t.lvl = nl;
@@ -142,6 +179,7 @@
     }
     G.particles = G.particles.filter(p => p.life > 0);
     G.trail = G.trail.filter(p => G.time - p.t < .28);
+    if (G.banner && G.time - G.banner.t0 > G.banner.dur) G.banner = null;
 
     if (playing) {
       for (const a of G.ai) {

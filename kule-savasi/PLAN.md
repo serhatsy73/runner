@@ -108,13 +108,17 @@ Seviye ortasında hiçbir zaman reklam çıkmaz.
 - [x] Reklam ve satın alma arayüzü (`KS.Monet`), kaybedince ödüllü devam
 - [x] Denge simülasyon aracı (`tools/denge.html`)
 
-### Faz 2 — İçerik
-- [ ] Dünya haritası ekranı (seviye seçimi, yıldızlar, kilitler)
-- [ ] Yol uzunluğu sınırı + su ve kaya engelleri + köprüler
-- [ ] Rakip kişilikleri (Saldırgan / Açgözlü / Temkinli)
-- [ ] 60 askerin üstünde üretim yavaşlaması, "Son Hücum" modu
-- [ ] Dünya 1–2: 20 elle tasarlanmış seviye
-- [ ] Yeni mekanikler için eğitim anları (ilk karşılaşmada kısa ipucu)
+### Faz 2 — İçerik ✅
+- [x] Dünya haritası ekranı (seviye seçimi, yıldızlar, kilitler). Dünya 2 için 10. seviyeyi geçmek ve 12 yıldız gerekiyor
+- [x] Menzil (tasarım biriminde, ekran oranından bağımsız; kule seviyesiyle %12 büyür)
+- [x] Kaya, ağaç, göl, nehir ve köprüler; engelli yollar gri çizgi + çarpı ile gösterilir
+- [x] Sürüklerken menzil halkası, ulaşılamayan kulelerin soluklaşması, "Menzil dışında" / "Yol kapalı" etiketi
+- [x] Rakip kişilikleri (Saldırgan / Açgözlü / Temkinli) + seviye bazında değiştirme
+- [x] Yapay zekâya ikmal: arka kuleler cepheyi besler
+- [x] 60 askerin üstünde üretim yavaşlaması, 3. dakikada "Son Hücum" (30 sn önceden uyarı)
+- [x] Dünya 1–2: 20 elle tasarlanmış seviye, iki boss seviyesi
+- [x] Yeni mekanikler için tanıtım kartları (ilk karşılaşmada bir kez)
+- [x] Seviye doğrulama (çakışma, engel üstünde kule, ulaşılabilirlik) ve botlarla denge ölçümü
 
 ### Faz 3 — Derinlik
 - [ ] Kule türleri: Kale, Hız kulesi, Ambar
@@ -130,10 +134,30 @@ Seviye ortasında hiçbir zaman reklam çıkmaz.
 - [ ] Analitik
 - [ ] Seviye editörü (telefonda kule yerleştirip hemen deneme)
 
+## Seviye tasarımı kuralları (ölçümlerden çıkanlar)
+
+- **Dar geçitlerde en az iki kule karşıya ulaşabilmeli.** Tek köprü + tek kule varsa iki taraf da köprü ortasında birbirini yok eder, oyun kilitlenir (13. seviyenin ilk hali böyleydi). Menzili ya da kule konumlarını buna göre ayarla.
+- **Rakipler birbirine kolay saldırmamalı.** Aksi halde iki rakipli seviyelerde birbirlerini tüketip oyuncuya bedava zafer bırakırlar (`RIVAL` cezası).
+- **Rakip küçük kuleleri** (8–10 asker) rakiplerin birbirine hemen saldırmasına yol açabilir; iki rakipli haritalarda dikkatli kullan.
+- **Hedef zorluk** (iki botun kazanma oranı): tanıtım ve nefes seviyeleri %90+, normal seviyeler %60–90, zor seviyeler %40–60, boss %30–60.
+- **Par** ≈ saldırgan botun medyan süresinin 1,3 katı (5 saniyeye yuvarlanmış).
+
+### Güncel denge (12'şer deneme)
+
+| Seviye | Kazanma (saldırgan / sabırlı) | | Seviye | Kazanma |
+|---|---|---|---|---|
+| 1–3, 5–7 | %100 / %83–100 | | 11 | %83 / %75 |
+| 4 | %75 / %92 | | 12–15 | %83–100 |
+| 8 | %50 / %42 | | 16 | %42–58 / %33–42 |
+| 9 | %92 / %83 | | 17 | %58 / %42 |
+| 10 (boss) | %33 / %58 | | 18 | %42 / %42 |
+| | | | 19 | %56 / %81 |
+| | | | 20 (boss) | %44 / %56 |
+
 ## Geliştirme notları
 
 - Oyunu açmak için `index.html` yeterli, dosyadan açınca da çalışır. Bu yüzden ES modülleri yerine sırayla yüklenen, `window.KS` paylaşan dosyalar kullanılıyor.
-- Yeni bir seviye eklerken önce `tools/denge.html` ile ölçün:
+- Yeni bir seviye eklerken önce `tools/denge.html` ile ölçün (engeller, menzil ve kişilikler dahil):
   - İki botun kazanma oranı **%40'ın altındaysa** seviye fazla zor.
   - Medyan süre **par'ın üstündeyse** 3. yıldız fazla zor.
 - Oyun olayları (`G.on('capture' | 'win' | 'lose' | 'lane' | 'hit' | ...)`) ses, arayüz ve ileride analitik için tek bağlantı noktasıdır.
