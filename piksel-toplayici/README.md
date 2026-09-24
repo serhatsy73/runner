@@ -21,4 +21,4 @@ Bölümler: Mantar (16×16), Çilek (16×16), Kedi (20×20). Toplayıcı sıras�
 
 ## Yol haritası
 
-Mobil yayına ve para kazanmaya kadar olan plan `ROADMAP.md` içinde.
+Mobil yayına ve para kazanmaya kadar olan plan `ROADMAP.md` içinde. Temalar, bölüm yapısı ve her mekaniğin kuralı `TASARIM.md` içinde.

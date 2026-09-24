@@ -14,13 +14,12 @@ Bundan çıkan sonuçlar:
 2. **Birebir kopya mağazadan dönebilir.** Apple'ın inceleme kurallarında taklit uygulamalara (copycat) ret gerekçesi var. Google Play de başka bir uygulamayı taklit eden ürünleri kaldırabiliyor.
 3. **Aynı oyunun ikinci kopyası kullanıcı çekmez.** Reklamla kullanıcı kazanmak (UA) için oyunun reklam videosunda "bu farklı" dedirten bir şey olmalı. Bu yüzden Faz 1'in ana işi **fark yaratan kanca** bulmak.
 
-Aday farklılaşma fikirleri (Faz 1'de prototiplenip biri seçilecek):
+**Seçilen farklılaşma** (ayrıntılar ve kurallar `TASARIM.md` içinde):
 
-- **Tema:** Türk motifleri (çini, ebru, kilim, lokum, simit, kedi) ile pixel art. Hem görsel kimlik hem Türkiye pazarında yerel avantaj.
-- **Bant mekaniği:** yön değiştiren makaslar, iki bant, bantta hızlanan/yavaşlayan bölgeler.
-- **Blok türleri:** kilitli blok (anahtar toplayınca açılır), buz (iki kez toplanır), bomba (çevresini patlatır), gizli renk (açığa çıkınca rengi görünür).
-- **Toplayıcı türleri:** iki renkli toplayıcı, birleşen toplayıcılar (iki yarım yeşil yuvada birleşip tek toplayıcı olur).
-- **Resim ortaya çıkarma:** temizlenen tablonun altından ikinci bir resim (ödül resmi) çıkar ve koleksiyon albümüne eklenir.
+- **Temalı bölüm grupları:** her 15 bölüm bir tema (1–15 Hayvanlar Âlemi, 16–30 Meyveler, 31–45 Tatlılar...). Tema bitince koleksiyon albümünde bir sayfa tamamlanır.
+- **Her temada yeni mekanik:** buzlu blok, ipli bloklar (önce aynı renk, sonra farklı renk), gizli renk, kilit ve anahtar, birleşen toplayıcılar, tur makası, taş blok, iki renkli toplayıcı, kaygan bant, çift katmanlı resim, boya kovası.
+- **Türk motifli temalar:** Tatlılar (lokum, simit, baklava), Çini ve Kilim, İstanbul, Masallar (Keloğlan, Nasreddin Hoca). Dünya kitlesine hitap eden temalarla dönüşümlü.
+- **Kendi karakterleri:** gözlü, yanaklı toplayıcı kutular. Pixel Flow'un domuzlarından tamamen farklı.
 
 ## Değişmeyecek ilkeler
 
@@ -38,7 +37,7 @@ Her faz kendi kapısını geçmeden kapanmaz. Tutunma ve oynama süresi değerle
 |---|---|
 | Performans | Orta seviye Android telefonda 60 FPS, açılış 3 saniyenin altında |
 | Kararlılık | Çökme olmayan oturum oranı %99,5 üstü |
-| İçerik | Yayında en az 200 bölüm, her biri çözücüden geçmiş |
+| İçerik | Soft launch'ta 120 bölüm (8 tema), tam çıkışta 210 bölüm (14 tema), hepsi çözücüden geçmiş |
 | D1 tutunma | %40 ve üstü (ilk gün geri gelen oyuncu oranı) |
 | D7 tutunma | %15 ve üstü |
 | Oynama süresi | İlk gün oyuncu başına 20 dakika ve üstü |
@@ -64,17 +63,38 @@ Tek dosyada kalarak "tamamlanmış hissi veren" bir oyun yapmak.
 - [ ] Zorluk eğrisi: kolay-kolay-orta-kolay-zor döngüsü, her 10 bölümde bir "zor bölüm"
 - [ ] Bölümleri tek dosyadan ayırıp `levels.json` olarak tut
 
-Çıkış ölçütü: 30 bölüm, ses, öğretici, harita. 5 kişi hiç açıklama almadan ilk 10 bölümü oynayabiliyor.
+Çıkış ölçütü: Hayvanlar Âlemi teması (15 bölüm) bitmiş; ses, öğretici, harita çalışıyor. 5 kişi hiç açıklama almadan ilk 10 bölümü oynayabiliyor.
 
-## Faz 1: Farklılaşma ve kimlik (2–3 hafta)
+## Faz 1: Mekanikler, temalar ve kimlik (5–7 hafta)
 
-- [ ] Yukarıdaki fikirlerden 2–3'ünü hızlı prototiple, 5–10 kişiye oynat, birini ana kanca seç
-- [ ] Oyunun adı. Mağazada arat, benzer ad yok mu kontrol et. Alan adı ve sosyal medya adı al
-- [ ] Karakter tasarımı: toplayıcıların kendi kişiliği (şu anki gözlü kutular iyi bir başlangıç)
+Soft launch için ilk 8 tema ve 7 yeni mekanik. Her mekanik `TASARIM.md`'deki sırayla: önce çözücüye ve bölüm üreticiye, sonra oyuna, sonra bölümlere eklenir.
+
+**Altyapı**
+- [ ] Blok ve toplayıcı türleri için genel bir yapı (her hücrede renk + tür + durum; ör. buz, ip grubu, kilit)
+- [ ] Çözücü ve bölüm üreticisi her mekaniği destekler, her bölüme zorluk puanı verir
+- [ ] Tema verisi: tema adı, arka plan renkleri, bant rengi, müzik, albüm sayfası
+- [ ] Mekanik tanıtım ekranı: temanın ilk bölümünde tek cümle ve küçük animasyon
+
+**Mekanikler (soft launch için)**
+- [ ] Buzlu blok (Meyveler, 16–30)
+- [ ] İpli bloklar, aynı renk (Tatlılar, 31–45). İlk prototiplenecek mekanik bu; reklam videosunun ana malzemesi
+- [ ] Gizli renk bloğu (Deniz Altı, 46–60)
+- [ ] Kilit ve anahtar (Çini ve Kilim, 61–75)
+- [ ] İpli bloklar, farklı renk (Uzay, 76–90)
+- [ ] Birleşen toplayıcılar (Orman, 91–105)
+- [ ] Tur makası (İstanbul, 106–120)
+
+**İçerik**
+- [ ] 8 tema × 15 bölüm = 120 bölüm resmi (pixel art dönüştürücüyle, elle rötuş)
+- [ ] Koleksiyon albümü ve tema sonu ödül sandığı
+- [ ] Her temanın finali (15. bölüm) 20×20 ile 24×24 arası büyük resim
+
+**Kimlik**
+- [ ] Oyunun adı. Mağazada arat, benzer ad yok mu kontrol et. Alan adı ve sosyal medya hesaplarını al
 - [ ] İkon: 3 farklı ikon hazırla, ileride mağaza A/B testine sok
-- [ ] 15–30 saniyelik oynanış videosu: ilk 3 saniyede kanca görünmeli
+- [ ] 15–30 saniyelik oynanış videosu: ilk 3 saniyede ipli blokların çekildiği an
 
-Çıkış ölçütü: oyunu hiç görmemiş biri videoyu izleyip "Pixel Flow'un aynısı" demiyor.
+Çıkış ölçütü: 120 bölüm çözücüden geçmiş. 5–10 kişi her mekaniği ipucu dışında açıklama almadan anlıyor. Oyunu hiç görmemiş biri videoyu izleyip "Pixel Flow'un aynısı" demiyor.
 
 ## Faz 2: Web'de ucuz test (2–4 hafta, paralel yürüyebilir)
 
@@ -146,7 +166,13 @@ Oyunu önce küçük, ucuz birkaç ülkede yayınlayıp veriye bakmak.
 - [ ] Haftalık ölç: D1/D7, oynama süresi, ARPDAU, kullanıcı başı gelir (LTV) tahmini
 - [ ] Kural: **LTV > CPI** değilse ölçeklenmez; oyun, bölümler ve ekonomi ayarlanır
 
-**Alternatif yol: yayıncı.** Voodoo, SayGames, Homa, CrazyLabs, Rollic gibi hybrid-casual yayıncıları kendi bütçeleriyle CPI testi yapar, tutarsa reklam bütçesini ve kullanıcı kazanımını üstlenip gelir paylaşır. Tek başına geliştirici için reklam bütçesi en büyük engel olduğundan bu yol ciddi bir seçenek. Faz 1'in videosu ve Faz 2'nin verisiyle başvurulabilir. Sözleşmede hak devri, gelir payı ve oyunun sahipliği dikkatle okunmalı.
+**Kendi yayınlama: tanıtım.** Yayıncı olmadığı için reklam bütçesi ve tanıtım bizde. Bütçe küçük tutulur, organik kanallar erkenden başlar:
+- [ ] TikTok, Instagram Reels ve YouTube Shorts'ta düzenli oynanış videoları. Faz 1'den itibaren, oyun yayına çıkmadan önce kitle toplamak için
+- [ ] Her yeni mekanik ve her tema finali için ayrı kısa video; iyi tutan videolar reklam kampanyasına aktarılır
+- [ ] Reklam bütçesi kademeli: önce küçük bir test bütçesiyle CPI ölçülür, LTV > CPI görülmeden artırılmaz
+- [ ] Apple Search Ads ve Google App Campaigns ile mağaza içi arama
+- [ ] Türkiye'deki oyun toplulukları ve içerik üreticileri: Türk motifli temalar burada doğal bir tanıtım konusu
+- [ ] Soft launch sırasında kalan 6 temanın (121–210) üretimine devam edilir
 
 Çıkış ölçütü: kapı ölçütlerindeki tutunma ve oynama süresi hedefleri tutuyor, LTV/CPI oranı 1'in üstünde.
 
@@ -162,7 +188,7 @@ Oyunu önce küçük, ucuz birkaç ülkede yayınlayıp veriye bakmak.
 ## Vergi ve ödeme (Türkiye)
 
 - Bireysel mobil uygulama geliştiricileri için **GVK mükerrer 20/B** istisnası var: uygulama gelirleri bu iş için bildirilen özel bir banka hesabına gelir, banka %15 gelir vergisi keser. 2026 yılı için istisna sınırı 5.300.000 TL; aşılırsa kazancın tamamı beyan edilir. İstisna sadece gerçek kişiler içindir, şirketler yararlanamaz.
-- AdMob reklam gelirinin ve yabancı yayıncıdan gelen gelir payının bu istisnaya girip girmediği, ne zaman şahıs şirketi ya da limitede geçmenin mantıklı olduğu bir **mali müşavirle** netleştirilmeli.
+- AdMob reklam gelirinin bu istisnaya girip girmediği, ne zaman şahıs şirketi ya da limitede geçmenin mantıklı olduğu bir **mali müşavirle** netleştirilmeli.
 - Google Play ve App Store küçük geliştiriciler için yıllık ilk 1 milyon dolarlık gelirde %15 komisyon uygular (Apple'da Small Business Program'a başvurmak gerekir).
 
 ## Tahmini takvim (tam zamanlı tek geliştirici)
@@ -170,20 +196,25 @@ Oyunu önce küçük, ucuz birkaç ülkede yayınlayıp veriye bakmak.
 | Faz | Süre | Toplam |
 |---|---|---|
 | 0: Oyuna çevir | 2–3 hafta | 3. hafta |
-| 1: Farklılaşma | 2–3 hafta | 6. hafta |
-| 2: Web testi | 2–4 hafta (1 ile paralel) | 8. hafta |
-| 3: Mobil paket + 14 günlük kapalı test | 2–3 hafta | 11. hafta |
-| 4: Para kazanma | 2–3 hafta (3 ile kısmen paralel) | 13. hafta |
-| 5: Soft launch | 4–6 hafta | 19. hafta |
-| 6: Tam çıkış | sürekli | |
+| 1: Mekanikler ve 8 tema | 5–7 hafta | 10. hafta |
+| 2: Web testi | 2–4 hafta (ilk 3 tema hazır olunca, 1 ile paralel) | 10. hafta |
+| 3: Mobil paket + 14 günlük kapalı test | 2–3 hafta | 13. hafta |
+| 4: Para kazanma | 2–3 hafta (3 ile kısmen paralel) | 15. hafta |
+| 5: Soft launch (kalan 6 temanın üretimi paralel) | 4–6 hafta | 21. hafta |
+| 6: Tam çıkış (210 bölüm) | sürekli | |
 
-Yani yaklaşık **4–5 ayda** soft launch'tan geçmiş bir oyun. Faz 5'te veriler hedefi tutmazsa, döngü Faz 0/1'e dönüp oyun değiştirilir; bu normaldir.
+Yani yaklaşık **5 ayda** soft launch'tan geçmiş bir oyun. Faz 5'te veriler hedefi tutmazsa, döngü Faz 0/1'e dönüp oyun değiştirilir; bu normaldir.
+
+## Verilen kararlar
+
+1. **Yayınlama:** oyun yayıncısız, kendimiz yayınlıyoruz.
+2. **Farklılaşma:** her 15 bölümde bir tema, her temada yeni bir mekanik, Türk motifli temalar, ipli bloklar. Ayrıntılar `TASARIM.md` içinde.
 
 ## Açık kararlar
 
-1. **Kendi yayınlama mı, yayıncı mı?** Öneri: Faz 2 verisi iyi gelirse yayıncılara başvur, paralelde kendi soft launch'ını hazırla.
-2. **Kişisel mi, kurumsal Play hesabı mı?** Öneri: şirket kurmayı düşünmüyorsan kişisel hesabı şimdi aç ve 12 test kullanıcısını erkenden topla; 14 günlük sayaç kritik yolda.
-3. **Ana farklılaşma kancası.** Faz 1 prototiplerinden sonra seçilecek.
+1. **Kişisel mi, kurumsal Play hesabı mı?** Öneri: şirket kurmayı düşünmüyorsan kişisel hesabı şimdi aç ve 12 test kullanıcısını erkenden topla; 14 günlük sayaç kritik yolda.
+2. **Oyunun adı.** Faz 1'de; mağazada benzer ad olmamalı.
+3. **İpli blok kuralları.** `TASARIM.md`'deki kurallar ilk prototipte oynanıp gerekirse ayarlanacak.
 
 ## Kaynaklar
 
