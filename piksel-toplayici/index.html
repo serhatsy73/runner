@@ -1,0 +1,1205 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Piksel Toplayıcı</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#1c1f33">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #1c1f33;
+    --panel: #2a2e49;
+    --text: #fff7ec;
+    --muted: #b6bbd8;
+    --gold: #ffd84a;
+    --pink: #ff8fb8;
+    --red: #ff5a6a;
+    --font: ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", "Segoe UI", system-ui, sans-serif;
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: var(--bg); }
+  body {
+    font-family: var(--font); color: var(--text);
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #fx { pointer-events: none; z-index: 20; }
+
+  .hud {
+    position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+    width: min(100%, 500px); box-sizing: border-box;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) 14px 0;
+    display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center;
+    z-index: 5; pointer-events: none;
+  }
+  .hud > div:first-child { min-width: 0; }
+  .title { font-weight: 800; font-size: 18px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .03em; }
+  .sub b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .hud-right { display: flex; gap: 8px; align-items: center; }
+  .pill {
+    font-size: 12px; font-weight: 800; padding: 5px 10px; border-radius: 99px;
+    background: rgba(255,255,255,.08); color: var(--muted); font-variant-numeric: tabular-nums;
+    transition: background .2s, color .2s;
+  }
+  .pill.warn { background: rgba(255,90,106,.22); color: #ffd0d5; }
+  .icon {
+    pointer-events: auto; cursor: pointer;
+    width: 38px; height: 38px; border-radius: 12px; border: 0;
+    background: rgba(255,255,255,.1); color: var(--text);
+    font: 800 20px/1 var(--font); display: grid; place-items: center;
+  }
+  .icon:active { transform: scale(.94); }
+  .bar { grid-column: 1 / -1; height: 8px; border-radius: 99px; background: rgba(255,255,255,.09); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; border-radius: inherit;
+    background: linear-gradient(90deg, var(--pink), var(--gold)); transition: width .25s ease-out; }
+
+  .err {
+    position: fixed; left: 16px; right: 16px; top: 50%; transform: translateY(-50%); z-index: 50;
+    padding: 16px; border-radius: 16px; background: #3a1f2b; color: #ffd0d5;
+    font: 700 15px/1.45 var(--font); text-align: center;
+  }
+  .toast {
+    position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.9);
+    padding: 10px 16px; border-radius: 14px; background: rgba(20,22,38,.92);
+    font-weight: 800; font-size: 15px; opacity: 0; pointer-events: none; z-index: 8;
+    transition: opacity .18s, transform .18s;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+  .overlay {
+    position: fixed; inset: 0; display: grid; place-items: center; padding: 16px;
+    background: rgba(16,18,32,.6); z-index: 10; animation: fade .25s ease-out;
+  }
+  .card {
+    width: min(100%, 340px); box-sizing: border-box; text-align: center;
+    padding: 26px 22px 22px; border-radius: 26px;
+    background: linear-gradient(180deg, #34395a, #262a45);
+    box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12);
+    animation: pop .35s cubic-bezier(.2,1.4,.4,1);
+  }
+  .card .emoji { font-size: 52px; line-height: 1; }
+  .card h1 { margin: 10px 0 6px; font-size: 30px; font-weight: 900; letter-spacing: .01em; }
+  .card p { margin: 0 0 18px; color: var(--muted); font-weight: 700; font-size: 15px; line-height: 1.4; }
+  .card button {
+    pointer-events: auto; cursor: pointer; border: 0; width: 100%;
+    padding: 14px 18px; border-radius: 16px; font: 900 18px/1 var(--font); color: #2d2a3e;
+    background: linear-gradient(180deg, #ffe27a, #ffc93c); box-shadow: 0 5px 0 #c9912a;
+  }
+  .card button:active { transform: translateY(3px); box-shadow: 0 2px 0 #c9912a; }
+  .card.lose button { background: linear-gradient(180deg, #ffa3bf, #ff7aa2); box-shadow: 0 5px 0 #c24d74; }
+  .card.lose button:active { box-shadow: 0 2px 0 #c24d74; }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+</style>
+</head>
+<body>
+<noscript><div class="err">Bu oyun JavaScript ile çalışır. Dosyayı bir tarayıcıda (Chrome, Safari, Edge, Firefox) açın; dosya önizleme ekranları JavaScript çalıştırmaz.</div></noscript>
+<div class="err" id="err" hidden></div>
+<script>
+  // Betik hata verirse boş ekran yerine sebebini göster.
+  window.addEventListener('error', function (e) {
+    var box = document.getElementById('err');
+    box.hidden = false;
+    box.textContent = 'Oyun başlatılamadı: ' + (e.message || e) + (e.lineno ? ' (satır ' + e.lineno + ')' : '') +
+      '. Tarayıcınızı güncelleyin ya da dosyayı başka bir tarayıcıda açın.';
+  });
+</script>
+<canvas id="game"></canvas>
+<canvas id="fx"></canvas>
+
+<header class="hud" id="hud">
+  <div>
+    <div class="title" id="title">Piksel Toplayıcı</div>
+    <div class="sub"><b id="left">0</b> blok kaldı</div>
+  </div>
+  <div class="hud-right">
+    <span class="pill" id="beltPill">Bant 0/5</span>
+    <button class="icon" id="restart" aria-label="Bölümü yeniden başlat" title="Yeniden başlat">↻</button>
+  </div>
+  <div class="bar"><i id="bar"></i></div>
+</header>
+
+<div class="toast" id="toast"></div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="card" id="card">
+    <div class="emoji" id="ovEmoji"></div>
+    <h1 id="ovTitle"></h1>
+    <p id="ovText"></p>
+    <button id="ovBtn" type="button"></button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------------------------------------------------------------------------
+  // Ayarlar
+  // ---------------------------------------------------------------------------
+  const BELT_MAX = 5;        // bantta aynı anda en fazla toplayıcı
+  const SLOT_COUNT = 5;      // bekleme yuvası
+  const LANE_COUNT = 3;      // alttaki toplayıcı sütunları
+  const LANE_SPEED = 9;      // bant hızı: saniyede geçilen hücre sayısı
+  const FULL_BOOST = 3.4;    // dolan toplayıcının hızlanma katsayısı
+  const ABSORB_TIME = 0.38;  // bir bloğun toplayıcıya emilme süresi (sn)
+
+  const PALETTE = {
+    K: '#2d2a3e', // siyah
+    W: '#f7f3ea', // beyaz
+    P: '#ff8fb8', // pembe
+    G: '#1f7a4d', // koyu yeşil
+    g: '#5fcf6e', // açık yeşil
+    R: '#ec3f4f', // kırmızı
+    D: '#a3243c', // bordo
+    Y: '#ffd84a', // sarı
+    B: '#f0cf9c', // bej
+  };
+
+  // Her bölüm: '.' boş hücre, diğer harfler PALETTE anahtarı. Görsel ızgarada otomatik ortalanır.
+  const LEVELS = [
+    { name: 'Mantar', emoji: '🍄', size: 16, art: [
+      '.....RRRRRR.....',
+      '...RRRWWRRRRR...',
+      '..RRRWWWWRRRRR..',
+      '.RRWRRWWRRRWWRR.',
+      '.RWWWRRRRRWWWWR.',
+      'RRWWWRRRRRRWWRRR',
+      'RRRWRRRWWRRRRRRR',
+      'RRRRRRWWWWRRRWRR',
+      '.RRRRRRWWRRRWWR.',
+      '..RRRRRRRRRRRR..',
+      '....BBBBBBBB....',
+      '...BBKBBBBKBB...',
+      '...BBKBBBBKBB...',
+      '...BBBBPPBBBB...',
+      '....BBBBBBBB....',
+      '.....BBBBBB.....',
+    ] },
+    { name: 'Çilek', emoji: '🍓', size: 16, art: [
+      '......g..g......',
+      '....gGGgGGg.....',
+      '...gGGGGGGGg....',
+      '..RRgGGgGGgRR...',
+      '.RRRRggRggRRRR..',
+      '.RWRRRRRRRRYRR..',
+      '.RWYRRRYRRRRRR..',
+      '.RRRRRRRRRYRRD..',
+      '..RRRYRRRRRRRD..',
+      '..RRRRRRYRRRDD..',
+      '...RYRRRRRRRD...',
+      '....RRRRYRRD....',
+      '.....RRRRRD.....',
+      '......RRDD......',
+      '.......DD.......',
+    ] },
+    { name: 'Kedi', emoji: '🐱', size: 20, art: [
+      '..KK............KK..',
+      '..KPK..........KPK..',
+      '..KPPK........KPPK..',
+      '..KPPWKKKKKKKKWPPK..',
+      '..KWWWWWWWWWWWWWWK..',
+      '.KWWWWWWWWWWWWWWWWK.',
+      '.KWWWWWWWWWWWWWWWWK.',
+      '.KWWKKKWWWWWWKKKWWK.',
+      '.KWKGGGKWWWWKGGGKWK.',
+      '.KWKGKGKWWWWKGKGKWK.',
+      '.KWKGGGKWWWWKGGGKWK.',
+      '.KWWKKKWWWWWWKKKWWK.',
+      '.KPPWWWWWPPWWWWWPPK.',
+      '.KPPWWWWKWWKWWWWPPK.',
+      '.KWWWWWWWKKWWWWWWWK.',
+      '..KWWWWWWWWWWWWWWK..',
+      '...KWWWWWWWWWWWWK...',
+      '....KKWWWWWWWWKK....',
+      '......KKKKKKKK......',
+    ] },
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Yardımcılar
+  // ---------------------------------------------------------------------------
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const easeIn = t => t * t * t;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const flat = arr => [].concat.apply([], arr);
+  const countBlocks = g => flat(g).filter(Boolean).length;
+
+  function mulberry32(seed) {
+    return () => {
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function mix(hex, target, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const m = v => Math.round(v + (target - v) * amt);
+    return `rgb(${m(r)},${m(g)},${m(b)})`;
+  }
+  function luminance(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  }
+  const COL = {};
+  for (const [k, c] of Object.entries(PALETTE)) {
+    COL[k] = { c, hi: mix(c, 255, 0.38), lo: mix(c, 0, 0.3), edge: mix(c, 0, 0.45), light: luminance(c) > 0.62 };
+  }
+
+  function rr(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r);
+    c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r);
+    c.arcTo(x, y, x + w, y, r);
+    c.closePath();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Izgara mantığı (oyun ve çözülebilirlik simülasyonu ortak kullanır)
+  // ---------------------------------------------------------------------------
+  function parseArt(lv) {
+    const N = lv.size;
+    const rows = lv.art;
+    let minC = Infinity, maxC = -1;
+    rows.forEach(row => [...row].forEach((ch, c) => {
+      if (ch !== '.' && ch !== ' ') { minC = Math.min(minC, c); maxC = Math.max(maxC, c); }
+    }));
+    const offC = Math.floor((N - (maxC - minC + 1)) / 2) - minC;
+    const offR = Math.floor((N - rows.length) / 2);
+    const grid = Array.from({ length: N }, () => Array(N).fill(null));
+    rows.forEach((row, r) => [...row].forEach((ch, c) => {
+      if (PALETTE[ch]) {
+        const rr_ = r + offR, cc = c + offC;
+        if (rr_ >= 0 && rr_ < N && cc >= 0 && cc < N) grid[rr_][cc] = ch;
+      }
+    }));
+    return grid;
+  }
+
+  // Bir şeritte (satır/sütun) dışarıdan görünen ve rengi eşleşen blokları alır.
+  // Boş hücrelerin içinden bakar; farklı renkte bir bloğa çarpınca durur.
+  function takeFromLane(g, side, i, color, max) {
+    const N = g.length;
+    const out = [];
+    let r, c, dr, dc;
+    if (side === 'L') { r = i; c = 0; dr = 0; dc = 1; }
+    else if (side === 'R') { r = i; c = N - 1; dr = 0; dc = -1; }
+    else { r = N - 1; c = i; dr = -1; dc = 0; }
+    while (out.length < max && r >= 0 && r < N && c >= 0 && c < N) {
+      const v = g[r][c];
+      if (v === null) { r += dr; c += dc; continue; }
+      if (v !== color) break;
+      out.push([r, c]);
+      g[r][c] = null;
+      r += dr; c += dc;
+    }
+    return out;
+  }
+
+  // Bir turda geçilen şeritlerin sırası: sol (yukarıdan aşağı), alt (soldan sağa), sağ (aşağıdan yukarı)
+  function lapOrder(N) {
+    const a = [];
+    for (let r = 0; r < N; r++) a.push(['L', r]);
+    for (let c = 0; c < N; c++) a.push(['B', c]);
+    for (let r = N - 1; r >= 0; r--) a.push(['R', r]);
+    return a;
+  }
+
+  function simLap(g, color, max) {
+    let got = 0;
+    for (const [s, i] of lapOrder(g.length)) {
+      if (got >= max) break;
+      got += takeFromLane(g, s, i, color, max - got).length;
+    }
+    return got;
+  }
+
+  // Renkten bağımsız "soğan kabuğu" katmanı: her hücrenin kaçıncı turda açığa çıktığı
+  function peelLayers(grid) {
+    const N = grid.length;
+    const g = grid.map(r => r.slice());
+    const layer = grid.map(r => r.map(() => -1));
+    let left = countBlocks(grid);
+    for (let L = 0; left > 0 && L < 500; L++) {
+      const exp = [];
+      for (let r = 0; r < N; r++) {
+        let c = 0; while (c < N && !g[r][c]) c++; if (c < N) exp.push([r, c]);
+        c = N - 1; while (c >= 0 && !g[r][c]) c--; if (c >= 0) exp.push([r, c]);
+      }
+      for (let c = 0; c < N; c++) {
+        let r = N - 1; while (r >= 0 && !g[r][c]) r--; if (r >= 0) exp.push([r, c]);
+      }
+      for (const [r, c] of exp) if (g[r][c]) { g[r][c] = null; layer[r][c] = L; left--; }
+    }
+    return layer;
+  }
+
+  function splitCount(n, rng) {
+    const k = Math.max(1, Math.round(n / 15));
+    const sizes = Array(k).fill(Math.floor(n / k));
+    for (let i = 0; i < n % k; i++) sizes[i]++;
+    for (let i = 0; i + 1 < k; i++) {
+      const j = Math.floor(rng() * 5);
+      if (sizes[i] - j >= 5) { sizes[i] -= j; sizes[i + 1] += j; }
+    }
+    return sizes;
+  }
+
+  function makeQueue(grid, rng, jitter) {
+    const layer = peelLayers(grid);
+    const byColor = {};
+    grid.forEach((row, r) => row.forEach((v, c) => { if (v) (byColor[v] = byColor[v] || []).push(layer[r][c]); }));
+    const chunks = [];
+    for (const [color, layers] of Object.entries(byColor)) {
+      layers.sort((a, b) => a - b);
+      let idx = 0;
+      for (const cap of splitCount(layers.length, rng)) {
+        const part = layers.slice(idx, idx + cap);
+        idx += cap;
+        const mean = part.reduce((a, b) => a + b, 0) / part.length;
+        chunks.push({ color, cap, key: mean + rng() * jitter });
+      }
+    }
+    chunks.sort((a, b) => a.key - b.key);
+    const lanes = Array.from({ length: LANE_COUNT }, () => []);
+    chunks.forEach((ch, i) => lanes[i % LANE_COUNT].push({ color: ch.color, cap: ch.cap }));
+    return lanes;
+  }
+
+  // Açgözlü, tek tek gönderen bir oyuncu bölümü bitirebiliyor mu?
+  function solvable(grid, lanesSpec, slotCap) {
+    let g = grid.map(r => r.slice());
+    const lanes = lanesSpec.map(l => l.map(ch => ({ color: ch.color, rem: ch.cap })));
+    const slots = [];
+    for (let step = 0; step < 600; step++) {
+      if (!lanes.some(l => l.length) && !slots.length) return g.every(r => r.every(v => !v));
+      let best = null;
+      const consider = (from, i, k) => {
+        const gg = g.map(r => r.slice());
+        const got = simLap(gg, k.color, k.rem);
+        const done = got === k.rem;
+        if (from === 'lane' && !done && slots.length >= slotCap) return;
+        if (from === 'slot' && got === 0) return;
+        const score = (done ? 1000 : 0) + got + (from === 'slot' ? 0.5 : 0);
+        if (!best || score > best.score) best = { from, i, k, got, done, gg, score };
+      };
+      lanes.forEach((l, i) => { if (l.length) consider('lane', i, l[0]); });
+      slots.forEach((k, i) => consider('slot', i, k));
+      if (!best) return false;
+      g = best.gg;
+      best.k.rem -= best.got;
+      if (best.from === 'lane') { lanes[best.i].shift(); if (!best.done) slots.push(best.k); }
+      else if (best.done) slots.splice(best.i, 1);
+    }
+    return false;
+  }
+
+  // Tohumlu ve çözülebilir bir toplayıcı sırası üretir (yeniden denemede aynı bulmaca gelir).
+  function buildQueue(idx, grid) {
+    let fallback = null;
+    for (let a = 0; a < 160; a++) {
+      const rng = mulberry32(idx * 7919 + a * 104729 + 17);
+      const lanes = makeQueue(grid, rng, 0.6 + a * 0.06);
+      if (!fallback && solvable(grid, lanes, SLOT_COUNT)) fallback = lanes;
+      if (solvable(grid, lanes, 3)) return lanes; // 2 yuva pay bırakan sıra tercih edilir
+    }
+    return fallback || makeQueue(grid, mulberry32(idx + 1), 1);
+  }
+
+  // ---------------------------------------------------------------------------
+  // DOM ve tuval
+  // ---------------------------------------------------------------------------
+  const cvs = document.getElementById('game');
+  const ctx = cvs.getContext('2d');
+  const fxCvs = document.getElementById('fx');
+  const fx = fxCvs.getContext('2d');
+  const $ = id => document.getElementById(id);
+  const hudEl = $('hud'), titleEl = $('title'), leftEl = $('left'), barEl = $('bar'), beltPill = $('beltPill');
+  const overlay = $('overlay'), card = $('card');
+  const toastEl = $('toast');
+
+  let DPR = 1, W = 0, H = 0;
+  const S = {}; // yerleşim
+
+  // Oyun durumu
+  let lvlIdx = 0, grid = null, N = 16, totalBlocks = 0, remaining = 0;
+  let lanes = [], slots = [], all = [], entryQueue = [], particles = [], sparkles = [], confetti = [];
+  let phase = 'play', endTimer = 0, beltPhase = 0, time = 0, dispatched = false, nextId = 1;
+  let hudCache = '';
+
+  try { lvlIdx = clamp(parseInt(localStorage.getItem('pixelCollector.level') || '0', 10) || 0, 0, LEVELS.length - 1); } catch (e) { lvlIdx = 0; }
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+    W = window.innerWidth; H = window.innerHeight;
+    for (const c of [cvs, fxCvs]) { c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); }
+    layout();
+  }
+
+  function layout() {
+    const oldL = S.L;
+    const stageW = Math.min(W, 500);
+    const sx = (W - stageW) / 2;
+    const pad = 10;
+    const hudBottom = hudEl.getBoundingClientRect().bottom + 4;
+    const bt = clamp(stageW * 0.09, 32, 46);           // bant kalınlığı
+    const gap = 5;
+    const d = gap + bt / 2;                           // tablo kenarından bant merkezine
+    const slotGap = 8;
+    const slotS = Math.min(bt * 1.25, (stageW - 2 * pad - 4 * slotGap) / 5);
+    const trayS = clamp(stageW * 0.15, 46, 64);
+    const trayH = trayS * 2.75;
+    const entryH = bt * 0.85;
+    const labelH = 22;
+    const below = d + bt / 2 + labelH + slotS + labelH + 6 + trayH + 10;
+    const availW = stageW - 2 * pad - 2 * (d + bt / 2 + 3);
+    const availH = H - hudBottom - entryH - below - 8;
+    const c = Math.max(6, Math.floor(Math.min(availW, availH) / N));
+    const bs = c * N;
+    const contentH = entryH + bs + below;
+    const top = hudBottom + Math.max(0, (H - hudBottom - contentH) * 0.4);
+
+    Object.assign(S, { stageW, sx, bt, gap, d, c, bs, slotS, slotGap, trayS });
+    S.boardX = Math.round(sx + (stageW - bs) / 2);
+    S.boardY = Math.round(top + entryH);
+    S.xl = S.boardX - d;
+    S.xr = S.boardX + bs + d;
+    S.yb = S.boardY + bs + d;
+    S.yTop = S.boardY - entryH * 0.45;
+    S.R = d;
+    S.l1 = (S.yb - S.R) - S.yTop;
+    S.arc = Math.PI / 2 * S.R;
+    S.l2 = (S.xr - S.R) - (S.xl + S.R);
+    S.L = 2 * S.l1 + 2 * S.arc + S.l2;
+    S.beltSize = bt * 0.86;
+    S.spacing = bt * 1.08;
+    S.slotsLabelY = S.yb + bt / 2 + labelH * 0.7;
+    S.slotY = S.yb + bt / 2 + labelH + slotS / 2;
+    const slotsW = 5 * slotS + 4 * slotGap;
+    S.slotX0 = sx + (stageW - slotsW) / 2 + slotS / 2;
+    S.trayLabelY = S.slotY + slotS / 2 + labelH * 0.7;
+    S.trayY = S.slotY + slotS / 2 + labelH + 6 + trayS / 2;
+    S.laneDX = Math.min(trayS * 1.6, stageW / 3.3);
+    S.cx = sx + stageW / 2;
+
+    if (oldL && S.L) for (const k of all) if (k.state === 'belt') k.s *= S.L / oldL;
+  }
+
+  // Bant yolu: s (px) -> konum ve yön
+  function pathPos(s) {
+    const { xl, xr, yb, yTop, R, l1, arc, l2 } = S;
+    if (s < l1) return { x: xl, y: yTop + s, a: Math.PI / 2, seg: 'L' };
+    s -= l1;
+    if (s < arc) { const f = Math.PI - (Math.PI / 2) * (s / arc); return { x: xl + R + R * Math.cos(f), y: yb - R + R * Math.sin(f), a: f - Math.PI / 2, seg: 'A' }; }
+    s -= arc;
+    if (s < l2) return { x: xl + R + s, y: yb, a: 0, seg: 'B' };
+    s -= l2;
+    if (s < arc) { const f = Math.PI / 2 - (Math.PI / 2) * (s / arc); return { x: xr - R + R * Math.cos(f), y: yb - R + R * Math.sin(f), a: f - Math.PI / 2, seg: 'A' }; }
+    s -= arc;
+    return { x: xr, y: yb - R - Math.min(s, l1), a: -Math.PI / 2, seg: 'R' };
+  }
+
+  function laneAt(p) {
+    if (p.seg === 'L' || p.seg === 'R') {
+      const r = Math.floor((p.y - S.boardY) / S.c);
+      if (r >= 0 && r < N) return { side: p.seg, i: r, key: p.seg + r };
+    } else if (p.seg === 'B') {
+      const c = Math.floor((p.x - S.boardX) / S.c);
+      if (c >= 0 && c < N) return { side: 'B', i: c, key: 'B' + c };
+    }
+    return null;
+  }
+
+  const cellCenter = (r, c) => ({ x: S.boardX + (c + 0.5) * S.c, y: S.boardY + (r + 0.5) * S.c });
+  const slotPos = i => ({ x: S.slotX0 + i * (S.slotS + S.slotGap), y: S.slotY });
+  const laneX = i => S.cx + (i - (LANE_COUNT - 1) / 2) * S.laneDX;
+
+  function laneTarget(k) {
+    const idx = lanes[k.lane].indexOf(k);
+    const x = laneX(k.lane);
+    const d1 = S.trayS * 0.8, d2 = S.trayS * 0.56;
+    if (idx <= 0) return { x, y: S.trayY, size: S.trayS, alpha: 1 };
+    return {
+      x, y: S.trayY + d1 + d2 * (Math.min(idx, 2) - 1), size: S.trayS * 0.58,
+      alpha: idx === 1 ? 0.8 : idx === 2 ? 0.5 : 0,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Bölüm kurulumu
+  // ---------------------------------------------------------------------------
+  function loadLevel(idx) {
+    lvlIdx = idx;
+    try { localStorage.setItem('pixelCollector.level', String(idx)); } catch (e) { /* depolama kapalı olabilir */ }
+    const lv = LEVELS[idx];
+    N = lv.size;
+    grid = parseArt(lv);
+    totalBlocks = remaining = countBlocks(grid);
+    const spec = buildQueue(idx, grid);
+    lanes = spec.map((l, li) => l.map(ch => ({
+      id: nextId++, color: ch.color, cap: ch.cap, rem: ch.cap, shown: ch.cap, full: false,
+      state: 'lane', lane: li, slot: -1, x: 0, y: 0, size: 0, alpha: 1,
+      bump: 0, shake: 0, spd: 1, s: 0, lastLane: null, toBelt: false,
+    })));
+    all = flat(lanes);
+    slots = Array(SLOT_COUNT).fill(null);
+    entryQueue = []; particles = []; sparkles = []; confetti = [];
+    phase = 'play'; endTimer = 0; dispatched = false;
+    overlay.hidden = true;
+    titleEl.textContent = `${lv.emoji} Bölüm ${idx + 1} · ${lv.name}`;
+    hudCache = '';
+    layout();
+    for (const k of all) { const t = laneTarget(k); k.x = t.x; k.y = t.y + 40; k.size = t.size; k.alpha = 0; }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Etkileşim
+  // ---------------------------------------------------------------------------
+  const ridersCount = () => all.filter(k => k.toBelt).length;
+
+  let toastTimer = 0;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1100);
+  }
+
+  function hit(k, x, y) {
+    const h = k.size * 0.6;
+    return Math.abs(x - k.x) < h && Math.abs(y - k.y) < h;
+  }
+
+  function onTap(x, y) {
+    if (phase !== 'play') return;
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const k = slots[i];
+      if (k && k.state === 'slot' && hit(k, x, y)) return dispatch(k);
+    }
+    for (const l of lanes) {
+      const k = l[0];
+      if (k && k.state === 'lane' && hit(k, x, y)) return dispatch(k);
+    }
+  }
+
+  function flyTo(k, target, dur, hop, onArrive) {
+    Object.assign(k, { state: 'fly', fx: k.x, fy: k.y, fs: k.size, t: 0, dur, hop, target, onArrive });
+  }
+
+  function dispatch(k) {
+    if (ridersCount() >= BELT_MAX) { k.shake = 1; toast('Bant dolu! Biraz bekle.'); return; }
+    if (k.state === 'slot') { slots[k.slot] = null; k.slot = -1; }
+    else lanes[k.lane].splice(lanes[k.lane].indexOf(k), 1);
+    dispatched = true;
+    k.toBelt = true;
+    k.alpha = 1;
+    flyTo(k, () => entryPoint(entryQueue.length), 0.34, 46, () => {
+      k.state = 'pending';
+      entryQueue.push(k);
+    });
+  }
+
+  function entryPoint(i) {
+    return { x: S.xl, y: S.yTop - i * 7, size: S.beltSize };
+  }
+
+  let lastTouch = 0;
+  cvs.addEventListener('touchstart', e => {
+    e.preventDefault();
+    lastTouch = performance.now();
+    for (let i = 0; i < e.changedTouches.length; i++) onTap(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+  }, { passive: false });
+  cvs.addEventListener('click', e => {
+    if (performance.now() - lastTouch < 700) return; // dokunmanın ürettiği sahte tıklamayı yok say
+    onTap(e.clientX, e.clientY);
+  });
+
+  $('restart').addEventListener('click', () => loadLevel(lvlIdx));
+  $('ovBtn').addEventListener('click', () => {
+    if (phase === 'won') loadLevel((lvlIdx + 1) % LEVELS.length);
+    else loadLevel(lvlIdx);
+  });
+  window.addEventListener('resize', resize);
+
+  // ---------------------------------------------------------------------------
+  // Güncelleme
+  // ---------------------------------------------------------------------------
+  function tryCollect(k, ln) {
+    const cells = takeFromLane(grid, ln.side, ln.i, k.color, k.rem);
+    if (!cells.length) return;
+    cells.forEach(([r, c], i) => particles.push({ r, c, k, t: -i * 0.06, dur: ABSORB_TIME }));
+    k.rem -= cells.length;
+    remaining -= cells.length;
+    if (k.rem === 0) k.full = true;
+  }
+
+  function exitBelt(k) {
+    k.toBelt = false;
+    if (k.rem === 0) {
+      k.state = 'leaving'; k.t = 0;
+      burst(k.x, k.y, k.color, 14);
+      return;
+    }
+    const si = slots.indexOf(null);
+    if (si < 0) {
+      k.state = 'stuck';
+      k.x = S.xr; k.y = S.yTop;
+      lose();
+      return;
+    }
+    slots[si] = k; k.slot = si;
+    flyTo(k, () => Object.assign(slotPos(si), { size: S.slotS * 0.84 }), 0.5, 60, () => { k.state = 'slot'; k.bump = 1; });
+  }
+
+  function lose() {
+    if (phase !== 'play') return;
+    phase = 'lost';
+    endTimer = 1.1;
+  }
+
+  function burst(x, y, color, n) {
+    for (let i = 0; i < n; i++) {
+      const a = rand(0, Math.PI * 2), sp = rand(80, 260);
+      sparkles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, life: rand(0.4, 0.7), t: 0, color: Math.random() < 0.5 ? color : 'Y', size: rand(3, 6) });
+    }
+  }
+
+  function updateCollector(k, dt, v) {
+    k.bump = Math.max(0, k.bump - dt * 4);
+    k.shake = Math.max(0, k.shake - dt * 2.2);
+    const smooth = Math.min(1, dt * 12);
+    switch (k.state) {
+      case 'lane': {
+        const t = laneTarget(k);
+        k.x = lerp(k.x, t.x, smooth); k.y = lerp(k.y, t.y, smooth);
+        k.size = lerp(k.size, t.size, smooth); k.alpha = lerp(k.alpha, t.alpha, smooth);
+        break;
+      }
+      case 'slot': {
+        const t = slotPos(k.slot);
+        k.x = lerp(k.x, t.x, smooth); k.y = lerp(k.y, t.y, smooth);
+        k.size = lerp(k.size, S.slotS * 0.84, smooth);
+        break;
+      }
+      case 'fly': {
+        k.t = Math.min(1, k.t + dt / k.dur);
+        const e = easeInOut(k.t), to = k.target();
+        k.x = lerp(k.fx, to.x, e);
+        k.y = lerp(k.fy, to.y, e) - Math.sin(Math.PI * e) * k.hop;
+        k.size = lerp(k.fs, to.size, e);
+        if (k.t >= 1) k.onArrive();
+        break;
+      }
+      case 'pending': {
+        const t = entryPoint(entryQueue.indexOf(k));
+        k.x = lerp(k.x, t.x, smooth); k.y = lerp(k.y, t.y, smooth);
+        break;
+      }
+      case 'belt': {
+        k.spd = lerp(k.spd, k.full ? FULL_BOOST : 1, Math.min(1, dt * 2.5));
+        k.s += v * k.spd * dt;
+        if (k.s >= S.L) { exitBelt(k); break; }
+        const p = pathPos(k.s);
+        k.x = p.x; k.y = p.y;
+        k.size = lerp(k.size, S.beltSize, smooth);
+        const ln = laneAt(p);
+        if (ln && ln.key !== k.lastLane) {
+          k.lastLane = ln.key;
+          if (!k.full && phase === 'play') tryCollect(k, ln);
+        }
+        break;
+      }
+      case 'leaving': {
+        k.t += dt;
+        k.y -= (260 + k.t * 900) * dt;
+        k.alpha = Math.max(0, 1 - k.t / 0.45);
+        if (k.t >= 0.45) k.state = 'gone';
+        break;
+      }
+      case 'stuck':
+        k.shake = 1;
+        break;
+    }
+  }
+
+  function update(dt) {
+    time += dt;
+    const running = phase !== 'lost';
+    const v = running ? LANE_SPEED * S.c : 0;
+    beltPhase += v * dt;
+
+    if (running && entryQueue.length) {
+      let minS = Infinity;
+      for (const k of all) if (k.state === 'belt') minS = Math.min(minS, k.s);
+      if (minS >= S.spacing) {
+        const k = entryQueue.shift();
+        Object.assign(k, { state: 'belt', s: 0, lastLane: null, spd: 1 });
+      }
+    }
+
+    for (const k of all) {
+      if (!running && k.state === 'belt') { k.shake = Math.max(k.shake, 0.25); continue; }
+      updateCollector(k, dt, v);
+    }
+    all = all.filter(k => k.state !== 'gone');
+
+    for (const p of particles) {
+      p.t += dt / p.dur;
+      if (p.t >= 1) { p.k.shown = Math.max(p.k.rem, p.k.shown - 1); p.k.bump = 1; p.done = true; }
+    }
+    particles = particles.filter(p => !p.done);
+
+    for (const s of sparkles) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 500 * dt; s.vx *= 0.97; }
+    sparkles = sparkles.filter(s => s.t < s.life);
+
+    if (phase === 'play' && remaining === 0 && particles.length === 0) {
+      phase = 'won';
+      endTimer = 0.9;
+      launchConfetti();
+    }
+    if (endTimer > 0) {
+      endTimer -= dt;
+      if (endTimer <= 0) showEnd();
+    }
+    updateHud();
+  }
+
+  function updateHud() {
+    const riders = ridersCount();
+    const key = remaining + '|' + riders;
+    if (key === hudCache) return;
+    hudCache = key;
+    leftEl.textContent = remaining;
+    barEl.style.width = (100 * (1 - remaining / totalBlocks)).toFixed(1) + '%';
+    beltPill.textContent = `Bant ${riders}/${BELT_MAX}`;
+    beltPill.classList.toggle('warn', riders >= BELT_MAX);
+  }
+
+  function showEnd() {
+    const won = phase === 'won';
+    const last = lvlIdx === LEVELS.length - 1;
+    card.classList.toggle('lose', !won);
+    $('ovEmoji').textContent = won ? LEVELS[lvlIdx].emoji : '😵';
+    $('ovTitle').textContent = won ? 'Level Completed!' : 'Game Over';
+    $('ovText').textContent = won
+      ? (last ? 'Tüm bölümleri bitirdin! Baştan oynamaya ne dersin?' : 'Harika! Tüm pikseller toplandı.')
+      : 'Bekleme yuvaları doldu ve bant tıkandı.';
+    $('ovBtn').textContent = won ? (last ? 'Baştan Başla ↺' : 'Sonraki Bölüm ▶') : 'Tekrar Dene ↻';
+    overlay.hidden = false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Çizim
+  // ---------------------------------------------------------------------------
+  function drawBackground() {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#2d3152');
+    g.addColorStop(1, '#171a2c');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    // hafif puantiye
+    ctx.fillStyle = 'rgba(255,255,255,0.035)';
+    const step = 26;
+    for (let y = (time * 6) % step - step; y < H; y += step) {
+      for (let x = ((y / step) % 2 ? step / 2 : 0); x < W; x += step) {
+        ctx.fillRect(x, y, 3, 3);
+      }
+    }
+  }
+
+  function drawBoard() {
+    const { boardX: x, boardY: y, bs, c } = S;
+    // çerçeve
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    rr(ctx, x - 6, y - 4, bs + 12, bs + 14, 12); ctx.fill();
+    ctx.fillStyle = '#20243b';
+    rr(ctx, x - 6, y - 6, bs + 12, bs + 12, 12); ctx.fill();
+    // boş hücre ızgarası
+    ctx.fillStyle = 'rgba(255,255,255,0.045)';
+    for (let r = 0; r < N; r++) for (let cc = 0; cc < N; cc++) {
+      if (!grid[r][cc] && (r + cc) % 2 === 0) ctx.fillRect(x + cc * c, y + r * c, c, c);
+    }
+    // bloklar (küp görünümü)
+    const edge = Math.max(1.5, c * 0.2);
+    for (let r = 0; r < N; r++) for (let cc = 0; cc < N; cc++) {
+      const v = grid[r][cc];
+      if (!v) continue;
+      drawCube(x + cc * c, y + r * c, c, COL[v], edge);
+    }
+  }
+
+  function drawCube(x, y, c, col, edge) {
+    ctx.fillStyle = col.c;
+    ctx.fillRect(x + 0.5, y + 0.5, c - 1, c - 1);
+    ctx.fillStyle = col.hi;
+    ctx.fillRect(x + 0.5, y + 0.5, c - 1, edge);
+    ctx.fillRect(x + 0.5, y + 0.5, edge * 0.6, c - 1);
+    ctx.fillStyle = col.lo;
+    ctx.fillRect(x + 0.5, y + c - 0.5 - edge, c - 1, edge);
+    ctx.fillRect(x + c - 0.5 - edge * 0.6, y + 0.5, edge * 0.6, c - 1);
+  }
+
+  function beltPath() {
+    const { xl, xr, yb, yTop, R } = S;
+    ctx.beginPath();
+    ctx.moveTo(xl, yTop);
+    ctx.lineTo(xl, yb - R);
+    ctx.arc(xl + R, yb - R, R, Math.PI, Math.PI / 2, true);
+    ctx.lineTo(xr - R, yb);
+    ctx.arc(xr - R, yb - R, R, Math.PI / 2, 0, true);
+    ctx.lineTo(xr, yTop);
+  }
+
+  function drawBelt() {
+    const { bt } = S;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'butt';
+    beltPath(); ctx.strokeStyle = '#0f1120'; ctx.lineWidth = bt + 8; ctx.stroke();
+    beltPath(); ctx.strokeStyle = '#8a90b8'; ctx.lineWidth = bt + 2; ctx.stroke();
+    beltPath(); ctx.strokeStyle = '#353a58'; ctx.lineWidth = bt - 4; ctx.stroke();
+
+    // hareketli çıtalar ve oklar
+    const slat = bt * 0.45;
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 2;
+    for (let s = beltPhase % slat; s < S.L; s += slat) {
+      const p = pathPos(s);
+      const nx = -Math.sin(p.a), ny = Math.cos(p.a);
+      const h = bt / 2 - 3;
+      ctx.beginPath(); ctx.moveTo(p.x - nx * h, p.y - ny * h); ctx.lineTo(p.x + nx * h, p.y + ny * h); ctx.stroke();
+    }
+    const arrowStep = bt * 1.35;
+    ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+    ctx.lineWidth = Math.max(2, bt * 0.08);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (let s = (beltPhase % arrowStep) + arrowStep * 0.5; s < S.L - 4; s += arrowStep) {
+      const p = pathPos(s);
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.a);
+      const w = bt * 0.2;
+      ctx.beginPath(); ctx.moveTo(-w * 0.6, -w); ctx.lineTo(w * 0.5, 0); ctx.lineTo(-w * 0.6, w); ctx.stroke();
+      ctx.restore();
+    }
+
+    // giriş / çıkış ağızları
+    drawMouth(S.xl, S.yTop, 'GİRİŞ', '#5fcf6e');
+    drawMouth(S.xr, S.yTop, 'ÇIKIŞ', '#ff8fb8');
+  }
+
+  function drawMouth(x, y, label, color) {
+    const { bt } = S;
+    ctx.fillStyle = '#0f1120';
+    rr(ctx, x - bt / 2 - 6, y - 7, bt + 12, 12, 5); ctx.fill();
+    ctx.fillStyle = color;
+    rr(ctx, x - bt / 2 - 4, y - 5, bt + 8, 7, 3); ctx.fill();
+    ctx.font = `800 ${Math.round(bt * 0.24)}px ${FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = color;
+    ctx.fillText(label, x, y - 9);
+  }
+
+  const FONT = getComputedStyle(document.body).fontFamily;
+
+  function drawCollector(k, lookX, lookY) {
+    if (k.alpha <= 0.01) return;
+    const col = COL[k.color];
+    const scale = 1 + 0.2 * Math.sin(k.bump * Math.PI) * k.bump + (k.state === 'fly' ? 0.08 : 0);
+    const s = k.size * scale, h = s / 2;
+    const sh = k.shake > 0 ? Math.sin(time * 55) * k.shake * s * 0.1 : 0;
+    ctx.save();
+    ctx.globalAlpha = k.alpha;
+    ctx.translate(k.x + sh, k.y);
+
+    // gölge
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.ellipse(0, h * 0.95, h * 0.85, h * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+
+    // gövde
+    const rad = s * 0.27;
+    rr(ctx, -h, -h, s, s, rad);
+    ctx.fillStyle = col.c; ctx.fill();
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = col.lo;
+    ctx.fillRect(-h, h * 0.45, s, h);
+    ctx.fillStyle = col.hi;
+    ctx.globalAlpha *= 0.55;
+    rr(ctx, -h * 0.72, -h * 0.9, s * 0.72, h * 0.28, h * 0.14); ctx.fill();
+    ctx.restore();
+    rr(ctx, -h, -h, s, s, rad);
+    ctx.lineWidth = Math.max(1.5, s * 0.05);
+    ctx.strokeStyle = col.edge;
+    ctx.stroke();
+
+    // gözler
+    const ex = h * 0.38, ey = -h * 0.3, er = s * 0.13;
+    if (k.full) {
+      ctx.strokeStyle = '#2d2a3e';
+      ctx.lineWidth = Math.max(1.5, s * 0.06);
+      ctx.lineCap = 'round';
+      for (const sx of [-ex, ex]) { ctx.beginPath(); ctx.arc(sx, ey + er * 0.4, er * 0.7, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke(); }
+    } else {
+      for (const sx of [-ex, ex]) {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.ellipse(sx, ey, er, er * 1.1, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#2d2a3e';
+        ctx.beginPath(); ctx.arc(sx + lookX * er * 0.4, ey + lookY * er * 0.4, er * 0.55, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(sx + lookX * er * 0.4 - er * 0.18, ey + lookY * er * 0.4 - er * 0.2, er * 0.18, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // yanaklar
+    ctx.fillStyle = k.color === 'P' || k.color === 'R' ? 'rgba(255,255,255,0.35)' : 'rgba(255,120,160,0.45)';
+    for (const sx of [-h * 0.66, h * 0.66]) { ctx.beginPath(); ctx.ellipse(sx, -h * 0.02, s * 0.08, s * 0.05, 0, 0, Math.PI * 2); ctx.fill(); }
+
+    // kapasite sayısı
+    const num = String(k.shown);
+    ctx.font = `900 ${Math.round(s * (num.length > 1 ? 0.4 : 0.44))}px ${FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const ny = h * 0.38;
+    if (col.light) {
+      ctx.fillStyle = '#2d2a3e';
+      ctx.fillText(num, 0, ny);
+    } else {
+      ctx.lineWidth = Math.max(2, s * 0.08);
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+      ctx.lineJoin = 'round';
+      ctx.strokeText(num, 0, ny);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(num, 0, ny);
+    }
+
+    if (k.state === 'stuck') {
+      ctx.fillStyle = '#ff5a6a';
+      ctx.beginPath(); ctx.arc(h * 0.9, -h * 0.9, s * 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = `900 ${Math.round(s * 0.28)}px ${FONT}`;
+      ctx.fillText('!', h * 0.9, -h * 0.88);
+    }
+    ctx.restore();
+  }
+
+  function drawSlots() {
+    const { slotS } = S;
+    const used = slots.filter(Boolean).length;
+    const danger = used >= SLOT_COUNT ? 1 : used === SLOT_COUNT - 1 ? 0.5 : 0;
+    ctx.font = `800 11px ${FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = danger ? '#ffb3bd' : 'rgba(182,187,216,0.8)';
+    ctx.fillText(`BEKLEME YUVASI  ${used}/${SLOT_COUNT}`, S.cx, S.slotsLabelY);
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const p = slotPos(i);
+      rr(ctx, p.x - slotS / 2, p.y - slotS / 2, slotS, slotS, slotS * 0.24);
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.fill();
+      ctx.setLineDash([5, 4]);
+      ctx.lineWidth = 2;
+      const pulse = danger ? 0.5 + 0.5 * Math.sin(time * (danger === 1 ? 10 : 5)) : 0;
+      ctx.strokeStyle = danger ? `rgba(255,90,106,${0.45 + 0.4 * pulse})` : 'rgba(255,255,255,0.18)';
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  function drawTray() {
+    ctx.font = `800 11px ${FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const hint = !dispatched && lvlIdx === 0 && phase === 'play';
+    ctx.fillStyle = hint ? '#ffd84a' : 'rgba(182,187,216,0.8)';
+    ctx.fillText(hint ? 'BİR TOPLAYICIYA DOKUN!' : 'TOPLAYICILAR', S.cx, S.trayLabelY);
+    const { trayS } = S;
+    for (let i = 0; i < LANE_COUNT; i++) {
+      const x = laneX(i);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      rr(ctx, x - trayS * 0.62, S.trayY - trayS * 0.62, trayS * 1.24, trayS * 2.74, trayS * 0.3);
+      ctx.fill();
+      const l = lanes[i];
+      for (let j = Math.min(2, l.length - 1); j >= 0; j--) {
+        const k = l[j];
+        if (k.state === 'lane') drawCollector(k, 0, -1);
+      }
+      if (l.length > 3) {
+        ctx.fillStyle = 'rgba(182,187,216,0.75)';
+        ctx.font = `800 12px ${FONT}`;
+        ctx.fillText(`+${l.length - 3} daha`, x, S.trayY + trayS * 1.88);
+      }
+    }
+  }
+
+  function drawParticles() {
+    const c = S.c;
+    const edge = Math.max(1.5, c * 0.2);
+    // emme ışını
+    ctx.lineCap = 'round';
+    for (const p of particles) {
+      if (p.t < 0 || p.t > 0.7) continue;
+      const from = cellCenter(p.r, p.c);
+      ctx.globalAlpha = 0.28 * (1 - p.t / 0.7);
+      ctx.strokeStyle = COL[p.k.color].hi;
+      ctx.lineWidth = c * 0.7 * (1 - p.t);
+      ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(p.k.x, p.k.y); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    for (const p of particles) {
+      const from = cellCenter(p.r, p.c);
+      const col = COL[p.k.color];
+      if (p.t < 0) {
+        // sırasını bekleyen blok hafifçe titrer
+        const j = Math.sin(time * 60 + p.r) * c * 0.05;
+        drawCube(from.x - c / 2 + j, from.y - c / 2, c, col, edge);
+        continue;
+      }
+      const e = easeIn(p.t);
+      const x = lerp(from.x, p.k.x, e), y = lerp(from.y, p.k.y, e);
+      const size = c * (1 - 0.78 * e);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(e * Math.PI * 1.2);
+      drawCube(-size / 2, -size / 2, size, col, Math.max(1, size * 0.2));
+      ctx.restore();
+    }
+  }
+
+  function drawSparkles() {
+    for (const s of sparkles) {
+      const a = 1 - s.t / s.life;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = COL[s.color] ? COL[s.color].hi : s.color;
+      const r = s.size * (0.6 + a * 0.6);
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(s.t * 8);
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const rad = i % 2 ? r * 0.4 : r;
+        const ang = (Math.PI / 4) * i;
+        ctx.lineTo(Math.cos(ang) * rad, Math.sin(ang) * rad);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHint() {
+    if (dispatched || lvlIdx !== 0 || phase !== 'play') return;
+    const k = lanes[0][0];
+    if (!k) return;
+    const bob = Math.sin(time * 6) * 6;
+    ctx.font = `${Math.round(S.trayS * 0.5)}px ${FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('👆', k.x + S.trayS * 0.35, k.y + S.trayS * 0.55 + bob);
+  }
+
+  function render() {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    drawBackground();
+    drawBoard();
+    drawBelt();
+    drawSlots();
+    drawTray();
+
+    const bcx = S.boardX + S.bs / 2, bcy = S.boardY + S.bs / 2;
+    const look = k => {
+      const dx = bcx - k.x, dy = bcy - k.y, m = Math.hypot(dx, dy) || 1;
+      return [dx / m, dy / m];
+    };
+    for (const k of all) if (k.state === 'slot') drawCollector(k, 0, -1);
+    drawParticles();
+    const riders = all.filter(k => k.state === 'belt' || k.state === 'pending' || k.state === 'stuck');
+    riders.sort((a, b) => (a.full - b.full));
+    for (const k of riders) drawCollector(k, ...look(k));
+    for (const k of all) if (k.state === 'fly' || k.state === 'leaving') drawCollector(k, ...look(k));
+    drawSparkles();
+    drawHint();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Konfeti
+  // ---------------------------------------------------------------------------
+  const CONFETTI_COLORS = ['#ff8fb8', '#ffd84a', '#5fcf6e', '#6ec8ff', '#b48cff', '#ff9a3c', '#ffffff'];
+  function launchConfetti() {
+    const cx = S.boardX + S.bs / 2, cy = S.boardY + S.bs / 2;
+    for (let i = 0; i < 170; i++) {
+      confetti.push({
+        x: cx + rand(-30, 30), y: cy + rand(-20, 20),
+        vx: rand(-560, 560), vy: rand(-1050, -350), g: rand(750, 1050),
+        rot: rand(0, 6.28), vr: rand(-12, 12), w: rand(6, 11), h: rand(9, 16),
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length], round: Math.random() < 0.25, t: 0, sway: rand(0, 6.28),
+      });
+    }
+    for (let i = 0; i < 90; i++) {
+      confetti.push({
+        x: rand(0, W), y: rand(-H * 0.6, -10), vx: rand(-40, 40), vy: rand(80, 220), g: 60,
+        rot: rand(0, 6.28), vr: rand(-8, 8), w: rand(6, 10), h: rand(8, 14),
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length], round: Math.random() < 0.3, t: 0, sway: rand(0, 6.28),
+      });
+    }
+  }
+
+  let fxDirty = false;
+  function renderFx(dt) {
+    if (!confetti.length && !fxDirty) return;
+    fx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    fx.clearRect(0, 0, W, H);
+    fxDirty = confetti.length > 0;
+    for (const p of confetti) {
+      p.t += dt;
+      p.vx *= Math.pow(0.35, dt);
+      p.vy = Math.min(p.vy + p.g * dt, 420);
+      p.x += (p.vx + Math.sin(p.t * 5 + p.sway) * 40) * dt;
+      p.y += p.vy * dt;
+      p.rot += p.vr * dt;
+      fx.save();
+      fx.translate(p.x, p.y);
+      fx.rotate(p.rot);
+      fx.scale(Math.cos(p.t * 7 + p.sway), 1);
+      fx.fillStyle = p.color;
+      if (p.round) { fx.beginPath(); fx.arc(0, 0, p.w / 2, 0, Math.PI * 2); fx.fill(); }
+      else fx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      fx.restore();
+    }
+    confetti = confetti.filter(p => p.y < H + 30 && p.t < 7);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Döngü
+  // ---------------------------------------------------------------------------
+  let lastT = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
+    update(dt);
+    render();
+    renderFx(dt);
+    requestAnimationFrame(frame);
+  }
+
+  resize();
+  loadLevel(lvlIdx);
+  requestAnimationFrame(frame);
+
+  // Test/hata ayıklama kancası
+  window.__pixelCollector = { LEVELS, parseArt, buildQueue, solvable, makeQueue, loadLevel, state: () => ({ phase, remaining, lanes, slots, all, grid }) };
+})();
+</script>
+</body>
+</html>
