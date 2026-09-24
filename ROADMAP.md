@@ -41,12 +41,17 @@ Tek dosyada kalarak kural eksiklerini ve bilinen hataları kapatmak.
 - [ ] Gösterge gösterme
 - [ ] Yerel kural seçenekleri (masa açarken)
 
-**101**
+**101** (temel düzen: katlamalı, cezasız; 12-13-1 serisi yok)
+- [x] Çiftten açma: en az 5 çift, okey tek taşla eşlenebilir. Çiftten açan seri açamaz, seriden açan çift açamaz
+- [x] Katlama: okeyle bitme 2x, elden bitme (aynı turda açıp bitirme) 2x, ikisi birden 4x
+- [x] Ceza yazımı: açmayan 202, çiftten açanın kalan taşları 2 kat, elde kalan okey 101
+- [x] Deste biterse herkes kalan cezasını yazar
+- [x] Dikey ekranda açılmış perler üst üste binmeden dizilir
+- [ ] Masa ayarı olarak modlar: katlamalı, katlamasız, cezalı katlamalı, cezalı katlamasız (katlama kodda `rules.katlama` olarak hazır)
+- [ ] Cezalı modlar için: okey atma cezası, işlek taş atma cezası
 - [ ] Açılmış perlere taş işleme (kendi ve rakip perleri)
 - [ ] Perleri elle seçerek açma (şu an motor en iyisini seçiyor)
-- [ ] Çiftten açma (5 çift)
 - [ ] Yandan alınan taşla o turda açma zorunluluğu
-- [ ] Ceza puanları (okey atma, işlek taş atma)
 
 **Kural altyapısı**
 - [x] `RULESETS`: her oyunun global varsayılanı ve masa ayarları tek yerde tanımlı
@@ -166,9 +171,9 @@ Amaç: oyunun kendi masrafını çıkarması, kazancın oyuna geri yatırılmas�
 | Sunucu | Düşük bütçeli tek sunucuyla başla, kullanım arttıkça bütçe ayır |
 | Giriş | Facebook, e-posta ve kendi kayıt sistemimiz |
 | Gelir | Reklam + jeton satışı. Gelir oyuna yeniden yatırılır |
+| 101 | Temel düzen, en yaygın varyant: 12-13-1 yok, çiftten açma en az 5 çift, okeyle bitme 2x, elden bitme 2x. Katlamalı/katlamasız ve cezalı modlar sonra masa ayarı olacak |
 
 ## Karar bekleyen konular
 
-1. **Okey ve 101 yerel kuralları:** hangi farklar masa ayarı olarak sunulacak? (12-13-1, çiftten açma, okeyle bitirme puanı vb.)
-2. **Jeton fiyatları ve paketleri:** mağaza bölge fiyatlandırmasına göre sonra belirlenecek.
-3. **Hukuki görüş:** jeton satışı açılmadan önce alınmalı.
+1. **Jeton fiyatları ve paketleri:** mağaza bölge fiyatlandırmasına göre sonra belirlenecek.
+2. **Hukuki görüş:** jeton satışı açılmadan önce alınmalı.
