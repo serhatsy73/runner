@@ -18,3 +18,7 @@ Dosya önizleme ekranları (ör. iPhone Dosyalar uygulamasındaki hızlı bakı�
 - Bantta aynı anda en fazla 5 toplayıcı bulunabilir.
 
 Bölümler: Mantar (16×16), Çilek (16×16), Kedi (20×20). Toplayıcı sırası her bölüm için tohumlu üretilir ve bir çözücüyle çözülebilir olduğu doğrulanır; yeniden denemede aynı bulmaca gelir.
+
+## Yol haritası
+
+Mobil yayına ve para kazanmaya kadar olan plan `ROADMAP.md` içinde.
