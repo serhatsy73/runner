@@ -549,6 +549,32 @@ function pairsWin(tiles, okey) {
   return singles <= j && (j - singles) % 2 === 0;
 }
 
+/* Istaka yerleşimi: 2 sıra × 13 yuva. Perler (hard) asla iki sıraya bölünmez.
+   Yer varsa gruplar arasına boşluk konur, yoksa bitişik dizilir. Artanlar (soft) bölünebilir. */
+function packRack(hard, soft, cols = 13) {
+  // policy: 'all' her grup arasında boşluk, 'hard' sadece perlerin çevresinde, 'none' hiç boşluk yok
+  const tryPack = policy => {
+    const rows = [[], []], last = [null, null];
+    const gap = (r, h) => rows[r].length && (policy === 'all' || (policy === 'hard' && (h || last[r]))) ? 1 : 0;
+    const room = (r, h) => cols - rows[r].length - gap(r, h);
+    const add = (r, ids, h) => { if (gap(r, h)) rows[r].push(null); rows[r].push(...ids); last[r] = h; };
+    for (const g of [...hard].sort((a, b) => b.length - a.length)) {
+      const r = [0, 1].find(k => room(k, true) >= g.length);
+      if (r == null) return null;
+      add(r, g, true);
+    }
+    for (const g of soft) {
+      let left = g;
+      const r = [0, 1].find(k => room(k, false) >= left.length);
+      if (r != null) { add(r, left, false); continue; }
+      for (const k of [0, 1]) { const n = Math.min(room(k, false), left.length); if (n > 0) { add(k, left.slice(0, n), false); left = left.slice(n); } }
+      if (left.length) return null;
+    }
+    return rows.flatMap(row => [...row, ...Array(cols - row.length).fill(null)]);
+  };
+  return tryPack('all') || tryPack('hard') || tryPack('none');
+}
+
 // ---------- Poker el değerlendirme ----------
 const HAND_NAMES = ['Yüksek kart', 'Bir çift', 'İki çift', 'Üçlü', 'Kent', 'Renk', 'Ful', 'Kare', 'Sıralı renk'];
 function eval5(cs) {
@@ -1020,30 +1046,20 @@ class OkeyGame extends BaseGame {
     return 0;
   }
   arrange(mode) {
-    const tiles = this.tilesOf(0), okey = this.okey, groups = [];
-    let rest = tiles.slice();
+    const tiles = this.tilesOf(0), okey = this.okey, hard = [];
+    let rest = tiles;
     if (mode === 'seri') {
       const r = solveMelds(tiles, okey, true);
-      if (r) { r.melds.forEach(m => groups.push(m)); const used = new Set(r.melds.flat()); rest = tiles.filter(t => !used.has(t.id)); }
+      if (r) { hard.push(...r.melds); const used = new Set(r.melds.flat()); rest = tiles.filter(t => !used.has(t.id)); }
     } else {
-      const by = {}; const jok = [];
-      for (const t of tiles) { if (this.isOkey(t)) jok.push(t.id); else (by[tileKey(t, okey)] || (by[tileKey(t, okey)] = [])).push(t.id); }
-      const singles = [];
-      Object.keys(by).sort((a, b) => a - b).forEach(k => { const ids = by[k]; if (ids.length >= 2) groups.push(ids.slice(0, 2)); else singles.push(ids[0]); });
-      rest = singles.map(id => this.tileById[id]);
-      if (jok.length) rest.push(...jok.map(id => this.tileById[id]));
+      const by = {}; rest = [];
+      for (const t of tiles) { if (this.isOkey(t)) rest.push(t); else (by[tileKey(t, okey)] || (by[tileKey(t, okey)] = [])).push(t); }
+      Object.keys(by).sort((a, b) => a - b).forEach(k => { const ts = by[k]; if (ts.length >= 2) hard.push(ts.slice(0, 2).map(t => t.id)); rest.push(...ts.slice(2)); if (ts.length < 2) rest.push(ts[0]); });
     }
-    rest.sort((a, b) => (this.isOkey(a) ? 99 : effTile(a, okey).c) - (this.isOkey(b) ? 99 : effTile(b, okey).c) || effTile(a, okey).n - effTile(b, okey).n);
-    const rack = new Array(26).fill(null); let pos = 0;
-    const put = ids => {
-      if ((pos % 13) + ids.length > 13) pos = Math.ceil(pos / 13) * 13;
-      if (pos + ids.length > 26) return false;
-      ids.forEach(id => rack[pos++] = id); if (pos % 13) pos++; return true;
-    };
-    let ok = groups.every(put);
-    for (const t of rest) { if (pos >= 26) { ok = false; break; } rack[pos++] = t.id; }
-    if (!ok) { rack.fill(null); tiles.forEach((t, i) => rack[i] = t.id); }
-    this.rack = rack;
+    // Artan taşlar renklerine göre küçük gruplar (okeyler en sonda); bunlar gerekirse iki sıraya bölünebilir
+    const colorOf = t => this.isOkey(t) ? 4 : effTile(t, okey).c;
+    const soft = [0, 1, 2, 3, 4].map(c => rest.filter(t => colorOf(t) === c).sort((a, b) => effTile(a, okey).n - effTile(b, okey).n).map(t => t.id)).filter(g => g.length);
+    this.rack = packRack(hard, soft) || [...tiles.map(t => t.id), ...Array(26 - tiles.length).fill(null)];
   }
 
   layoutGame(L) {
@@ -1821,5 +1837,5 @@ app.change(LobbyState);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { faceCache.clear(); LobbyState.bg = null; if (TableState.bg) TableState.bg = null; });
 requestAnimationFrame(frame);
 
-window.KIRAATHANE = { app, bus, net, dispatchAction, solveMelds, bestHand };
+window.KIRAATHANE = { app, bus, net, dispatchAction, solveMelds, bestHand, packRack };
 </script>

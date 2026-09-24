@@ -24,6 +24,8 @@ HTML5 Canvas ve saf JavaScript ile yazılmış kıraathane oyun platformu protot
 - Istakadaki taş dizilimi istemci tarafındadır, sunucuya gönderilmez.
 - Masada sağ üstteki **Olaylar** düğmesi gönderilen ve reddedilen hamleleri canlı gösterir.
 
+Plan ve açık işler için `ROADMAP.md` dosyasına bak.
+
 ## Eski prototipler
 
 - `eski/supurucu-tim.html`: Süpürücü Tim, zombi süpürme shooter-runner.
