@@ -26,11 +26,7 @@
     G.on('win', showWin);
     G.on('lose', showLose);
     G.on('capture', () => UI.updatePower());
-    G.on('drain', () => {
-      if (Save.data.seen.drain) return;
-      Save.markSeen('drain');
-      G.showBanner('Kulen bütün askerini gönderiyor', 'Durdurmak için kuleye dokun', 4.5);
-    });
+
   };
 
   // ---------- Kilitler ----------
@@ -162,11 +158,11 @@
   // ---------- Kartlar ----------
   const HELP = `
     <ul class="steps">
-      <li><b>1</b><span>Mavi kulenden bir kuleye <strong>sürükle</strong>. Bıraktığında askerler yola çıkar.</span></li>
+      <li><b>1</b><span>Mavi kulenden bir kuleye <strong>sürükle</strong>. Yol boyunca sürekli asker akar; kulen askerini harcamaz, <strong>büyümeye devam eder</strong>.</span></li>
       <li><b>2</b><span>Sürüklerken diğer mavi kulelerinin <strong>üstünden geç</strong>: hepsi birden saldırır.</span></li>
-      <li><b>3</b><span>Bir kulenin askerleri 0'a inince kule <strong>senin</strong> olur. 20 ve 40 askerde kule büyür, daha çok yol açar.</span></li>
+      <li><b>3</b><span>Düşman askeri vurdukça kulenin sayısı azalır, 0'a inince kule <strong>senin</strong> olur. 20 ve 40 askerde kule büyür: daha hızlı akıtır, daha çok yol açar.</span></li>
       <li><b>4</b><span>Kendi kulene <strong>dokun</strong>: ondan çıkan yollar durur. Tek bir yolu kesmek için çizginin üstünden <strong>kaydır</strong>.</span></li>
-      <li><b>5</b><span>60 askerin üstünde kule yavaş üretir. 3 dakikadan sonra <strong>Son Hücum</strong> başlar, herkes hızlanır.</span></li>
+      <li><b>5</b><span>Saldırı altındaki kuleye <strong>takviye giremez</strong>. 3. dakikada <strong>Son Hücum</strong> başlar; 4. dakikada süre dolar ve en güçlü taraf kazanır.</span></li>
     </ul>`;
 
   UI.showHelp = first => {
@@ -218,7 +214,7 @@
           <li class="ok">Kazan</li>
           <li class="${r.noLoss ? 'ok' : ''}">Hiç kule kaybetme</li>
           <li class="${r.fast ? 'ok' : ''}">${KS.fmtTime(r.par)} altında bitir&nbsp;<small>(${KS.fmtTime(r.time)})</small></li>
-        </ul>${note}`,
+        </ul>${r.timeout ? '<p>Süre dolduğunda en güçlü taraf sendin!</p>' : ''}${note}`,
       art: { team: PLAYER, mood: 'happy' },
       buttons,
     });
@@ -238,7 +234,9 @@
     buttons.push({ label: 'Harita', ghost: true, onClick: UI.showMap });
     show({
       title: 'Defeat!',
-      body: '<p>Bütün kulelerin düştü. Önce zayıf gri kuleleri toplayıp güçlenmeyi dene.</p>',
+      body: r.timeout
+        ? '<p>Süre doldu ve rakip senden güçlüydü. Birden fazla kuleyle aynı hedefe yüklen!</p>'
+        : '<p>Bütün kulelerin düştü. Önce zayıf gri kuleleri toplayıp güçlenmeyi dene.</p>',
       art: { team: foe ? foe.team : RED, mood: 'sad' },
       buttons,
     });
@@ -305,9 +303,7 @@
   }
 
   UI.updatePower = () => {
-    const sum = [0, 0, 0, 0];
-    for (const t of G.towers) sum[t.team] += t.count + 2;
-    for (const s of G.soldiers) sum[s.team] += 1;
+    const sum = G.power();   // süre dolunca kazananı belirleyen hesapla aynı
     const label = [];
     for (const i of el.power.children) {
       const team = +i.dataset.team;

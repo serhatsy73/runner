@@ -100,6 +100,7 @@
     drawParticles();
     drawTrail();
     if (d && d.type === 'link') drawFingerLabel(d);
+    if (G.surge && G.state === 'play' && !G.banner) drawCountdown();
     drawBanner();
   };
 
@@ -264,6 +265,25 @@
     ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.stroke();
     ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(label, lx, ly + 1);
+    ctx.restore();
+  }
+
+  // Son Hücum geri sayımı: süre dolunca en güçlü taraf kazanır
+  function drawCountdown() {
+    const left = G.timeLeft(), urgent = left < 10;
+    const fs = Math.max(15, Math.round(V.baseR * .66));
+    const label = 'Son Hücum · ' + KS.fmtTime(Math.ceil(left));
+    ctx.save();
+    ctx.font = `700 ${fs}px ${FONT}`;
+    const w = ctx.measureText(label).width + fs * 1.6, h = fs * 1.8;
+    const cx = V.W / 2, cy = V.area.y - 16 + h / 2;
+    const pulse = urgent ? 1 + .06 * Math.sin(G.time * 12) : 1;
+    ctx.translate(cx, cy); ctx.scale(pulse, pulse);
+    ctx.fillStyle = urgent ? '#fde2e2' : 'rgba(255,253,247,.95)';
+    roundRect(ctx, -w / 2, -h / 2, w, h, h / 2); ctx.fill();
+    ctx.strokeStyle = urgent ? '#d9534f' : '#f6c34a'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = urgent ? '#b33a36' : INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, 0, 1);
     ctx.restore();
   }
 
@@ -437,6 +457,20 @@
 
     drawFace(t, x, y + r * .08, r);
     ctx.restore();
+
+    // kuşatma işareti: bu sırada takviye giremez
+    if (t.team !== NEUTRAL && G.besieged(t)) {
+      const sx = x + bw / 2 + r * .05, sy = top + r * .05, sr = Math.max(7, r * .27);
+      ctx.save();
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#d9534f'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.8, sr * .22);
+      ctx.beginPath();
+      ctx.moveTo(sx - sr * .5, sy - sr * .5); ctx.lineTo(sx + sr * .5, sy + sr * .5);
+      ctx.moveTo(sx + sr * .5, sy - sr * .5); ctx.lineTo(sx - sr * .5, sy + sr * .5);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // seviye noktaları (yol kapasitesi)
     if (t.team !== NEUTRAL) {

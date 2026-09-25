@@ -52,8 +52,8 @@ Kazanma oranı çok düşük olan seviye fazla zordur. Medyan süre hedef sürey
   Object.assign(V.area, { x: 21, y: 110, w: 348, h: 700 });
 
   const PROFILES = {
-    'saldırgan': { interval: 1.2, margin: 2, aggro: 6, grace: 0, firstMove: .3 },
-    'sabırlı':   { interval: 1.2, margin: 4, aggro: 1, grace: 0, firstMove: .3 },
+    'saldırgan': { interval: 1.2, aggro: 8, patience: 40, maxLanes: 3, moves: 3, focus: 8, grace: 0, firstMove: .3 },
+    'sabırlı':   { interval: 1.2, aggro: 2, patience: 25, maxLanes: 3, moves: 2, focus: 6, grace: 0, firstMove: .3 },
   };
   const STEP = 1 / 30, LIMIT = 400;   // saniye
 

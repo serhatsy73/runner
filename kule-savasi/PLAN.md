@@ -134,6 +134,14 @@ Seviye ortasında hiçbir zaman reklam çıkmaz.
 - [ ] Analitik
 - [ ] Seviye editörü (telefonda kule yerleştirip hemen deneme)
 
+## Temel kurallar (akış modeli)
+
+- **Yol açmak kuleyi boşaltmaz.** Kule üretmeye ve büyümeye devam eder; sayısı onun canı ve gücüdür (Tower War gibi).
+- **Akış gücü kulenin seviyesinden gelir** (saniyede 2 / 2,5 / 3,1 asker) ve açtığı yollar arasında **sırayla bölünür**. Tek yol tam güç, üç yol üçte birer. Birden fazla kuleyle tek hedefe yüklenmek kazandırır.
+- **Kuşatma:** son 1,2 saniyede düşman vurmuşsa kuleye takviye giremez (kırmızı işaret). Arkadan beslenen kule sonsuza kadar dayanamaz.
+- **Zıt yollar** ortada çarpışır; eşit akışlar birbirini sıfırlar.
+- **Son Hücum** (3. dakika): askerler 1,67 kat hızlı akar, geri sayım başlar. **4. dakikada süre dolar**, en güçlü taraf (üst çubuktaki güç) kazanır. Seviye hiçbir zaman 4 dakikayı geçmez.
+
 ## Seviye tasarımı kuralları (ölçümlerden çıkanlar)
 
 - **Dar geçitlerde en az iki kule karşıya ulaşabilmeli.** Tek köprü + tek kule varsa iki taraf da köprü ortasında birbirini yok eder, oyun kilitlenir (13. seviyenin ilk hali böyleydi). Menzili ya da kule konumlarını buna göre ayarla.
@@ -146,19 +154,20 @@ Seviye ortasında hiçbir zaman reklam çıkmaz.
 
 | Seviye | Kazanma (saldırgan / sabırlı) | | Seviye | Kazanma |
 |---|---|---|---|---|
-| 1–3, 5–7 | %100 | | 11–13, 15 | %92–100 |
-| 4 | %67 / %67 | | 14 | %75 / %100 |
-| 8 | %67 / %75 | | 16 | %81 / %44 |
-| 9 | %92 / %83 | | 17 | %100 / %67 |
-| 10 (boss) | %50 / %17 | | 18 | %67 / %42 |
-| | | | 19 | %83 / %58 |
-| | | | 20 (boss) | %56 / %75 |
+| 1–6, 8, 9 | %100 | | 11, 12, 17 | %100 |
+| 7 | %83 / %83 | | 13 | %75 / %58 |
+| 10 (boss) | %67 / %92 | | 14 | %92 / %83 |
+| | | | 15, 16 | %67–100 |
+| | | | 18 | %100 / %50 (çoğu süreyle biter) |
+| | | | 19 | %38 / %38 |
+| | | | 20 (boss) | %42–58 (süreyle biter) |
 
 ## Oyuncu geri bildirimleri
 
 | Geri bildirim | Sebep | Çözüm |
 |---|---|---|
 | "2. seviyeyi geçemedim, kulem 0'a düşünce asker üretmiyor" | Kule üretiyordu ama açık yollar her askeri anında gönderiyordu; sayı 0'da kalıyor ve kule savunmasız görünüyordu | Kuleye dokununca yolları durur; ilk boşalmada bir kez ipucu; rozetin altında üretim çubuğu; 1–2. seviyede rakip kişiliği kapalı, 2. seviye kolaylaştı |
+| "Asker çıkaran kulem üretmeye devam etmediği için tıkanıyorum" | Gönderilen her asker kuleden düşüyordu; yol açık kaldıkça kule 0'da kalıyordu | Temel kural değişti: yollar kuleyi boşaltmaz, kule büyümeye devam eder. Dengeyi korumak için akış yollar arasında bölünür, kuşatılan kuleye takviye giremez, 4. dakikada süre dolar |
 | "Rakibin askerleri daha hızlı gibi" | Yürüme hızı aynı (ölçüldü); ama 20'den 19'a inen kule hemen 1. seviyeye düşüp yavaş üretiyor ve seyrek gönderiyordu | Küçülme eşikleri büyümeden düşük (20'de büyür, 15'in altında küçülür; 40 / 33) |
 
 ## Geliştirme notları

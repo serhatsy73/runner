@@ -42,6 +42,11 @@
   };
   G.canLink = (a, b) => a !== b && !G.linkProblem(a, b);
 
+  G.besieged = t => t.hitAt !== undefined && G.time - t.hitAt < KS.SIEGE;
+  G.sendInterval = t => SEND[t.lvl] * (G.surge ? KS.SURGE_SEND : 1);
+  G.flowOf = t => 1 / G.sendInterval(t);   // kulenin saniyede akıttığı toplam asker
+  G.laneFlow = l => G.flowOf(l.from) / Math.max(1, G.lanes.filter(o => o.from === l.from).length);
+
   G.showBanner = (text, sub, dur) => { G.banner = { text, sub: sub || '', t0: G.time, dur: dur || 2.6 }; };
 
   // reach(t): kuleye ne kadar yakın dokunulursa sayılsın
@@ -61,7 +66,7 @@
     if (back && back.team === team) G.removeLane(back);
     const out = G.lanesFrom(from);
     if (out.length >= from.lvl) G.removeLane(out[0]);
-    const lane = { from, to, team, timer: SEND[from.lvl] * .6 };
+    const lane = { from, to, team, timer: SEND[from.lvl] * .6, born: G.time };
     G.lanes.push(lane);
     G.emit('lane', lane);
     return lane;
@@ -117,14 +122,14 @@
 
     if (playing && !G.surgeWarned && G.playTime >= SURGE_AT - 30) {
       G.surgeWarned = true;
-      G.showBanner('30 sn sonra Son Hücum!', 'Sonra herkes 2 kat hızlı üretecek');
+      G.showBanner('30 sn sonra Son Hücum!', 'Sonra askerler çok daha hızlı akacak');
     }
     if (playing && !G.surge && G.playTime >= SURGE_AT) {
       G.surge = true;
-      G.showBanner('Son Hücum!', 'Herkes 2 kat hızlı üretiyor', 3);
+      G.showBanner('Son Hücum!', '1 dakika sonra en güçlü taraf kazanır', 3.5);
       G.emit('surge');
     }
-    const prodMul = G.tempo.prod * (G.surge ? 2 : 1);
+    const prodMul = G.tempo.prod;
     for (const t of G.towers) {
       if (t.team !== NEUTRAL && t.count < CAP) {
         const rate = RATE[t.lvl] * prodMul * (t.count >= OVERPROD ? OVERPROD_RATE : 1);
@@ -133,11 +138,6 @@
       const up = lvlOf(Math.floor(t.count));
       if (up > t.lvl) { t.lvl = up; t.pop = .001; fx.sparkle(t); G.emit('levelup', t); }
       while (t.lvl > 1 && t.count < KS.LVL_DOWN[t.lvl]) t.lvl--;
-      // oyuncunun kulesi yollar yüzünden boşta kalıyorsa arayüz bir kez ipucu gösterir
-      if (playing && t.team === PLAYER && t.count < 2 && G.lanes.some(l => l.from === t)) {
-        t.drain = (t.drain || 0) + dt;
-        if (t.drain > 2) { t.drain = -1e9; G.emit('drain', t); }
-      } else if (t.drain > 0) t.drain = 0;
       if (t.pop > 0) { t.pop += dt * 2.2; if (t.pop >= 1) t.pop = 0; }
       t.shake = Math.max(0, t.shake - dt * 5);
       t.squish = Math.max(0, t.squish - dt * 5);
@@ -146,21 +146,21 @@
     // sahibi değişen kulenin yolları kalkar
     G.lanes = G.lanes.filter(l => l.from.team === l.team);
 
-    for (const l of G.lanes) {
-      l.timer += dt;
-      const iv = SEND[l.from.lvl];
-      if (l.timer < iv) continue;
-      if (l.from.count >= 1) {
-        l.from.count -= 1;
-        l.timer -= iv;
-        G.soldiers.push({
-          from: l.from, to: l.to, team: l.team,
-          p: Math.min(.45, G.towerR(l.from) * .8 / G.dist(l.from, l.to)),
-          off: (Math.random() * 2 - 1) * .55, age: Math.random() * 3, dead: false,
-        });
-      } else {
-        l.timer = iv;
-      }
+    // Kuleler sürekli asker akıtır (sayılarından düşmez); akış kulenin yolları arasında sırayla bölünür
+    for (const t of G.towers) {
+      const outs = G.lanes.filter(l => l.from === t);
+      if (!outs.length) { t.sendT = 0; continue; }
+      const iv = G.sendInterval(t);
+      t.sendT = (t.sendT || 0) + dt;
+      if (t.sendT < iv) continue;
+      t.sendT = Math.min(t.sendT - iv, iv);
+      t.rr = ((t.rr || 0) + 1) % outs.length;
+      const l = outs[t.rr];
+      G.soldiers.push({
+        from: t, to: l.to, team: l.team,
+        p: Math.min(.45, G.towerR(t) * .8 / G.dist(t, l.to)),
+        off: (Math.random() * 2 - 1) * .55, age: Math.random() * 3, dead: false,
+      });
     }
 
     const sp = V.speed * G.tempo.speed;
@@ -224,12 +224,19 @@
   function arrive(s) {
     const t = s.to;
     if (t.team === s.team) {
-      t.count += 1;
+      // kuşatma altındaki kuleye takviye giremez; yoksa arkadan beslenen kule hiç düşmez
+      if (G.besieged(t)) {
+        const pos = G.soldierPos(s);
+        fx.burst(pos.x, pos.y, '#b9bdc6', 2, .35);
+        return;
+      }
+      t.count = Math.min(CAP, t.count + 1);
       t.squish = 1;
       return;
     }
     t.count -= 1;
     t.shake = 1;
+    t.hitAt = G.time;
     const pos = G.soldierPos(s);
     fx.burst(pos.x, pos.y, KS.TEAMS[s.team].fill, 3, .45);
     G.emit('hit', { tower: t, team: s.team });
@@ -238,7 +245,7 @@
 
   function capture(t, team) {
     const prev = t.team;
-    t.team = team; t.count = 0; t.lvl = 1; t.pop = .001;
+    t.team = team; t.count = 0; t.lvl = 1; t.pop = .001; t.hitAt = undefined;
     if (prev === PLAYER) { G.lostTower = true; G.lastLost = t; }
     fx.confetti(t.x, t.y, team);
     fx.ring(t, team);
@@ -246,7 +253,30 @@
     G.emit('capture', { tower: t, team, prev });
   }
 
+  // Güç: kulelerdeki ve yoldaki askerlerin toplamı (üst çubuktaki güç dengesiyle aynı)
+  G.power = () => {
+    const sum = [0, 0, 0, 0];
+    for (const t of G.towers) sum[t.team] += t.count;
+    for (const s of G.soldiers) sum[s.team] += 1;
+    return sum;
+  };
+  G.timeLeft = () => Math.max(0, KS.FINAL_AT - G.playTime);
+
   function checkEnd(dt) {
+    if (G.playTime >= KS.FINAL_AT) {
+      // süre doldu: en güçlü taraf kazanır
+      const p = G.power();
+      const best = Math.max(p[RED], p[YELLOW]);
+      if (p[PLAYER] > best) {
+        G.state = 'won';
+        const stars = 1 + (G.lostTower ? 0 : 1);
+        G.emit('win', { level: G.levelNo, stars, time: G.playTime, par: G.cfg.par, noLoss: !G.lostTower, fast: false, timeout: true });
+      } else {
+        G.state = 'lost';
+        G.emit('lose', { level: G.levelNo, canRevive: false, timeout: true });
+      }
+      return;
+    }
     const hasEnemy = G.towers.some(t => t.team === RED || t.team === YELLOW);
     const hasPlayer = G.towers.some(t => t.team === PLAYER);
     if (hasEnemy && hasPlayer) { G.endTimer = 0; return; }

@@ -18,14 +18,20 @@ window.KS = window.KS || {};
 
   KS.CAP = 99;                    // üretimin durduğu asker sayısı
   KS.RATE = [0, 1, 1.4, 1.8];     // kule seviyesine göre saniyede üretilen asker
-  KS.SEND = [0, .5, .4, .32];     // kule seviyesine göre asker gönderme aralığı (sn)
+  // Kulenin asker gönderme aralığı (sn). Gönderilen asker kulenin sayısından DÜŞMEZ:
+  // kule üretmeye ve büyümeye devam eder, sayısı onun canı ve gücüdür (Tower War gibi).
+  // Bu akış kulenin bütün yolları arasında sırayla bölünür: tek yol tam güçle, üç yol üçte birer akar.
+  KS.SEND = [0, .5, .4, .32];
   KS.lvlOf = c => c >= 40 ? 3 : c >= 20 ? 2 : 1;
   // Küçülme eşikleri büyüme eşiklerinden düşük: 20'de büyüyen kule 15'in altına inmeden küçülmez.
   // Böylece askerini gönderen kule hemen yavaşlamaz.
   KS.LVL_DOWN = [0, 0, 15, 33];
   KS.OVERPROD = 60;               // bu sayının üstünde üretim yavaşlar (önde olanın kaçmasını frenler)
   KS.OVERPROD_RATE = .35;
-  KS.SURGE_AT = 180;              // bu saniyeden sonra "Son Hücum": herkes 2 kat üretir, kilitlenen oyunlar biter
+  KS.SURGE_AT = 180;              // bu saniyeden sonra "Son Hücum": askerler daha sık akar, kuşatmalar biter
+  KS.SURGE_SEND = .6;
+  KS.FINAL_AT = 240;              // süre dolar: en güçlü taraf kazanır (seviye hiçbir zaman 4 dakikayı geçmez)
+  KS.SIEGE = 1.2;                 // son bu kadar saniyede düşman vurduysa kule kuşatmadadır: takviye giremez             // Son Hücum'da gönderme aralığı çarpanı
   KS.RANGE_PER_LVL = .12;         // kule seviyesi başına menzil artışı
 
   // Tasarım birimi: x ekseni bu oranla küçültülür, böylece menzil ve engeller her ekranda aynı çalışır.
