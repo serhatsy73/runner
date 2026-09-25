@@ -687,7 +687,13 @@ const SEATS = () => [
    Sunucuda da aynı tanım kullanılır; masa kuralları masa oluşturulurken bir kez sabitlenir. */
 const RULESETS = {
   okey: { defaults: {}, options: [] },
-  '101': { defaults: { katlama: true }, options: [] }, // katlamalı/katlamasız, cezalı: sonraki sürümde masa ayarı
+  '101': {
+    defaults: { cezali: false, katlama: true },
+    options: [
+      { id: 'cezali', label: 'Mod', choices: [[false, 'Normal', 'Genel kurallar'], [true, 'Cezalı', 'Yandan alınan taşla açılırsa atan 10 kat, okeyi yerden alınan 101 ceza']] },
+      { id: 'katlama', label: 'Katlama', choices: [[true, 'Katlamalı', 'Okeyle ya da elden bitme 2 kat'], [false, 'Katlamasız', 'Her el tek kat']] },
+    ],
+  },
   batak: {
     defaults: { teams: false, bidding: false },
     options: [
@@ -1134,7 +1140,7 @@ class OkeyGame extends BaseGame {
     let id;
     if (a.payload && a.payload.from === 'discard') {
       const p = this.piles[(a.seat + 3) % 4]; if (!p.length) return 'Solundaki yığın boş';
-      id = p.pop();
+      id = p.pop(); this.sideTake = { seat: a.seat, tileId: id, from: (a.seat + 3) % 4 };
     } else {
       if (!this.deck.length) { this.deckEmpty(); return; }
       id = this.deck.pop();
@@ -1149,7 +1155,7 @@ class OkeyGame extends BaseGame {
     h.splice(i, 1); this.piles[a.seat].push(id);
     this.afterDiscard(a.seat);
   }
-  afterDiscard(s) { this.drawn = false; this.turn = (s + 1) % 4; }
+  afterDiscard(s) { this.drawn = false; this.sideTake = null; this.turn = (s + 1) % 4; }
   deckEmpty() { this.endRound({ title: 'Taşlar bitti', text: 'Ortada çekilecek taş kalmadı, el berabere.', rows: this.scoreRows() }); }
   checkWin(tiles) {
     if (tiles.length !== 14) return null;
@@ -1315,7 +1321,13 @@ class OkeyGame extends BaseGame {
     const glow = (x, y, w, h, label) => {
       g.save(); g.strokeStyle = `rgba(242,196,106,${0.45 + pulse * 0.45})`; g.lineWidth = 3;
       rr(g, x - w / 2, y - h / 2, w, h, 9); g.stroke();
-      if (label) { g.font = `700 11px ${F_BODY}`; g.fillStyle = '#ffe2a8'; g.textAlign = 'center'; g.fillText(label, x, y + h / 2 + 13); }
+      if (label) {
+        const warn = label.includes('ceza');
+        g.font = `700 11px ${F_BODY}`; g.textAlign = 'center';
+        const tw = g.measureText(label).width, lx = clamp(x, L.felt.x + tw / 2 + 4, L.felt.r - tw / 2 - 4), ly = y + h / 2 + 13;
+        if (warn) { rr(g, lx - tw / 2 - 6, ly - 11, tw + 12, 16, 8); g.fillStyle = '#7a1e18'; g.fill(); }
+        g.fillStyle = warn ? '#fff1ea' : '#ffe2a8'; g.fillText(label, lx, ly);
+      }
       g.restore();
     };
     // Orta deste
@@ -1335,15 +1347,17 @@ class OkeyGame extends BaseGame {
     }
     const dragging = this.drag && this.drag.moved && this.drag.from === 'rack';
     if (this.canDiscardNow() && (dragging || this.sel)) {
-      glow(L.pile[0].x, L.pile[0].y, L.tw * 1.3, L.th * 1.25, 'At');
+      glow(L.pile[0].x, L.pile[0].y, L.tw * 1.3, L.th * 1.25, this.discardLabel(dragging ? this.drag.id : this.sel));
       if (this.finishAllowed()) glow(L.ind.x, L.ind.y, L.tw * 1.3, L.th * 1.25, 'Bitir');
     }
     drawRackWood(g, L.rackX, L.rackY, L.rackW, L.rackH, L.rowH);
   }
   finishAllowed() { return true; }
+  discardLabel() { return 'At'; }
   seatInfo(s) { return `${this.hands ? this.hands[s].length : 0} taş`; }
   hudSub() {
     const ind = this.indicator; if (!ind) return '';
+    if (this.key === '101') return `${ruleLabel('101', this.rules)} · Gösterge ${ind.n} ${TILE_NAMES[ind.c]} → Okey ${this.okey.n} ${TILE_NAMES[this.okey.c]}`;
     return `Gösterge ${ind.n} ${TILE_NAMES[ind.c]} → Okey ${this.okey.n} ${TILE_NAMES[this.okey.c]} · ${this.table.name}`;
   }
   buildBar(el) {
@@ -1421,6 +1435,7 @@ class Okey101Game extends OkeyGame {
     this.melds = [[], [], [], []]; this.meldKinds = [[], [], [], []]; // 'run' | 'set' | 'pair'
     this.opened = [null, null, null, null]; // 'seri' | 'cift'
     this.openTurn = [-1, -1, -1, -1]; this.turnNo = 0; this.planCache = null;
+    this.penalties = [[], [], [], []]; this.penaltyFx = []; this.sideTake = null;
   }
   // Çift planı: aynı renk ve sayıdaki iki taş. İlk açılışta 5'e tamamlamak için okey en yüksek tek taşla eşlenir.
   pairPlan(s) {
@@ -1472,7 +1487,14 @@ class Okey101Game extends OkeyGame {
     }
     const h = this.hands[a.seat];
     melds.forEach((m, k) => { for (const id of m) h.splice(h.indexOf(id), 1); this.melds[a.seat].push(m); this.meldKinds[a.seat].push(kinds[k]); });
-    if (!was) { this.opened[a.seat] = kind; this.openTurn[a.seat] = this.turnNo; }
+    if (!was) {
+      this.opened[a.seat] = kind; this.openTurn[a.seat] = this.turnNo;
+      const st = this.sideTake;
+      if (this.rules.cezali && st && st.seat === a.seat && melds.some(m => m.includes(st.tileId))) {
+        const t = this.tileById[st.tileId];
+        if (!this.isOkey(t)) { const n = effTile(t, this.okey).n; this.addPenalty(st.from, n * 10, `Attığı ${n} ile ${this.seats[a.seat].name} açtı`); }
+      }
+    }
   }
   // ---- İşleme: yerdeki perlere taş ekleme ----
   // Seride okeyin tuttuğu taş işlenirse okey yerden alınır (7-okey-9 + 8).
@@ -1518,7 +1540,10 @@ class Okey101Game extends OkeyGame {
     const r = this.layCheck(tileId, owner, meld); if (r.error) return r.error;
     if (h.length - 1 + (r.reclaim ? 1 : 0) < 1) return 'Atacak bir taşın kalmalı';
     h.splice(h.indexOf(tileId), 1); this.melds[owner][meld] = r.ids;
-    if (r.reclaim) h.push(r.reclaim);
+    if (r.reclaim) {
+      h.push(r.reclaim);
+      if (this.rules.cezali && owner !== a.seat) this.addPenalty(owner, 101, `Okeyi ${this.seats[a.seat].name} yerden aldı`);
+    }
     this.lastLay = { seat: a.seat, tileId, owner, meld, reclaim: r.reclaim || null };
   }
   botLay(s) {
@@ -1564,8 +1589,51 @@ class Okey101Game extends OkeyGame {
   }
   finishAllowed() { return this.opened && this.opened[0] && this.hands[0].length === 1; }
   afterDiscard(s) {
-    if (this.hands[s].length === 0) { this.finishRound(s, this.piles[s][this.piles[s].length - 1]); return; }
+    const id = this.piles[s][this.piles[s].length - 1];
+    if (this.hands[s].length === 0) { this.finishRound(s, id); return; }
+    // Genel kural (tüm modlar): okey atan ve işlek taş atan 101 ceza yer. Bitiren son taş bu cezadan muaf.
+    const why = this.discardPenalty(id);
+    if (why) this.addPenalty(s, 101, why);
     this.turnNo++; super.afterDiscard(s);
+  }
+  isIslek(id) {
+    for (let o = 0; o < 4; o++) for (let i = 0; i < this.melds[o].length; i++)
+      if (this.meldKinds[o][i] !== 'pair' && !this.layCheck(id, o, i).error) return true;
+    return false;
+  }
+  discardPenalty(id) {
+    if (this.isOkey(this.tileById[id])) return 'Okey attı';
+    if (this.isIslek(id)) return 'İşlek taş attı';
+    return null;
+  }
+  addPenalty(s, points, reason) {
+    this.penalties[s].push({ points, reason });
+    this.penaltyFx.push({ s, text: `+${points} · ${reason}`, t: 0 });
+    if (s === 0) toast(`${points} ceza: ${reason.toLocaleLowerCase('tr')}`);
+  }
+  penaltySum(s) { return this.penalties[s].reduce((a, p) => a + p.points, 0); }
+  discardLabel(id) {
+    const why = id && this.discardPenalty(id);
+    return why ? `${why.split(' ')[0]} · 101 ceza` : 'At';
+  }
+  scoreRow(i, pen, win) {
+    const c = this.penaltySum(i);
+    return [this.seats[i].name, `${pen > 0 ? '+' : ''}${pen}${c ? ` (ceza ${c})` : ''} · toplam ${this.totals[i]}`, win];
+  }
+  update(dt) {
+    super.update(dt);
+    if (this.penaltyFx) this.penaltyFx = this.penaltyFx.filter(f => (f.t += dt) < 3);
+  }
+  drawOverlay(g) {
+    if (!this.penaltyFx) return;
+    const L = this.L;
+    for (const f of this.penaltyFx) {
+      const av = L.avatar[f.s], a = f.t < 2.4 ? 1 : 1 - (f.t - 2.4) / 0.6, y = av.y - L.ar - 16 - Math.min(f.t, 1) * 14;
+      g.save(); g.globalAlpha = Math.max(0, a); g.font = `700 12px ${F_BODY}`; g.textAlign = 'center';
+      const w = g.measureText(f.text).width + 14, x = clamp(av.x, L.felt.x + w / 2 + 2, L.felt.r - w / 2 - 2);
+      rr(g, x - w / 2, y - 10, w, 20, 10); g.fillStyle = '#7a1e18'; g.fill(); g.strokeStyle = '#e0574a'; g.lineWidth = 1; g.stroke();
+      g.fillStyle = '#fff1ea'; g.fillText(f.text, x, y + 4); g.restore();
+    }
   }
   // Temel düzen: açmayan 202, çiftten açanın kalanı 2 kat, elde kalan okey 101.
   remainingPenalty(i) {
@@ -1575,32 +1643,33 @@ class Okey101Game extends OkeyGame {
   }
   // Deste biterse kimse bitirmemiştir: herkes kalan cezasını yazar, katlama yok.
   deckEmpty() {
-    const pen = this.seats.map((_, i) => this.remainingPenalty(i));
+    const pen = this.seats.map((_, i) => this.remainingPenalty(i) + this.penaltySum(i));
     this.totals = this.totals.map((v, i) => v + pen[i]);
     this.lastFinish = { seat: null, mult: 1, pen };
     const best = Math.min(...pen);
     this.endRound({
       title: 'Taşlar bitti',
       text: 'Kimse bitiremedi. Herkes elinde kalan taşları ceza yazar, açmayan 202.',
-      rows: this.seats.map((p, i) => [p.name, `+${pen[i]} · toplam ${this.totals[i]}`, pen[i] === best]),
+      rows: this.seats.map((p, i) => this.scoreRow(i, pen[i], pen[i] === best)),
     });
   }
   // Katlama: okeyle bitme 2x, elden bitme (aynı turda açıp bitirme) 2x, ikisi birden 4x. Bitirenin -101'i de katlanır.
   finishRound(s, lastId) {
     const byOkey = this.isOkey(this.tileById[lastId]), elden = this.openTurn[s] === this.turnNo;
     const m = this.rules.katlama ? (byOkey ? 2 : 1) * (elden ? 2 : 1) : 1;
-    const pen = this.seats.map((_, i) => (i === s ? -101 : this.remainingPenalty(i)) * m);
+    // Cezalar (okey/işlek atma, cezalı mod cezaları) katlanmaz, olduğu gibi eklenir
+    const pen = this.seats.map((_, i) => (i === s ? -101 : this.remainingPenalty(i)) * m + this.penaltySum(i));
     this.totals = this.totals.map((v, i) => v + pen[i]);
     this.lastFinish = { seat: s, byOkey, elden, mult: m, pen };
     const how = [elden && 'elden', byOkey && 'okeyle'].filter(Boolean).join(' ve ');
     this.endRound({
       title: `${this.seats[s].name} ${how ? how + ' ' : ''}bitirdi${m > 1 ? ` · ${m} kat` : ''}`,
-      text: `Açmayan 202, çiftten açanın kalan taşları 2 kat, elde kalan okey 101 yazılır.${m > 1 ? ` Bu elde tüm puanlar ${m} katı.` : ''} Düşük puan kazanır.`,
-      rows: this.seats.map((p, i) => [p.name, `${pen[i] > 0 ? '+' : ''}${pen[i]} · toplam ${this.totals[i]}`, i === s]),
+      text: `Açmayan 202, çiftten açanın kalan taşları 2 kat, elde kalan okey 101 yazılır.${m > 1 ? ` Bu elde el puanları ${m} katı, cezalar katlanmaz.` : ''} Düşük puan kazanır.`,
+      rows: this.seats.map((p, i) => this.scoreRow(i, pen[i], i === s)),
     });
   }
   scoreRows(w) { return this.seats.map((s, i) => [s.name, `toplam ${this.totals[i]}`, i === w]); }
-  discardBias(t) { return this.isOkey(t) ? 0 : -effTile(t, this.okey).n * 0.02; }
+  discardBias(t) { return this.isOkey(t) ? 0 : -effTile(t, this.okey).n * 0.02 + (this.isIslek(t.id) ? 40 : 0); }
   botBeforeDiscard(s) {
     const was = this.opened[s];
     if (was !== 'cift') { const plan = this.openPlan(s); if (plan.melds.length && (was || plan.v >= 101)) return { type: 'OPEN_HAND', payload: { kind: 'seri' } }; }
@@ -1983,8 +2052,8 @@ const TABLES = {
     { name: 'Çınaraltı', level: 'Acemi', seated: 3 }, { name: 'Ocak Başı', level: 'Orta', seated: 2 },
     { name: 'Pencere Önü', level: 'Usta', seated: 3 }, { name: 'Tavla Köşesi', level: 'Orta', seated: 1 }] },
   '101': { title: '101 Masaları', desc: '21 taşla başla, perlerin 101 sayıyı bulunca elini aç.', list: [
-    { name: 'Emekliler Masası', level: 'Orta', seated: 3 }, { name: 'Bahçe', level: 'Acemi', seated: 2 },
-    { name: 'Arka Oda', level: 'Usta', seated: 3 }] },
+    { name: 'Emekliler Masası', seated: 3, rules: { cezali: false, katlama: true } }, { name: 'Bahçe', seated: 2, rules: { cezali: false, katlama: false } },
+    { name: 'Arka Oda', seated: 3, rules: { cezali: true, katlama: true } }, { name: 'Kış Bahçesi', seated: 1, rules: { cezali: true, katlama: false } }] },
   batak: { title: 'Batak Masaları', desc: "52'lik deste. Tekli ya da eşli, koz maça ya da ihaleli.", list: [
     { name: 'Semaver Yanı', seated: 3, rules: { teams: false, bidding: false } }, { name: 'Radyo Altı', seated: 2, rules: { teams: true, bidding: false } },
     { name: 'Kapı Önü', seated: 1, rules: { teams: false, bidding: true } }, { name: 'Ocak Başı', seated: 3, rules: { teams: true, bidding: true } }] },

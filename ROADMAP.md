@@ -47,8 +47,11 @@ Tek dosyada kalarak kural eksiklerini ve bilinen hataları kapatmak.
 - [x] Ceza yazımı: açmayan 202, çiftten açanın kalan taşları 2 kat, elde kalan okey 101
 - [x] Deste biterse herkes kalan cezasını yazar
 - [x] Dikey ekranda açılmış perler üst üste binmeden dizilir
-- [ ] Masa ayarı olarak modlar: katlamalı, katlamasız, cezalı katlamalı, cezalı katlamasız (katlama kodda `rules.katlama` olarak hazır)
-- [ ] Cezalı modlar için: okey atma cezası, işlek taş atma cezası
+- [x] Masa ayarı olarak dört mod: normal/cezalı × katlamalı/katlamasız
+- [x] Genel cezalar (tüm modlar): okey atan 101, işlek taş atan 101. Eli bitiren son taş muaf. Cezalar katlanmaz
+- [x] Cezalı mod: yandan alınan taş el açmada kullanılırsa atana taşın 10 katı ceza; okeyi başka oyuncu yerden alırsa per sahibine 101 ceza
+- [x] Atmadan önce uyarı: okey ya da işlek taş tutulunca "At" yerine kırmızı "İşlek · 101 ceza" yazar; ceza yiyen oyuncunun üstünde ceza etiketi çıkar
+- [ ] Botlar cezalı modda solundakinin açmasına yarayacak taşı atmaktan kaçınsın
 - [x] Açılmış perlere taş işleme (kendi ve rakip perleri, seri uçları ve küte eksik renk). Sadece açmış oyuncu, açtığı turdan sonra; atacak bir taş kalmalı; çiftlere işlenmez
 - [x] Okeyi yerden alma: seride okeyin tuttuğu taş işlenince; kütte eksik renklerin hepsi gerçek taşla tamamlanınca (8 sarı, 8 kırmızı, okey → 8 mavi + 8 siyah)
 - [x] Sürükleyerek işleme: taşı tutunca uyan perler yeşil, okeyi geri aldıranlar altın çerçeveyle yanar
@@ -173,7 +176,7 @@ Amaç: oyunun kendi masrafını çıkarması, kazancın oyuna geri yatırılmas�
 | Sunucu | Düşük bütçeli tek sunucuyla başla, kullanım arttıkça bütçe ayır |
 | Giriş | Facebook, e-posta ve kendi kayıt sistemimiz |
 | Gelir | Reklam + jeton satışı. Gelir oyuna yeniden yatırılır |
-| 101 | Temel düzen, en yaygın varyant: 12-13-1 yok, çiftten açma en az 5 çift, okeyle bitme 2x, elden bitme 2x. Katlamalı/katlamasız ve cezalı modlar sonra masa ayarı olacak |
+| 101 | 12-13-1 yok, çiftten açma en az 5 çift, okeyle bitme 2x, elden bitme 2x. Okey ve işlek taş atma her modda 101 ceza. Cezalı mod: yandan alınan taşla açılırsa atan 10 kat, okeyi yerden alınan 101 |
 
 ## Karar bekleyen konular
 
