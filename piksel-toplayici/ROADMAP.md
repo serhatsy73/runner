@@ -1,6 +1,6 @@
 # Piksel Toplayıcı Yol Haritası
 
-Bugünkü durum: `index.html` içinde tek dosyalık, çevrimdışı çalışan bir prototip. 3 bölüm (Mantar, Çilek, Kedi), U bant, 5'lik bekleme yuvası, konfetili bitiş, dokunma/tıklama. Bölüm sırası tohumlu üretiliyor ve bir çözücüyle çözülebilirliği doğrulanıyor.
+Bugünkü durum: `index.html` içinde tek dosyalık, çevrimdışı çalışan bir prototip. Hayvanlar Âlemi teması (15 bölüm), dört kenarı dolaşan bant, tek atışlı toplayıcılar, 5'lik bekleme yuvası, bölüm haritası, ses ve öğretici. Bölüm sırası tohumlu üretiliyor ve bir çözücüyle çözülebilirliği doğrulanıyor.
 
 Hedef: Google Play ve App Store'da yayında olan, reklam + uygulama içi satın alma ile para kazanan, en az birkaç yüz bölümlük bir hybrid-casual bulmaca oyunu.
 
@@ -68,6 +68,12 @@ Tek dosyada kalarak "tamamlanmış hissi veren" bir oyun yapmak.
 - [x] Tablo zemini orta tona çekildi; siyah bloklar koyu zeminde kayboluyordu
 
 Çıkış ölçütü: Hayvanlar Âlemi teması (15 bölüm) bitmiş; ses, öğretici, harita çalışıyor. 5 kişi hiç açıklama almadan ilk 10 bölümü oynayabiliyor.
+
+**İlk oyun testinden gelen kural değişikliği**
+- [x] Tek atış: toplayıcı bütün sırayı değil, her satır/sütunda yalnızca en öndeki bloğu çeker (oyun çok kolaydı)
+- [x] Bant tablonun dört kenarını dolaşıyor; kapı alt ortada, bekleme yuvalarının üstünde
+- [x] Tam tur atıp dolmadan dönen toplayıcı yuvaya iner; yuvaların hepsi dolunca oyun biter
+- [x] Çözücü ve bölüm üretici yeni kurallara göre güncellendi; 15 bölüm yeniden doğrulandı
 
 Durum: teknik kısım tamam, otomatik testte 15 bölümün hepsi çözülüyor. **Kalan: 5 kişilik oyun testi.**
 

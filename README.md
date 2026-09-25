@@ -18,4 +18,4 @@ HTML Canvas ile yazılmış, koşarken ateş edilen zombi süpürme oyunu protot
 
 ## Piksel Toplayıcı
 
-`piksel-toplayici/index.html`: dikey ekranlı, U şeklinde bantlı pixel art renk toplama bulmacası. Tek dosyadır, tarayıcıda açmanız yeterli. Ayrıntılar `piksel-toplayici/README.md` içinde.
+`piksel-toplayici/index.html`: dikey ekranlı, tablonun etrafında dönen bantlı pixel art renk toplama bulmacası. Tek dosyadır, tarayıcıda açmanız yeterli. Ayrıntılar `piksel-toplayici/README.md` içinde.

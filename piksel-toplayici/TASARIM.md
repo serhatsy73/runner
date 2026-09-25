@@ -5,9 +5,10 @@ Bu dosya temaların sırasını, her mekaniğin kuralını ve bölümlerin nası
 ## Temel oyun (değişmez)
 
 - Tablo en fazla 24×24 hücre. Daha büyüğü telefonda okunmaz.
-- Toplayıcı U bantta sol kenardan aşağı, alttan sağa, sağ kenardan yukarı ilerler. Geçtiği her satır ve sütunda, dışarıdan görünen ve kendi rengindeki blokları çeker.
-- **Açıkta blok:** bir satırda soldan ya da sağdan, bir sütunda alttan bakınca önünde başka blok olmayan blok. Bütün mekanik kuralları bu tanımı kullanır.
-- Kapasitesi biten toplayıcı hızlanıp çıkar. Dolmadan bant sonuna varan toplayıcı 5'lik bekleme yuvasına düşer. Yuva doluyken biri daha düşerse bant tıkanır ve bölüm kaybedilir.
+- Bant tablonun dört kenarını dolaşır. Kapı (giriş ve çıkış) alt ortada, bekleme yuvalarının hemen üstündedir. Toplayıcı kapıdan sağa çıkar, sağ kenardan yukarı, üstten sola, sol kenardan aşağı gider ve tam turla kapıya döner.
+- **Tek atış:** toplayıcı geçtiği her satır ve sütunda yalnızca en öndeki bloğa bakar. Rengi tutarsa o tek bloğu çeker, tutmazsa hiçbir şey almaz. Arkadaki bloklar öndeki gidene kadar korunur.
+- **Açıkta blok:** bir satırda soldan ya da sağdan, bir sütunda alttan ya da üstten bakınca önünde başka blok olmayan blok. Bütün mekanik kuralları bu tanımı kullanır.
+- Kapasitesi biten toplayıcı hızlanıp kapıdan çıkar. Tam turu bitirip dolmadan kapıya dönen toplayıcı 5'lik bekleme yuvasına iner. Yuvaların hepsi dolunca bölüm kaybedilir.
 - Bir bölümdeki toplayıcıların kapasiteleri toplamı, o renkteki blok sayısına eşittir.
 
 ## Bölüm yapısı

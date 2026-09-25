@@ -10,11 +10,11 @@ Dosya önizleme ekranları (ör. iPhone Dosyalar uygulamasındaki hızlı bakı�
 
 ## Oynanış
 
-- En alttaki üç sütunda sıralanan renkli toplayıcılardan en öndekine dokun. Toplayıcı, tablonun solundan başlayıp altından geçerek sağına uzanan U şeklindeki banda girer.
-- Bantta ilerlerken tablonun dışarıdan görünen, kendi rengindeki bloklarını içine çeker. Üzerindeki sayı kalan kapasitesidir.
-- Kapasitesi 0'a inen toplayıcı hızlanıp sahneden ayrılır. Dolmadan bant sonuna varan toplayıcı 5'lik bekleme yuvasına geçer; oradan dokunarak yeniden gönderebilirsin.
+- En alttaki üç sütunda sıralanan renkli toplayıcılardan en öndekine dokun. Toplayıcı, tablonun dört kenarını dolaşan bandın alt ortasındaki kapıdan girer ve bir tam tur atar.
+- Bantta ilerlerken geçtiği her satır ve sütunun yalnızca en öndeki bloğuna bakar; rengi tutarsa o tek bloğu içine çeker. Üzerindeki sayı kalan kapasitesidir.
+- Kapasitesi 0'a inen toplayıcı hızlanıp kapıdan ayrılır. Tam turu bitirip dolmadan kapıya dönen toplayıcı 5'lik bekleme yuvasına iner; oradan dokunarak yeniden gönderebilirsin.
 - Dıştaki bloklar temizlendikçe içteki katmanlar açığa çıkar.
-- Tüm bloklar toplanınca "Level Completed!" ekranı konfetiyle açılır. Bekleme yuvaları doluyken bir toplayıcı daha banttan dönerse bant tıkanır ve "Game Over" olur.
+- Tüm bloklar toplanınca "Level Completed!" ekranı konfetiyle açılır. Bekleme yuvalarının hepsi dolunca "Game Over" olur.
 - Bantta aynı anda en fazla 5 toplayıcı bulunabilir.
 
 İlk tema **Hayvanlar Âlemi** (15 bölüm, 12×12'den 20×20'ye). Açılışta bölüm haritası gelir; ilerleme tarayıcıda saklanır. İlk 3 bölümde öğretici ipuçları var. Ayarlardan ses, müzik ve titreşim kapatılabilir. Kaybedince bölüm başına bir kez "+1 yuva ile devam et" hakkı var.
