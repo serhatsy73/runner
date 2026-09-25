@@ -1,189 +1,149 @@
 # Kıraathane Yol Haritası
 
-Bugünkü durum: `index.html` içinde tek dosyalık, çevrimdışı çalışan bir prototip. Dört oyun (Okey, 101, Batak, Poker), 3 bot, sürükle-bırak, `dispatchAction` üzerinden hamle akışı.
+**Nerdeyiz:** `index.html` içinde tek dosyalık, çevrimdışı çalışan bir prototip. Okey, 101, Batak ve Poker kurallarıyla oynanıyor, boş koltuklarda botlar var, hamle süresi sayacı çalışıyor. Kuralların tamamı [KURALLAR.md](KURALLAR.md) dosyasında.
 
-Hedef: gerçek oyuncuların online oynadığı, kuralları eksiksiz, hilesi zor ve telefonda akıcı çalışan bir kıraathane.
+**Hedef:** Gerçek oyuncuların telefondan online oynadığı, kuralları eksiksiz, hilesi zor, masrafını reklam ve jeton satışıyla çıkaran bir kıraathane.
 
 ## Değişmeyecek ilkeler
 
 1. **Sunucu tek otoritedir.** İstemci yalnızca hamle önerir. Oyun durumunu sadece `applyAction()` değiştirir.
 2. **Oyun motorunda DOM kullanılmaz.** Kurallar, çözücüler ve botlar tarayıcıda da Node.js'te de aynı kodla çalışır.
 3. **Gizli bilgi istemciye gitmez.** Rakip taşları, kartları ve deste sırası sunucuda kalır.
-4. **Her kuralın testi vardır.** Yazılı kural listesi ve ona karşılık gelen test birlikte yürür.
-5. **Gerçek para yok.** Jeton satın alınabilir ama paraya çevrilemez, oyuncular arasında transfer edilemez, ödül olarak para ya da para değerinde bir şey dağıtılmaz. Bu çizgi hem hukuki hem de mağaza politikası sınırıdır (bkz. Faz 3).
-6. **Önce global kural, sonra masa ayarı.** Her oyunun tek bir varsayılan kural seti vardır. Farklı varyantlar masa açarken seçilen ayarlardır, ayrı kod dalları değil.
+4. **Her kuralın yazılı hali ve testi vardır.** Kural önce KURALLAR.md'de, sonra kodda ve testte değişir.
+5. **Gerçek para yok.** Jeton satın alınabilir ama paraya çevrilemez, oyuncular arasında transfer edilemez.
+6. **Önce global kural, sonra masa ayarı.** Varyantlar ayrı kod dalları değil, masa açarken seçilen ayarlardır.
 
 ## "Kusursuz"un ölçütleri
 
-Her faz aşağıdaki kapılardan kendine düşenleri geçmeden kapanmaz.
-
 | Alan | Ölçüt |
 |---|---|
-| Kural doğruluğu | Yazılı kural listesindeki her madde için en az bir test |
-| Kararlılık | 10.000 bot-bot simülasyon elinde 0 hata, 0 reddedilen bot hamlesi |
+| Kural doğruluğu | KURALLAR.md'deki her madde için en az bir otomatik test |
+| Kararlılık | 10.000 bot-bot simülasyon elinde 0 hata, 0 reddedilen bot hamlesi, 0 kilitlenen masa |
 | Bütünlük | Her an 106 taş / 52 kart korunur, masadaki toplam çip korunur |
 | Performans | Orta seviye Android telefonda 60 FPS, ilk açılış 2 saniyenin altında |
 | Güvenlik | İstemciye giden hiçbir mesajda rakibin gizli bilgisi yok |
-| Ağ | Bağlantı kopup 30 saniye içinde dönen oyuncu masaya kaldığı yerden döner |
-| Erişilebilirlik | Tüm oyunlar klavyeyle oynanabilir, metinler okunabilir kontrastta |
+| Ağ | Bağlantısı kopup 30 saniye içinde dönen oyuncu kaldığı yerden devam eder |
 
-## Faz 0: Prototipi sağlamlaştır
+## Tamamlanan: Faz 0 (prototip)
 
-Tek dosyada kalarak kural eksiklerini ve bilinen hataları kapatmak.
+- Lobi, masa listesi, "Masanı kur" ile masa ayarları (Batak, 101, Poker)
+- Okey: dizme, bitiş denetimi, 20'den geriye puanlama, oyun sonu
+- 101: seri ve çift açma, işleme, okeyi yerden alma, yandan taş zorunluluğu, katlamalı/katlamasız, cezalı mod, genel cezalar ve ödüller
+- Batak: tekli/eşli, koz maça/ihaleli, 3-5-7 el
+- Poker: kör ve başlangıç çipi ayarları, yan pot
+- Hamle süresi, otomatik hamle, "uzakta" durumu
+- Botlar dört oyunda da kurallara uyarak oynuyor; tarayıcıda senaryo testleri ve bot simülasyonları
 
-**Hatalar**
-- [x] 101'de "Seri diz" düğmesi eli bozmadan geri döküyordu (22 taş 26 yuvaya boşluklarla sığmayınca). Yerleşim yeniden yazıldı. 1.600 rastgele elde test edildi.
-- [ ] 101 için geniş ıstaka (2×15). 22 taşlık elde perlerin %22'si şu an boşluksuz diziliyor.
+## Sıradaki aşamalar
 
-**Okey**
-- [ ] 12-13-1 serisi
-- [x] Puanlama: herkes 20 ile başlar. Düz bitişte bitiren 20'de kalır, diğerleri 2 düşer. Okeyle ya da çiftten bitiş 2 kat (4), ikisi birden 4 kat (8). Biri 0'a inince oyun biter, yeni oyunda herkes 20
-- [x] Botlar bitirebiliyorsa önce okeyi atarak bitirmeyi dener
-- [ ] Gösterge gösterme
-- [ ] Yerel kural seçenekleri (masa açarken)
+Sıra, online'a en kısa ve en güvenli yolu izler. Her aşama bir öncekinin çıkış ölçütü sağlanmadan başlamaz.
 
-**101** (12-13-1 serisi yok)
-- [x] Çiftten açma: en az 5 çift, okey tek taşla eşlenebilir. Çiftten açan seri açamaz, seriden açan çift açamaz
-- [x] Bitiş katları (tüm modlar): okeyle bitme 2x, elden bitme (aynı turda açıp bitirme) 2x, ikisi birden 4x
-- [x] Ceza yazımı: açmayan 202, çiftten açanın kalan taşları 2 kat, elde kalan okey 101
-- [x] Deste biterse herkes kalan cezasını yazar
-- [x] Dikey ekranda açılmış perler üst üste binmeden dizilir
-- [x] Masa ayarı olarak dört mod: normal/cezalı × katlamalı/katlamasız
-- [x] Katlamalı: her açan, kendinden önce açanın sayısını geçmeli (120 → en az 121; 5 çift → en az 6 çift). Seri ve çift ayrı takip edilir. Katlamasızda 101 / 5 çift yeter
-- [x] Açılış sayısı: açıldığı turda açılan her şey (elden) sayılır, sonraki turlarda açılan perler sayılmaz
-- [x] Genel cezalar (tüm modlar): okey atan 101, işlek taş atan 101. Eli bitiren son taş muaf. Cezalar katlanmaz
-- [x] Cezalı mod: yandan alınan taş el açmada kullanılırsa atana taşın 10 katı ceza; okeyi başka oyuncu yerden alırsa per sahibine 101 ceza
-- [x] Cezalı mod ödülleri: açılışta 151'i geçen (152+) −101, 7 çift açan −101. Ödüller de katlanmaz
-- [x] Atmadan önce uyarı: okey ya da işlek taş tutulunca "At" yerine kırmızı "İşlek · 101 ceza" yazar; ceza yiyen oyuncunun üstünde ceza etiketi çıkar
-- [ ] Botlar cezalı modda solundakinin açmasına yarayacak taşı atmaktan kaçınsın
-- [x] Açılmış perlere taş işleme (kendi ve rakip perleri, seri uçları ve küte eksik renk). Sadece açmış oyuncu, açtığı turdan sonra; atacak bir taş kalmalı; çiftlere işlenmez
-- [x] Okeyi yerden alma: seride okeyin tuttuğu taş işlenince; kütte eksik renklerin hepsi gerçek taşla tamamlanınca (8 sarı, 8 kırmızı, okey → 8 mavi + 8 siyah)
-- [x] Sürükleyerek işleme: taşı tutunca uyan perler yeşil, okeyi geri aldıranlar altın çerçeveyle yanar
-- [ ] Perleri elle seçerek açma (şu an motor en iyisini seçiyor)
-- [x] Yandan alınan taş o tur kullanılmak zorunda (el açarak ya da işleyerek). Bu tur kullanılamayacak taş yandan alınamaz; alınan taş kullanılmadan taş atılamaz; açılışta kullanılmayacaksa açılamaz
+### Aşama 1: Prototipi kapat
+Küçük, tek dosyada kalan işler. Online'a geçmeden önce kural ve arayüz borcunu sıfırlamak.
 
-**Kural altyapısı**
-- [x] `RULESETS`: her oyunun global varsayılanı ve masa ayarları tek yerde tanımlı
-- [x] Lobide "Masanı kur" penceresi: seçenekler tanımdan otomatik oluşuyor
-- [ ] Okey ve 101 masa ayarları (yerel kural farkları, bkz. aşağıdaki maddeler)
+- [ ] 101: geniş ıstaka (2×15). 22 taşlık elde perlerin bir kısmı boşluksuz diziliyor
+- [ ] 101: perleri elle seçerek açma (şu an motor en iyi dizilimi kendisi seçiyor)
+- [ ] Poker: tam olmayan all-in artırması bahsi yeniden açmasın; el sonunda kazanan beş kartın vurgusu
+- [ ] Botlar: cezalı 101'de solundakinin açmasına yarayacak taşı atmaktan kaçınsın; katlamalı eşiğe göre açılış stratejisi
+- [ ] Masa ayarı: hamle süresi (hızlı / normal / yavaş)
+- [ ] Ses efektleri ve ses ayarı
+- [ ] Okey: gösterge gösterme (karar bekliyor, aşağıya bak)
 
-**Batak**
-- [x] Tekli / eşli (karşılıklı oturanlar ortak, eşli puanlama)
-- [x] Koz maça (sabit) / ihaleli (ihaleyi alan kozu seçer)
-- [x] İhale turu: teklif, pas, herkes pas derse dağıtanın en düşük ihaleyle alması, koz seçimi, batma puanı
-- [x] Eşli botlar ortağının aldığı ele üst atmıyor, ortağının ihalesini geçmiyor
-- [ ] Koz renginin açılışı için yerel kural seçeneği (ilk elden koz atılabilir mi)
-- [ ] Oyunun kaç el ya da kaç puana kadar süreceği
+**Çıkış:** Dört oyun iki telefon boyutunda elle baştan sona oynanmış, açık kural sorusu kalmamış.
 
-**Poker**
-- [x] Masa ayarı: kör seviyesi (10/20, 25/50, 50/100) ve başlangıç çipi
-- [ ] Tam olmayan all-in artırması bahsi yeniden açmasın
-- [ ] El sonu özeti: kazanan beş kart vurgusu, kicker
-- [ ] El geçmişi
+### Aşama 2: Motoru ayır, teste bağla
+Online'ın temeli. Kurallar sunucuda çalışabilir hale gelir, her değişiklik otomatik test edilir.
 
-**Ortak**
-- [ ] Hamle süresi sayacı, süre dolunca otomatik hamle
-- [ ] Ses efektleri (kart atma, taş şıkırtısı, çip), ses ayarı
-- [ ] Ayarlar: animasyon hızı, sol el düzeni
-- [ ] Klavye ile oynama
-- [ ] Yatay telefonda Okey taş boyutu
+- [ ] Klasörler: `engine/` (kurallar, çözücüler, botlar, saat), `client/` (Canvas görünüm, girdi), `server/`
+- [ ] Derleme ile istemci yine tek `index.html` çıkar, çevrimdışı botlu oyun korunur
+- [ ] Tohumlu rastgelelik: her el, tohum + hamle listesiyle birebir yeniden oynatılabilir (şikayet incelemesi için de gerekli)
+- [ ] `viewFor(seat)`: her oyuncuya sadece görmesi gereken durum
+- [ ] Hamle şeması doğrulaması
+- [ ] KURALLAR.md'nin her maddesi için Node.js testi (bugünkü tarayıcı senaryolarının taşınması)
+- [ ] 10.000 ellik bot simülasyonu, bütünlük kontrolleriyle
+- [ ] GitHub Actions: her push'ta testler
 
-Çıkış ölçütü: yukarıdaki kural maddeleri tamam, dört oyun iki farklı telefon boyutunda elle baştan sona oynanmış.
+**Çıkış:** Kararlılık ve bütünlük ölçütleri yeşil, motor Node.js'te DOM olmadan çalışıyor.
 
-## Faz 1: Motoru ayır ve teste bağla
+### Aşama 3: Online masa (misafir girişiyle)
+İlk kez iki gerçek insan aynı masada. Hesap sistemi yok, misafir adıyla oynanır.
 
-Online'a geçmeden önce kodu sunucunun da kullanabileceği hale getirmek.
+- [ ] Node.js + WebSocket sunucu, masa yöneticisi: masa aç, otur, kalk, boş koltuğa bot
+- [ ] Protokol: istemciden `ACTION`, sunucudan filtreli `STATE` / `EVENT` / `REJECT`, sıra numaralı
+- [ ] Hamle saati sunucuda (bugünkü motor saati taşınır)
+- [ ] Yeniden bağlanma: oturum jetonu, kopan oyuncu için otomatik hamle, dönünce tam durum
+- [ ] Güvenlik: girdi doğrulama, hız sınırı, sunucuda rastgelelik
+- [ ] Yayın: tek küçük sanal sunucu, alan adı ve HTTPS, günlük yedek
+- [ ] İzleme: hata kaydı, masa başına gecikme
 
-- [ ] Klasör yapısı: `engine/` (kurallar, per çözücü, poker değerlendirici, botlar), `client/` (Canvas görünüm, girdi), `server/`
-- [ ] Derleme ile istemci yine tek `index.html` olarak paketlenir, çevrimdışı demo korunur
-- [ ] Tohumlu rastgelelik: her el tohum + hamle listesiyle birebir yeniden oynatılabilir
-- [ ] `viewFor(seat)`: her koltuğa sadece görmesi gereken durum
-- [ ] Hamle şeması doğrulaması (tip, koltuk, payload)
-- [ ] Birim testleri: per çözücü, çift bitiş, poker el sıralaması, yan pot, Batak renk/yükseltme kuralları
-- [ ] Simülasyon testi: 10.000 bot-bot eli, bütünlük kontrolleriyle
-- [ ] GitHub Actions ile her push'ta testler
+**Çıkış:** İki gerçek cihaz + iki bot aynı masada bir akşam boyunca sorunsuz oynuyor, bağlantı kesme testleri geçiyor.
 
-Çıkış ölçütü: kararlılık ve bütünlük kapıları yeşil, motor Node.js'te DOM olmadan çalışıyor.
-
-## Faz 2: Online sunucu (Node.js + WebSocket)
-
-- [ ] Masa yöneticisi: masa aç, otur, kalk, boş koltuğa bot
-- [ ] Protokol: istemciden `ACTION`, sunucudan filtreli `STATE`, `EVENT`, `REJECT`. Her mesajda sıra numarası
-- [ ] Sunucu zamanlayıcıları: hamle süresi, dağıtım beklemeleri
-- [ ] Yeniden bağlanma: oturum jetonu, kopan oyuncunun yerine geçici bot, dönünce tam durum
-- [ ] Güvenlik: girdi doğrulama, hız sınırı, sunucu tarafında rastgelelik
-- [ ] Düşük bütçeli başlangıç: tek küçük sanal sunucu üzerinde tek Node.js süreci + aynı sunucuda PostgreSQL (ya da başta SQLite). Redis, çoklu sunucu ve yönetilen servisler ancak ölçüm ihtiyaç gösterince
-- [ ] Günlük otomatik veritabanı yedeği sunucu dışına
-- [ ] Ölçek: oyuncu sayısı arttıkça masalar süreçlere, sonra sunuculara dağıtılır. Tek sunucuda kaç masa kaldırdığımız yük testiyle ölçülür
-- [ ] İzleme: hata kaydı, masa başına gecikme ölçümü
-
-Çıkış ölçütü: iki gerçek cihaz ve iki bot aynı masada oynuyor, bağlantı kesme testleri geçiyor, güvenlik kapısı yeşil.
-
-## Faz 3: Hesaplar, jeton ekonomisi, gelir
-
-Amaç: oyunun kendi masrafını çıkarması, kazancın oyuna geri yatırılması.
-
-**Giriş**
-- [ ] Misafir girişi (tek dokunuşla oyna, sonra hesaba bağla)
-- [ ] Kendi kayıt sistemimiz: e-posta + şifre, e-posta doğrulama, şifre sıfırlama
-- [ ] Facebook ile giriş. Meta uygulama incelemesi, gizlilik politikası adresi ve veri silme isteği adresi gerektirir
-- [ ] Android oyuncuları için Google ile giriş eklemek düşünülmeli (en düşük sürtünme)
-- [ ] Bir hesaba birden çok giriş yöntemi bağlanabilmeli
-
-**Jeton ekonomisi**
-- [ ] Tek sanal para: jeton. Masalar jetonla oynanır, seviye arttıkça giriş jetonu artar
-- [ ] Ücretsiz kaynaklar: günlük hediye, saatlik hediye, iflas yardımı, ödüllü reklam
-- [ ] Jeton paketleri satışı (mağaza içi satın alma / web ödemesi)
-- [ ] Oyuncular arası jeton transferi **yok**. Transfer olursa jeton karaborsası oluşur ve jeton fiilen paraya dönüşür
-- [ ] Jeton harcama/kazanma kayıtları (denetim ve hile tespiti için)
-
-**Reklam**
-- [ ] Ödüllü video: izleyene jeton. En yüksek gelir ve en az rahatsızlık bu formatta
-- [ ] Geçiş reklamı yalnızca el aralarında ve sıklık sınırıyla (ör. en fazla 3 elde bir)
-- [ ] Oyun sırasında hiçbir reklam yok
-- [ ] Reklamsız paket / VIP abonelik (reklamsız + günlük ekstra jeton + profil süsleri)
-
-**Hukuk ve mağaza (yayından önce şart)**
-- [ ] Türkiye'deki şans oyunları mevzuatı açısından hukuki görüş: satın alınabilir jetonlu poker ve okey
-- [ ] Google Play ve App Store'un "simüle kumar" politikaları: yaş sınırı, içerik derecelendirmesi, bölge kısıtları
-- [ ] KVKK aydınlatma metni, gizlilik politikası, kullanım koşulları, ödeme ve iade koşulları
-
-**Ölçülecekler** (yatırım kararları bunlara göre verilir)
-- 1. gün / 7. gün / 30. gün geri dönen oyuncu oranı
-- Günlük aktif oyuncu başına gelir (reklam + satış ayrı ayrı)
-- Ödeme yapan oyuncu oranı, ödüllü reklam izlenme oranı
-
-**Canlı lobi ve profil**
-- [ ] Gerçek doluluk, seviye filtreleri, özel masa ve davet bağlantısı
+### Aşama 4: Hesaplar ve sanal jeton
+- [ ] Kendi kayıt sistemimiz (e-posta + şifre, doğrulama, şifre sıfırlama), misafirden hesaba geçiş
+- [ ] Facebook ile giriş (Meta uygulama incelemesi, gizlilik politikası ve veri silme adresi gerekir)
+- [ ] Jeton: masalar jetonla oynanır; günlük / saatlik hediye, iflas yardımı. Satış henüz yok
+- [ ] Jeton hareket kayıtları (denetim ve hile tespiti)
+- [ ] Canlı lobi: gerçek doluluk, seviye filtreleri, özel masa ve davet bağlantısı
 - [ ] Profil, istatistik, haftalık sıralama
+- [ ] KVKK aydınlatma metni, gizlilik politikası, kullanım koşulları
 
-## Faz 4: Topluluk
+**Çıkış:** Hesaplı oyuncular jetonla oynuyor, jeton kayıtları tutarlı.
 
-- [ ] Masa sohbeti (hazır mesajlar + küfür filtresi), emoji
-- [ ] "Çay ısmarla" hediyesi
-- [ ] Arkadaş listesi, izleyici modu
-- [ ] Şikayet ve engelleme, moderasyon paneli
+### Aşama 5: Kapalı beta
+- [ ] 20–50 kişilik davetli oyuncu grubu
+- [ ] Analitik: 1. / 7. / 30. gün geri dönüş, masa başına süre, en çok oynanan mod
+- [ ] Geri bildirim ve şikayet kanalı; tohumlu yeniden oynatma ile şikayet incelemesi
+- [ ] Hata düzeltme turu
 
-## Faz 5: Yayın
+**Çıkış:** Beta süresince kilitlenen masa yok, kural şikayeti kalmadı, geri dönüş oranları ölçülüyor.
 
-- [ ] PWA: ana ekrana ekleme, internetsiz bot modu
-- [ ] Performans kapısı düşük seviye Android'de doğrulanmış
-- [ ] İsteğe bağlı: Google Play / App Store paketleri
-- [ ] Kapalı beta, geri bildirim, genel açılış
+### Aşama 6: Gelir
+- [ ] Ödüllü video reklam (izleyene jeton)
+- [ ] Geçiş reklamı sadece el aralarında, sıklık sınırıyla; oyun sırasında reklam yok
+- [ ] Jeton paketi satışı (hukuki görüş alındıktan sonra), reklamsız / VIP paket
+- [ ] Gelir ölçümü: günlük aktif oyuncu başına reklam ve satış geliri, ödeme yapan oranı
+
+**Çıkış:** Aylık gelir, sunucu ve reklam giderini karşılıyor mu, ölçülmüş.
+
+### Aşama 7: Topluluk ve mağaza
+- [ ] Masa sohbeti (hazır mesajlar + filtre), "çay ısmarla" hediyesi, arkadaş listesi, izleyici modu
+- [ ] Şikayet, engelleme, moderasyon paneli
+- [ ] PWA (ana ekrana ekleme); isteğe bağlı Google Play / App Store paketleri
+
+## Riskler
+
+| Risk | Önlem |
+|---|---|
+| Jeton satışının hukuki durumu | Aşama 6'dan önce hukuki görüş; jeton paraya çevrilemez, transfer edilemez |
+| Mağaza "simüle kumar" politikaları | Yaş sınırı ve içerik derecelendirmesi yayından önce netleşir; ilk yayın web (PWA) üzerinden |
+| Hile (istemci manipülasyonu, çoklu hesap) | Sunucu otoritesi, gizli bilgi istemciye gitmez, jeton kayıtları, tohumlu yeniden oynatma |
+| Zayıf botlar oyuncuyu sıkar | Aşama 1 ve 5'te bot stratejisi iyileştirmeleri; gerçek masalarda bot oranı düşürülür |
+| Düşük seviye telefonda yavaşlık | Performans ölçütü her aşamada gerçek cihazda kontrol edilir |
 
 ## Alınan kararlar
 
 | Konu | Karar |
 |---|---|
-| Kural setleri | Global kurallar varsayılan. Yetersiz görülen yerlerde masa ayarı ya da ayrı kurallı masa |
-| Batak | Tekli, eşli, koz maça, ihaleli: hepsi masa ayarı olarak |
+| Kural setleri | Global kurallar varsayılan; farklı kurallar masa ayarı |
 | Sunucu | Düşük bütçeli tek sunucuyla başla, kullanım arttıkça bütçe ayır |
 | Giriş | Facebook, e-posta ve kendi kayıt sistemimiz |
-| Gelir | Reklam + jeton satışı. Gelir oyuna yeniden yatırılır |
-| 101 | 12-13-1 yok, çiftten açma en az 5 çift, okeyle bitme 2x, elden bitme 2x. Okey ve işlek taş atma her modda 101 ceza. Yandan alınan taş o tur kullanılmalı. Katlamalı: önceki açılışı geçmek zorunlu. Cezalı: yandan alınan taşla açılırsa atan 10 kat, okeyi yerden alınan 101; 151 üstü ya da 7 çift açılış −101 ödül |
-| Okey | 20 puanla başlanır. Düz bitiş diğerlerinden 2, okeyle ya da çiftten 4, ikisi birden 8 düşürür |
+| Gelir | Reklam + jeton satışı; gelir oyuna yeniden yatırılır |
+| Oyun kuralları | [KURALLAR.md](KURALLAR.md) |
 
-## Karar bekleyen konular
+## Senden gerekenler
 
-1. **Jeton fiyatları ve paketleri:** mağaza bölge fiyatlandırmasına göre sonra belirlenecek.
-2. **Hukuki görüş:** jeton satışı açılmadan önce alınmalı.
+**Kural kararları (Aşama 1)**
+1. Okey'de 12-13-1 serisi geçerli mi?
+2. Okey'de gösterge gösterme olsun mu, olursa kaç puan?
+3. Hamle süreleri (Okey 20, 101 30, Batak 15, Poker 20 sn) uygun mu?
+
+**Aşama 3 öncesi**
+4. Oyunun adı ve alan adı
+5. Sunucu için bir bulut hesabı (küçük bir sanal sunucu yeterli)
+
+**Aşama 4 öncesi**
+6. Meta (Facebook) geliştirici hesabı
+
+**Aşama 6 öncesi**
+7. Jeton satışı için hukuki görüş
+8. Jeton paketleri ve fiyatları

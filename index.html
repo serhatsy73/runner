@@ -153,6 +153,10 @@
   .bidrow { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; flex: 1 1 100%; }
   .act.bid { min-width: 44px; padding: 8px 11px; }
   .act .red { color: #e0574a; }
+  #backToGame {
+    position: fixed; z-index: 9; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 58px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  }
   #toast {
     position: fixed; z-index: 11; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 62px);
     max-width: calc(100vw - 32px); padding: 9px 14px; border-radius: 10px; background: #5a1f15; border: 1px solid #b3361f;
@@ -228,6 +232,7 @@
     </div>
   </form>
 </div>
+<button id="backToGame" class="act primary" hidden>Oyuna dön</button>
 <div id="toast" role="status" hidden></div>
 
 <script>
@@ -695,10 +700,11 @@ const RULESETS = {
     ],
   },
   batak: {
-    defaults: { teams: false, bidding: false },
+    defaults: { teams: false, bidding: false, hands: 5 },
     options: [
       { id: 'teams', label: 'Oyun', choices: [[false, 'Tekli', 'Herkes kendine oynar'], [true, 'Eşli', 'Karşılıklı oturanlar ortak']] },
       { id: 'bidding', label: 'Koz', choices: [[false, 'Koz maça', 'Her el koz maça'], [true, 'İhaleli', 'İhaleyi alan kozu seçer']] },
+      { id: 'hands', label: 'Oyun uzunluğu', choices: [[3, '3 el', 'Kısa oyun'], [5, '5 el', 'Standart'], [7, '7 el', 'Uzun oyun']] },
     ],
   },
   poker: {
@@ -720,7 +726,9 @@ class BaseGame {
     this.rules = Object.assign({}, (RULESETS[key] || {}).defaults, table.rules || {});
     this.seats = SEATS(); this.phase = 'idle'; this.turn = null; this.roundId = 0; this.version = 0;
     this.timers = []; this.bot = { v: -1, t: 0 }; this.time = 0; this.drag = null; this.sel = null;
-    this.handlers = { NEW_ROUND: 'onNewRound' };
+    this.handlers = { NEW_ROUND: 'onNewRound', BACK: 'onBack' };
+    // Hamle süresi: saat sunucuda (burada motorda) tutulur. Süre dolunca otomatik hamle, üst üste 2 kez dolarsa oyuncu "uzakta" sayılır.
+    this.clock = null; this.autoTurn = null; this.away = [false, false, false, false]; this.timeouts = [0, 0, 0, 0];
   }
   start() { this.newRound(); }
   // ---- Sunucu tarafı (otorite) ----
@@ -730,8 +738,19 @@ class BaseGame {
     if (!(a.seat >= 0 && a.seat < 4)) return { ok: false, error: 'Geçersiz koltuk' };
     const err = this[m](a);
     if (typeof err === 'string') return { ok: false, error: err };
+    if (!a.auto && !this.seats[a.seat].bot) { this.timeouts[a.seat] = 0; this.away[a.seat] = false; } // kendi hamlesi: geri döndü
     this.version++; return { ok: true };
   }
+  onBack(a) { this.timeouts[a.seat] = 0; this.away[a.seat] = false; }
+  turnTime() { return 20; }
+  clockKey() { return `${this.roundId}|${this.phase}|${this.turn}|${this.turnNo == null ? '' : this.turnNo}|${this.trick ? this.trick.length : ''}|${this.street == null ? '' : this.street}`; }
+  onTimeout(s) {
+    this.timeouts[s]++; this.autoTurn = s; this.clock = null;
+    if (this.timeouts[s] >= 2) this.away[s] = true;
+    this.version++;
+    bus.emit('TURN_TIMEOUT', { seat: s, away: this.away[s] });
+  }
+  timeoutDecide(s) { return this.botDecide(s); }
   onNewRound() { if (this.phase !== 'end') return 'El henüz bitmedi'; this.newRound(); }
   turnCheck(a) {
     if (this.phase !== 'play') return 'Biraz bekle, masa hazırlanıyor';
@@ -746,12 +765,27 @@ class BaseGame {
       tm.t -= dt;
       if (tm.t <= 0) { this.timers.splice(this.timers.indexOf(tm), 1); tm.fn(); this.version++; }
     }
-    // Botlar sunucu tarafında yaşar; hamlelerini insan gibi dispatchAction ile yollarlar
     const s = this.turn;
-    if (!this.actingPhase() || s == null || !this.seats[s].bot) return;
-    if (this.bot.v !== this.version) { this.bot.v = this.version; this.bot.t = 0.55 + Math.random() * 0.55; }
+    if (this.autoTurn != null && this.autoTurn !== s) this.autoTurn = null;
+    if (!this.actingPhase() || s == null) { this.clock = null; return; }
+    const bot = this.seats[s].bot, auto = !bot && (this.away[s] || this.autoTurn === s);
+    // Saat: sadece insan oyuncular için; bir tur boyunca (Okey'de çek + at) tek saat işler
+    if (!bot && !auto) {
+      const key = this.clockKey();
+      if (!this.clock || this.clock.key !== key || this.clock.seat !== s) this.clock = { key, seat: s, left: this.turnTime(), total: this.turnTime() };
+      this.clock.left -= dt;
+      if (this.clock.left <= 0) this.onTimeout(s);
+      return;
+    }
+    this.clock = null;
+    // Botlar ve süresi dolan oyuncular sunucu tarafında oynar; hamleler insanınkiyle aynı yoldan (dispatchAction) gider
+    if (this.bot.v !== this.version) { this.bot.v = this.version; this.bot.t = auto ? 0.35 : 0.55 + Math.random() * 0.55; }
     this.bot.t -= dt;
-    if (this.bot.t <= 0) { this.bot.t = 1.5; const a = this.botDecide(s); if (a) dispatchAction({ ...a, seat: s }); }
+    if (this.bot.t <= 0) {
+      this.bot.t = 1.5;
+      const a = auto ? this.timeoutDecide(s) : this.botDecide(s);
+      if (a) dispatchAction({ ...a, seat: s, ...(auto ? { auto: true } : {}) });
+    }
   }
   isMyTurn() { return this.phase === 'play' && this.turn === 0; }
   actingPhase() { return this.phase === 'play'; }
@@ -799,13 +833,22 @@ class BaseGame {
         g.beginPath(); g.arc(p.x, p.y, L.ar + 5 + pulse * 2, 0, TAU); g.fillStyle = `rgba(242,196,106,${0.25 + pulse * 0.25})`; g.fill();
       }
       g.beginPath(); g.arc(p.x, p.y + 2, L.ar, 0, TAU); g.fillStyle = 'rgba(0,0,0,.35)'; g.fill();
+      const ck = this.clock && this.clock.seat === s ? this.clock : null;
       const gr = g.createRadialGradient(p.x - L.ar * 0.3, p.y - L.ar * 0.3, 1, p.x, p.y, L.ar);
       gr.addColorStop(0, seat.color); gr.addColorStop(1, '#2a1a0c');
       g.beginPath(); g.arc(p.x, p.y, L.ar, 0, TAU); g.fillStyle = gr; g.fill();
       g.lineWidth = on ? 3 : 2; g.strokeStyle = on ? '#f2c46a' : 'rgba(245,236,215,.55)'; g.stroke();
+      if (ck) {
+        const f = clamp(ck.left / ck.total, 0, 1), low = ck.left <= 5;
+        g.beginPath(); g.arc(p.x, p.y, L.ar + 5, 0, TAU); g.strokeStyle = 'rgba(20,12,7,.55)'; g.lineWidth = 4; g.stroke();
+        g.beginPath(); g.arc(p.x, p.y, L.ar + 5, -Math.PI / 2, -Math.PI / 2 + TAU * f); g.strokeStyle = low ? '#e0574a' : '#9be3a7'; g.lineWidth = 4; g.lineCap = 'round'; g.stroke();
+        const bx = p.x + L.ar * 0.8, by = p.y + L.ar * 0.75;
+        g.beginPath(); g.arc(bx, by, 10, 0, TAU); g.fillStyle = low ? '#7a1e18' : '#1f3d2b'; g.fill();
+        g.fillStyle = '#fff'; g.font = `800 11px ${F_NUM}`; g.fillText(String(Math.ceil(ck.left)), bx, by + 1);
+      }
       g.fillStyle = '#fff7e6'; g.font = `700 ${L.ar * 0.72}px ${F_BODY}`; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(seat.initials, p.x, p.y + 1);
-      const info = this.seatInfo(s), label = seat.name + (info ? ' · ' + info : '');
+      const info = this.seatInfo(s) + (this.away[s] ? ' · uzakta' : ''), label = seat.name + (info ? ' · ' + info : '');
       g.font = `700 12px ${F_BODY}`;
       const tw = g.measureText(label).width + 14, ly = p.y + L.ar + 11;
       let lx = clamp(p.x, L.felt.x + tw / 2 + 2, L.felt.r - tw / 2 - 2);
@@ -830,11 +873,13 @@ class BatakGame extends BaseGame {
   constructor(table) {
     super('batak', 'Batak', table);
     Object.assign(this.handlers, { PLAY_CARD: 'onPlayCard', BID: 'onBid', CHOOSE_TRUMP: 'onChooseTrump' });
-    this.trump = 'S'; this.totals = [0, 0, 0, 0]; this.dealer = 3; this.wordmark = true;
+    this.trump = 'S'; this.totals = [0, 0, 0, 0]; this.dealer = 3; this.wordmark = true; this.dealNo = 0; this.matchOver = false;
     this.minBid = this.rules.teams ? 7 : 5;
     this.title = `${this.rules.teams ? 'Eşli ' : ''}${this.rules.bidding ? 'İhaleli ' : ''}Batak`;
   }
   actingPhase() { return this.phase === 'play' || this.phase === 'bid' || this.phase === 'trump'; }
+  turnTime() { return 15; }
+  timeoutDecide(s) { return this.phase === 'bid' ? { type: 'BID', payload: {} } : this.botDecide(s); }
   partner(s) { return (s + 2) % 4; }
   sameSide(a, b) { return a === b || (this.rules.teams && a === this.partner(b)); }
   sideTricks(s) { return this.tricks[s] + (this.rules.teams ? this.tricks[this.partner(s)] : 0); }
@@ -843,6 +888,8 @@ class BatakGame extends BaseGame {
     h.sort((a, b) => order.indexOf(a.suit) - order.indexOf(b.suit) || a.rank - b.rank);
   }
   newRound() {
+    if (this.matchOver) { this.totals = [0, 0, 0, 0]; this.dealNo = 0; this.matchOver = false; } // oyun bitti: yeni oyun
+    this.dealNo++;
     this.roundId++; this.dealer = (this.dealer + 1) % 4;
     const deck = shuffle(makeDeck());
     this.hands = [[], [], [], []]; this.dealIdx = {};
@@ -935,6 +982,17 @@ class BatakGame extends BaseGame {
     const sides = T ? [0, 1] : [0, 1, 2, 3];
     const nameOf = s => T ? `${this.seats[s % 2].name} + ${this.seats[s % 2 + 2].name}` : this.seats[s].name;
     const best = Math.max(...sides.map(s => pts[s]));
+    this.matchOver = this.dealNo >= this.rules.hands;
+    if (this.matchOver) { // son el: toplamı en yüksek olan kazanır
+      const top = Math.max(...sides.map(s => this.totals[s]));
+      this.endRound({
+        title: `Oyun bitti · ${sides.filter(s => this.totals[s] === top).map(nameOf).join(' ve ')} kazandı`,
+        text: `${this.rules.hands} el oynandı. Son el: ${c ? `${nameOf(c.seat)} ${made ? 'ihaleyi çıkardı' : 'battı'}` : `${sides.filter(s => pts[s] === best).map(nameOf).join(' ve ')} en çok eli aldı`}.`,
+        rows: sides.map(s => [nameOf(s), `${pts[s] > 0 ? '+' : ''}${pts[s]} · toplam ${this.totals[s]}`, this.totals[s] === top]),
+        next: 'Yeni oyun',
+      });
+      return;
+    }
     const title = c
       ? `${nameOf(c.seat)} ${made ? 'ihaleyi çıkardı' : 'battı'} (${this.sideTricks(c.seat)}/${c.value})`
       : `${sides.filter(s => pts[s] === best).map(nameOf).join(' ve ')} en çok eli aldı`;
@@ -1049,7 +1107,7 @@ class BatakGame extends BaseGame {
   hudSub() {
     const k = this.trump ? `Koz ${SUIT_SYM[this.trump]} ${SUIT_NAME[this.trump]}` : 'Koz ihalede';
     const c = this.contract ? ` · İhale ${this.seats[this.contract.seat].name} ${this.contract.value}` : '';
-    return `${k}${c} · ${13 - this.hands[0].length}/13 · ${this.table.name}`;
+    return `El ${this.dealNo}/${this.rules.hands} · ${k}${c} · ${13 - this.hands[0].length}/13`;
   }
   buildBar(el) {
     el.innerHTML = `<div class="bidrow" id="bidRow" hidden></div><span class="hint" id="bHint"></span>`;
@@ -1183,6 +1241,7 @@ class OkeyGame extends BaseGame {
       title: this.matchOver ? `Oyun bitti · ${champs} kazandı` : `${this.seats[a.seat].name} ${how2 ? how2 + ' ' : ''}bitirdi${mult > 1 ? ` · ${mult} kat` : ''}`,
       text: `${this.matchOver ? `${this.seats[a.seat].name} ${how2 ? how2 + ' ' : ''}bitirdi. ` : ''}Diğerleri ${loss} puan düştü. Düz bitiş 2, okeyle ya da çiftten 4, ikisi birden 8 düşürür.${this.matchOver ? ' Sıfıra inen olunca oyun biter, yeni elde herkes 20 ile başlar.' : ''}`,
       rows: this.seats.map((p, i) => [p.name, `${i === a.seat ? '' : `−${loss} · `}${this.scores[i]} puan`, this.matchOver ? this.scores[i] === top : i === a.seat]),
+      next: this.matchOver ? 'Yeni oyun' : 'Yeni el',
     });
   }
   scoreRows(w) { return this.seats.map((s, i) => [s.name, `${this.scores[i]} puan`, i === w]); }
@@ -1206,9 +1265,19 @@ class OkeyGame extends BaseGame {
       return { type: 'DRAW_TILE', payload: { from: 'deck' } };
     }
     const pre = this.botBeforeDiscard(s, hand); if (pre) return pre;
+    return this.pickDiscard(hand);
+  }
+  pickDiscard(hand) {
     let worst = null, wv = Infinity;
     for (const t of hand) { const v = this.tileValue(t, hand) + this.discardBias(t) + Math.random() * 0.4; if (v < wv) { wv = v; worst = t; } }
     return { type: 'DISCARD_TILE', payload: { tileId: worst.id } };
+  }
+  turnTime() { return 20; }
+  // Süre dolarsa: ortadan çek, en işe yaramaz taşı at. Oyuncu adına el açılmaz, bitirilmez.
+  timeoutDecide(s) {
+    if (!this.drawn) return { type: 'DRAW_TILE', payload: { from: 'deck' } };
+    if (this.sidePending && this.sidePending(s)) return this.botDecide(s);
+    return this.pickDiscard(this.tilesOf(s));
   }
   botBeforeDiscard(s, hand) {
     // Önce okeyi atarak bitmeyi dene (2 kat), sonra diğer taşlar
@@ -1453,6 +1522,7 @@ class Okey101Game extends OkeyGame {
     Object.assign(this.handlers, { OPEN_HAND: 'onOpen', LAY_TILE: 'onLay' });
   }
   stagger() { return 0.016; }
+  turnTime() { return 30; }
   roundExtra() {
     this.melds = [[], [], [], []]; this.meldKinds = [[], [], [], []]; // 'run' | 'set' | 'pair'
     this.opened = [null, null, null, null]; // 'seri' | 'cift'
@@ -2048,6 +2118,8 @@ class PokerGame extends BaseGame {
     this.ui.raise.onclick = () => this.act('raise', +this.ui.range.value);
     this.ui.range.oninput = () => { this.ui.out.textContent = tl(+this.ui.range.value); };
   }
+  turnTime() { return 20; }
+  timeoutDecide(s) { return { type: 'POKER_ACTION', payload: { move: this.toCall(s) > 0 ? 'fold' : 'check' } }; }
   act(move, amount) { dispatchAction({ type: 'POKER_ACTION', seat: 0, payload: amount != null ? { move, amount } : { move } }); }
   refreshBar() {
     const u = this.ui, my = this.isMyTurn(), toCall = my ? this.toCall(0) : 0;
@@ -2143,8 +2215,8 @@ const TABLES = {
     { name: 'Emekliler Masası', seated: 3, rules: { cezali: false, katlama: true } }, { name: 'Bahçe', seated: 2, rules: { cezali: false, katlama: false } },
     { name: 'Arka Oda', seated: 3, rules: { cezali: true, katlama: true } }, { name: 'Kış Bahçesi', seated: 1, rules: { cezali: true, katlama: false } }] },
   batak: { title: 'Batak Masaları', desc: "52'lik deste. Tekli ya da eşli, koz maça ya da ihaleli.", list: [
-    { name: 'Semaver Yanı', seated: 3, rules: { teams: false, bidding: false } }, { name: 'Radyo Altı', seated: 2, rules: { teams: true, bidding: false } },
-    { name: 'Kapı Önü', seated: 1, rules: { teams: false, bidding: true } }, { name: 'Ocak Başı', seated: 3, rules: { teams: true, bidding: true } }] },
+    { name: 'Semaver Yanı', seated: 3, rules: { teams: false, bidding: false, hands: 3 } }, { name: 'Radyo Altı', seated: 2, rules: { teams: true, bidding: false, hands: 5 } },
+    { name: 'Kapı Önü', seated: 1, rules: { teams: false, bidding: true, hands: 5 } }, { name: 'Ocak Başı', seated: 3, rules: { teams: true, bidding: true, hands: 7 } }] },
   poker: { title: 'Poker Masaları', desc: "Texas Hold'em. Elde iki kart, ortada beş kart.", list: [
     { name: 'Kadife Masa', seated: 3, rules: { blinds: 10, stack: 1000 } }, { name: 'Gece Masası', seated: 2, rules: { blinds: 25, stack: 2500 } },
     { name: 'Loca', seated: 3, rules: { blinds: 50, stack: 5000 } }] },
@@ -2245,13 +2317,14 @@ const TableState = {
       bus.on('ROUND_END', r => this.showResult(r)),
       bus.on('ACTION_REJECTED', ({ action, reason }) => { this.log(action, reason); if (action.seat === 0) toast(reason); }),
       bus.on('ACTION_SENT', a => this.log(a)),
+      bus.on('TURN_TIMEOUT', ({ seat, away }) => { if (seat === 0) toast(away ? 'Süren üst üste doldu, senin yerine otomatik oynanıyor' : 'Süre doldu, hamlen otomatik yapıldı'); }),
     ];
     this.game.start();
     this.resize();
   },
   exit() {
     this.subs.forEach(u => u()); net.server.attach(null);
-    $('hud').hidden = true; $('actionBar').hidden = true; $('modal').hidden = true; $('logPanel').hidden = true;
+    $('hud').hidden = true; $('actionBar').hidden = true; $('modal').hidden = true; $('logPanel').hidden = true; $('backToGame').hidden = true;
     $('logBtn').setAttribute('aria-expanded', 'false'); $('actionBar').innerHTML = '';
   },
   log(a, err) {
@@ -2265,6 +2338,7 @@ const TableState = {
       if (app.state !== this || this.game.phase !== 'end') return;
       $('modalTitle').textContent = r.title; $('modalText').textContent = r.text || '';
       $('modalRows').innerHTML = r.rows.map(([n, v, w]) => `<div class="${w ? 'win' : ''}"><span>${n}</span><span>${v}</span></div>`).join('');
+      $('modalNext').textContent = r.next || 'Yeni el';
       $('modal').hidden = false; $('modalNext').focus();
     }, 900);
   },
@@ -2290,6 +2364,7 @@ const TableState = {
     }
     for (const id of [...this.sprites.keys()]) if (!seen.has(id)) this.sprites.delete(id);
     g.refreshBar();
+    if ($('backToGame').hidden === !!g.away[0]) $('backToGame').hidden = !g.away[0];
     const sub = g.hudSub(); if (sub !== this.lastSub) { $('hudSub').textContent = sub; this.lastSub = sub; }
   },
   draw(gx) {
@@ -2307,6 +2382,7 @@ const TableState = {
   pointer(t, p) { if ($('modal').hidden) this.game.pointer(t, p); },
 };
 $('backBtn').onclick = () => app.change(LobbyState);
+$('backToGame').onclick = () => dispatchAction({ type: 'BACK', seat: 0, payload: {} });
 $('modalLobby').onclick = () => app.change(LobbyState);
 $('modalNext').onclick = () => { $('modal').hidden = true; dispatchAction({ type: 'NEW_ROUND', seat: 0, payload: {} }); };
 $('logBtn').onclick = () => { const p = $('logPanel'); p.hidden = !p.hidden; $('logBtn').setAttribute('aria-expanded', String(!p.hidden)); };
