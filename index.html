@@ -690,8 +690,8 @@ const RULESETS = {
   '101': {
     defaults: { cezali: false, katlama: true },
     options: [
-      { id: 'cezali', label: 'Mod', choices: [[false, 'Normal', 'Genel kurallar'], [true, 'Cezalı', 'Yandan alınan taşla açılırsa atan 10 kat, okeyi yerden alınan 101 ceza']] },
-      { id: 'katlama', label: 'Katlama', choices: [[true, 'Katlamalı', 'Okeyle ya da elden bitme 2 kat'], [false, 'Katlamasız', 'Her el tek kat']] },
+      { id: 'cezali', label: 'Mod', choices: [[false, 'Normal', 'Genel kurallar'], [true, 'Cezalı', 'Yandan alınan taşla açılırsa atan 10 kat, okeyi yerden alınan 101 ceza. 151 üstü ya da 7 çift açılış −101 ödül']] },
+      { id: 'katlama', label: 'Katlama', choices: [[true, 'Katlamalı', 'Her açan, önceki açanın sayısını geçmeli'], [false, 'Katlamasız', 'Açmak için 101 ya da 5 çift yeter']] },
     ],
   },
   batak: {
@@ -1110,12 +1110,13 @@ class OkeyGame extends BaseGame {
   constructor(table, key = 'okey', title = 'Okey') {
     super(key, title, table);
     Object.assign(this.handlers, { DRAW_TILE: 'onDraw', DISCARD_TILE: 'onDiscard', FINISH: 'onFinish' });
-    this.handSize = 14; this.wins = [0, 0, 0, 0]; this.dealer = 2;
+    this.handSize = 14; this.scores = [20, 20, 20, 20]; this.matchOver = false; this.dealer = 2;
     this.rack = new Array(26).fill(null); this.pendingSlot = null; this.ghostFrom = null;
   }
   isOkey(t) { return isOkeyTile(t, this.okey); }
   tilesOf(s) { return this.hands[s].map(id => this.tileById[id]); }
   newRound() {
+    if (this.matchOver) { this.scores = [20, 20, 20, 20]; this.matchOver = false; } // oyun bittiyse yeni oyun
     this.roundId++; this.dealer = (this.dealer + 1) % 4;
     const starter = (this.dealer + 1) % 4, tiles = shuffle(makeTiles());
     this.tileById = {}; for (const t of tiles) this.tileById[t.id] = t;
@@ -1169,10 +1170,22 @@ class OkeyGame extends BaseGame {
     if (!h.includes(id)) return 'Bu taş sende yok';
     const how = this.checkWin(h.filter(x => x !== id).map(x => this.tileById[x]));
     if (!how) return 'El bitmiyor: kalan 14 taş perlere tam oturmuyor';
-    h.splice(h.indexOf(id), 1); this.finishTile = id; this.winner = a.seat; this.wins[a.seat]++;
-    this.endRound({ title: `${this.seats[a.seat].name} eli bitirdi`, text: how === 'çift' ? 'Çiftten bitti (7 çift).' : 'Seri ve küt perlerle bitti.', rows: this.scoreRows(a.seat) });
+    h.splice(h.indexOf(id), 1); this.finishTile = id; this.winner = a.seat;
+    // Puanlama: herkes 20'den başlar. Düz bitişte bitiren 20'de kalır, diğerleri 2 düşer.
+    // Okeyle bitiş 2 kat, çiftten bitiş 2 kat, ikisi birden 4 kat.
+    const byOkey = this.isOkey(this.tileById[id]), pairs = how === 'çift', mult = (byOkey ? 2 : 1) * (pairs ? 2 : 1), loss = 2 * mult;
+    this.scores = this.scores.map((v, i) => i === a.seat ? v : v - loss);
+    this.lastFinish = { seat: a.seat, byOkey, pairs, mult, loss };
+    this.matchOver = Math.min(...this.scores) <= 0;
+    const top = Math.max(...this.scores), champs = this.seats.filter((_, i) => this.scores[i] === top).map(p => p.name).join(' ve ');
+    const how2 = [pairs && 'çiftten', byOkey && 'okeyle'].filter(Boolean).join(' ve ');
+    this.endRound({
+      title: this.matchOver ? `Oyun bitti · ${champs} kazandı` : `${this.seats[a.seat].name} ${how2 ? how2 + ' ' : ''}bitirdi${mult > 1 ? ` · ${mult} kat` : ''}`,
+      text: `${this.matchOver ? `${this.seats[a.seat].name} ${how2 ? how2 + ' ' : ''}bitirdi. ` : ''}Diğerleri ${loss} puan düştü. Düz bitiş 2, okeyle ya da çiftten 4, ikisi birden 8 düşürür.${this.matchOver ? ' Sıfıra inen olunca oyun biter, yeni elde herkes 20 ile başlar.' : ''}`,
+      rows: this.seats.map((p, i) => [p.name, `${i === a.seat ? '' : `−${loss} · `}${this.scores[i]} puan`, this.matchOver ? this.scores[i] === top : i === a.seat]),
+    });
   }
-  scoreRows(w) { return this.seats.map((s, i) => [s.name, `${this.wins[i]} galibiyet`, i === w]); }
+  scoreRows(w) { return this.seats.map((s, i) => [s.name, `${this.scores[i]} puan`, i === w]); }
   tileValue(t, hand) {
     if (this.isOkey(t)) return 99;
     const e = effTile(t, this.okey); let v = 0;
@@ -1189,7 +1202,7 @@ class OkeyGame extends BaseGame {
     const hand = this.tilesOf(s);
     if (!this.drawn) {
       const p = this.piles[(s + 3) % 4], top = p.length ? this.tileById[p[p.length - 1]] : null;
-      if (top && (this.isOkey(top) || this.tileValue(top, hand) >= 3.2)) return { type: 'DRAW_TILE', payload: { from: 'discard' } };
+      if (top && (this.isOkey(top) || this.tileValue(top, hand) >= 3.2) && this.canTakeSide(s, top.id)) return { type: 'DRAW_TILE', payload: { from: 'discard' } };
       return { type: 'DRAW_TILE', payload: { from: 'deck' } };
     }
     const pre = this.botBeforeDiscard(s, hand); if (pre) return pre;
@@ -1198,7 +1211,9 @@ class OkeyGame extends BaseGame {
     return { type: 'DISCARD_TILE', payload: { tileId: worst.id } };
   }
   botBeforeDiscard(s, hand) {
-    for (const t of hand) if (!this.isOkey(t) && this.checkWin(hand.filter(x => x !== t))) return { type: 'FINISH', payload: { tileId: t.id } };
+    // Önce okeyi atarak bitmeyi dene (2 kat), sonra diğer taşlar
+    const order = [...hand.filter(t => this.isOkey(t)), ...hand.filter(t => !this.isOkey(t))];
+    for (const t of order) if (this.checkWin(hand.filter(x => x !== t))) return { type: 'FINISH', payload: { tileId: t.id } };
     return null;
   }
   discardBias() { return 0; }
@@ -1343,7 +1358,8 @@ class OkeyGame extends BaseGame {
     g.fillText('GÖSTERGE', L.ind.x, L.ind.y - L.th / 2 - 7); g.restore();
     if (this.canDrawNow()) {
       glow(L.deck.x, L.deck.y, L.tw * 1.25, L.th * 1.2, 'Çek');
-      if (this.piles[3].length) glow(L.pile[3].x, L.pile[3].y, L.tw * 1.25, L.th * 1.2, 'Soldan al');
+      const p3 = this.piles[3];
+      if (p3.length && this.canTakeSideCached(p3[p3.length - 1])) glow(L.pile[3].x, L.pile[3].y, L.tw * 1.25, L.th * 1.2, 'Soldan al');
     }
     const dragging = this.drag && this.drag.moved && this.drag.from === 'rack';
     if (this.canDiscardNow() && (dragging || this.sel)) {
@@ -1354,10 +1370,16 @@ class OkeyGame extends BaseGame {
   }
   finishAllowed() { return true; }
   discardLabel() { return 'At'; }
-  seatInfo(s) { return `${this.hands ? this.hands[s].length : 0} taş`; }
+  canTakeSide() { return true; }
+  canTakeSideCached(id) {
+    const key = this.version + '|' + id;
+    if (!this._side || this._side.key !== key) this._side = { key, ok: this.canTakeSide(0, id) };
+    return this._side.ok;
+  }
+  seatInfo(s) { return `${this.hands ? this.hands[s].length : 0} taş · ${this.scores[s]} puan`; }
   hudSub() {
     const ind = this.indicator; if (!ind) return '';
-    if (this.key === '101') return `${ruleLabel('101', this.rules)} · Gösterge ${ind.n} ${TILE_NAMES[ind.c]} → Okey ${this.okey.n} ${TILE_NAMES[this.okey.c]}`;
+    if (this.key === '101') return `${ruleLabel('101', this.rules)}${this.rules.katlama ? ` · Açılış ${this.seriNeed()} / ${this.pairNeed()} çift` : ''} · Okey ${this.okey.n} ${TILE_NAMES[this.okey.c]}`;
     return `Gösterge ${ind.n} ${TILE_NAMES[ind.c]} → Okey ${this.okey.n} ${TILE_NAMES[this.okey.c]} · ${this.table.name}`;
   }
   buildBar(el) {
@@ -1436,6 +1458,11 @@ class Okey101Game extends OkeyGame {
     this.opened = [null, null, null, null]; // 'seri' | 'cift'
     this.openTurn = [-1, -1, -1, -1]; this.turnNo = 0; this.planCache = null;
     this.penalties = [[], [], [], []]; this.penaltyFx = []; this.sideTake = null;
+    this.lastOpen = { seri: 0, cift: 0 }; this.openStats = [null, null, null, null];
+  }
+  // Katlamalı: her açan kendinden önce açanın sayısını geçmeli (seri ve çift ayrı). Katlamasız: 101 / 5 çift.
+  seriNeed() { return this.rules.katlama && this.lastOpen && this.lastOpen.seri ? this.lastOpen.seri + 1 : 101; }
+  pairNeed() { return this.rules.katlama && this.lastOpen && this.lastOpen.cift ? this.lastOpen.cift + 1 : 5;
   }
   // Çift planı: aynı renk ve sayıdaki iki taş. İlk açılışta 5'e tamamlamak için okey en yüksek tek taşla eşlenir.
   pairPlan(s) {
@@ -1444,7 +1471,7 @@ class Okey101Game extends OkeyGame {
     for (const k in by) { const ids = by[k]; if (ids.length >= 2) pairs.push(ids.slice(0, 2)); else singles.push(ids[0]); }
     if (!this.opened[s]) {
       singles.sort((a, b) => effTile(this.tileById[b], this.okey).n - effTile(this.tileById[a], this.okey).n);
-      while (pairs.length < 5 && jokers.length && singles.length) pairs.push([singles.shift(), jokers.pop()]);
+      while (pairs.length < this.pairNeed() && jokers.length && singles.length) pairs.push([singles.shift(), jokers.pop()]);
     }
     if (pairs.length * 2 >= tiles.length) pairs.pop(); // atacak bir taş kalmalı
     return pairs;
@@ -1479,14 +1506,24 @@ class Okey101Game extends OkeyGame {
     if (kind === 'cift') {
       melds = this.pairPlan(a.seat); kinds = melds.map(() => 'pair');
       if (!melds.length) return 'Açılacak çift yok';
-      if (!was && melds.length < 5) return `Çiftten açmak için en az 5 çift gerek, ${melds.length} çiftin var`;
+      if (!was && melds.length < this.pairNeed()) return `Çiftten açmak için en az ${this.pairNeed()} çift gerek, ${melds.length} çiftin var`;
     } else {
       const plan = this.openPlan(a.seat); melds = plan.melds; kinds = plan.kinds;
       if (!melds.length) return 'Açılacak per yok';
-      if (!was && plan.v < 101) return `Açmak için en az 101 gerek, perlerin ${plan.v}`;
+      if (!was && plan.v < this.seriNeed()) return `Açmak için en az ${this.seriNeed()} gerek, perlerin ${plan.v}`;
     }
+    if (!was && this.sidePending(a.seat) && !melds.some(m => m.includes(this.sideTake.tileId))) return 'Yandan aldığın taş bu açılışta kullanılmalı';
     const h = this.hands[a.seat];
     melds.forEach((m, k) => { for (const id of m) h.splice(h.indexOf(id), 1); this.melds[a.seat].push(m); this.meldKinds[a.seat].push(kinds[k]); });
+    // Açılış sayısı: açıldığı turda açılan her şey (elden) sayılır, sonraki turlar sayılmaz
+    if (!was || this.openTurn[a.seat] === this.turnNo) {
+      const st = this.openStats[a.seat] || (this.openStats[a.seat] = { kind, v: 0, pairs: 0, rewarded: false });
+      if (kind === 'cift') st.pairs += melds.length; else st.v += this.meldValue(melds, kinds);
+      this.lastOpen[kind] = kind === 'cift' ? st.pairs : st.v;
+      if (this.rules.cezali && !st.rewarded && (st.v > 151 || st.pairs >= 7)) {
+        st.rewarded = true; this.addPenalty(a.seat, -101, st.pairs >= 7 ? `${st.pairs} çift açtı` : `${st.v} ile açtı`);
+      }
+    }
     if (!was) {
       this.opened[a.seat] = kind; this.openTurn[a.seat] = this.turnNo;
       const st = this.sideTake;
@@ -1495,6 +1532,38 @@ class Okey101Game extends OkeyGame {
         if (!this.isOkey(t)) { const n = effTile(t, this.okey).n; this.addPenalty(st.from, n * 10, `Attığı ${n} ile ${this.seats[a.seat].name} açtı`); }
       }
     }
+  }
+  // ---- Yandan alınan taş o tur kullanılmak zorunda (el açarak ya da işleyerek) ----
+  sidePending(s) { const st = this.sideTake; return !!(st && st.seat === s && this.hands[s].includes(st.tileId)); }
+  sideUsable(s, id) {
+    const o = this.opened[s];
+    if (!o) {
+      const plan = this.openPlan(s);
+      if (plan.v >= this.seriNeed() && plan.melds.some(m => m.includes(id))) return true;
+      const pairs = this.pairPlan(s);
+      return pairs.length >= this.pairNeed() && pairs.some(m => m.includes(id));
+    }
+    if (this.openTurn[s] === this.turnNo) return false; // açtığı turda işleyemez
+    if (this.hands[s].length >= 2)
+      for (let w = 0; w < 4; w++) for (let i = 0; i < this.melds[w].length; i++)
+        if (this.meldKinds[w][i] !== 'pair' && !this.layCheck(id, w, i).error) return true;
+    if (o === 'seri') return this.openPlan(s).melds.some(m => m.includes(id));
+    return this.pairPlan(s).some(m => m.includes(id));
+  }
+  canTakeSide(s, id) { const h = this.hands[s]; h.push(id); const ok = this.sideUsable(s, id); h.pop(); return ok; }
+  onDraw(a) {
+    if (a.payload && a.payload.from === 'discard') {
+      const e = this.turnCheck(a); if (e) return e;
+      const p = this.piles[(a.seat + 3) % 4];
+      if (!this.drawn && p.length && !this.canTakeSide(a.seat, p[p.length - 1])) return 'Bu taşı bu tur kullanamazsın, yandan alınamaz';
+    }
+    return super.onDraw(a);
+  }
+  onDiscard(a) {
+    const e = this.turnCheck(a); if (e) return e;
+    // Kullanılabilir durumdaki yandan taş elde duruyorsa atılamaz. Artık kullanılamıyorsa oyun kilitlenmesin diye izin verilir.
+    if (this.sidePending(a.seat) && this.sideUsable(a.seat, this.sideTake.tileId)) return 'Yandan aldığın taşı bu tur kullanmalısın: elini aç ya da pere işle';
+    return super.onDiscard(a);
   }
   // ---- İşleme: yerdeki perlere taş ekleme ----
   // Seride okeyin tuttuğu taş işlenirse okey yerden alınır (7-okey-9 + 8).
@@ -1606,10 +1675,11 @@ class Okey101Game extends OkeyGame {
     if (this.isIslek(id)) return 'İşlek taş attı';
     return null;
   }
+  // Ceza (pozitif) ve ödül (negatif) aynı listede tutulur; el sonunda olduğu gibi eklenir, katlanmaz
   addPenalty(s, points, reason) {
     this.penalties[s].push({ points, reason });
-    this.penaltyFx.push({ s, text: `+${points} · ${reason}`, t: 0 });
-    if (s === 0) toast(`${points} ceza: ${reason.toLocaleLowerCase('tr')}`);
+    this.penaltyFx.push({ s, text: `${points > 0 ? '+' : '−'}${Math.abs(points)} · ${reason}`, t: 0, reward: points < 0 });
+    if (s === 0) toast(`${points > 0 ? `${points} ceza` : `${-points} ödül`}: ${reason.toLocaleLowerCase('tr')}`);
   }
   penaltySum(s) { return this.penalties[s].reduce((a, p) => a + p.points, 0); }
   discardLabel(id) {
@@ -1617,8 +1687,10 @@ class Okey101Game extends OkeyGame {
     return why ? `${why.split(' ')[0]} · 101 ceza` : 'At';
   }
   scoreRow(i, pen, win) {
-    const c = this.penaltySum(i);
-    return [this.seats[i].name, `${pen > 0 ? '+' : ''}${pen}${c ? ` (ceza ${c})` : ''} · toplam ${this.totals[i]}`, win];
+    const c = this.penalties[i].filter(p => p.points > 0).reduce((a, p) => a + p.points, 0);
+    const o = -this.penalties[i].filter(p => p.points < 0).reduce((a, p) => a + p.points, 0);
+    const extra = [c && `ceza ${c}`, o && `ödül ${o}`].filter(Boolean).join(', ');
+    return [this.seats[i].name, `${pen > 0 ? '+' : ''}${pen}${extra ? ` (${extra})` : ''} · toplam ${this.totals[i]}`, win];
   }
   update(dt) {
     super.update(dt);
@@ -1631,7 +1703,7 @@ class Okey101Game extends OkeyGame {
       const av = L.avatar[f.s], a = f.t < 2.4 ? 1 : 1 - (f.t - 2.4) / 0.6, y = av.y - L.ar - 16 - Math.min(f.t, 1) * 14;
       g.save(); g.globalAlpha = Math.max(0, a); g.font = `700 12px ${F_BODY}`; g.textAlign = 'center';
       const w = g.measureText(f.text).width + 14, x = clamp(av.x, L.felt.x + w / 2 + 2, L.felt.r - w / 2 - 2);
-      rr(g, x - w / 2, y - 10, w, 20, 10); g.fillStyle = '#7a1e18'; g.fill(); g.strokeStyle = '#e0574a'; g.lineWidth = 1; g.stroke();
+      rr(g, x - w / 2, y - 10, w, 20, 10); g.fillStyle = f.reward ? '#1f5a3a' : '#7a1e18'; g.fill(); g.strokeStyle = f.reward ? '#9be3a7' : '#e0574a'; g.lineWidth = 1; g.stroke();
       g.fillStyle = '#fff1ea'; g.fillText(f.text, x, y + 4); g.restore();
     }
   }
@@ -1656,7 +1728,7 @@ class Okey101Game extends OkeyGame {
   // Katlama: okeyle bitme 2x, elden bitme (aynı turda açıp bitirme) 2x, ikisi birden 4x. Bitirenin -101'i de katlanır.
   finishRound(s, lastId) {
     const byOkey = this.isOkey(this.tileById[lastId]), elden = this.openTurn[s] === this.turnNo;
-    const m = this.rules.katlama ? (byOkey ? 2 : 1) * (elden ? 2 : 1) : 1;
+    const m = (byOkey ? 2 : 1) * (elden ? 2 : 1);
     // Cezalar (okey/işlek atma, cezalı mod cezaları) katlanmaz, olduğu gibi eklenir
     const pen = this.seats.map((_, i) => (i === s ? -101 : this.remainingPenalty(i)) * m + this.penaltySum(i));
     this.totals = this.totals.map((v, i) => v + pen[i]);
@@ -1669,11 +1741,25 @@ class Okey101Game extends OkeyGame {
     });
   }
   scoreRows(w) { return this.seats.map((s, i) => [s.name, `toplam ${this.totals[i]}`, i === w]); }
-  discardBias(t) { return this.isOkey(t) ? 0 : -effTile(t, this.okey).n * 0.02 + (this.isIslek(t.id) ? 40 : 0); }
+  discardBias(t) { return this.isOkey(t) ? 0 : -effTile(t, this.okey).n * 0.02 + (this.isIslek(t.id) ? 40 : 0) + (this.sidePending(this.turn) && this.sideTake.tileId === t.id ? 1000 : 0); }
   botBeforeDiscard(s) {
     const was = this.opened[s];
-    if (was !== 'cift') { const plan = this.openPlan(s); if (plan.melds.length && (was || plan.v >= 101)) return { type: 'OPEN_HAND', payload: { kind: 'seri' } }; }
-    if (was !== 'seri') { const pairs = this.pairPlan(s); if (pairs.length && (was || pairs.length >= 5)) return { type: 'OPEN_HAND', payload: { kind: 'cift' } }; }
+    // Yandan alınan taş önce kullanılır
+    if (this.sidePending(s)) {
+      const id = this.sideTake.tileId, seri = { type: 'OPEN_HAND', payload: { kind: 'seri' } }, cift = { type: 'OPEN_HAND', payload: { kind: 'cift' } };
+      if (!was) {
+        const plan = this.openPlan(s);
+        if (plan.v >= this.seriNeed() && plan.melds.some(m => m.includes(id))) return seri;
+        const pp = this.pairPlan(s); if (pp.length >= this.pairNeed() && pp.some(m => m.includes(id))) return cift;
+      } else if (this.openTurn[s] !== this.turnNo) {
+        for (let w = 0; w < 4; w++) for (let i = 0; i < this.melds[w].length; i++)
+          if (this.meldKinds[w][i] !== 'pair' && !this.layCheck(id, w, i).error && this.hands[s].length >= 2) return { type: 'LAY_TILE', payload: { tileId: id, owner: w, meld: i } };
+        if (was === 'seri' && this.openPlan(s).melds.some(m => m.includes(id))) return seri;
+        if (was === 'cift' && this.pairPlan(s).some(m => m.includes(id))) return cift;
+      }
+    }
+    if (was !== 'cift') { const plan = this.openPlan(s); if (plan.melds.length && (was || plan.v >= this.seriNeed())) return { type: 'OPEN_HAND', payload: { kind: 'seri' } }; }
+    if (was !== 'seri') { const pairs = this.pairPlan(s); if (pairs.length && (was || pairs.length >= this.pairNeed())) return { type: 'OPEN_HAND', payload: { kind: 'cift' } }; }
     return this.botLay(s);
   }
   layoutGame(L) {
@@ -1723,7 +1809,8 @@ class Okey101Game extends OkeyGame {
     this.perEl = el.querySelector('#perOut'); this.openBtn = el.querySelector('#btnOpen'); this.pairBtn = el.querySelector('#btnPairs');
   }
   hintText() {
-    if (this.canDiscardNow() && !this.opened[0]) return '<b>Taş at</b> ya da 101 sayıya veya 5 çifte ulaştıysan elini aç.';
+    if (this.canDiscardNow() && this.sidePending(0) && this.sideUsable(0, this.sideTake.tileId)) return `<b>Yandan aldığın taşı bu tur kullan:</b> ${this.opened[0] ? 'pere işle ya da yeni per aç.' : 'onunla elini aç.'}`;
+    if (this.canDiscardNow() && !this.opened[0]) return `<b>Taş at</b> ya da ${this.seriNeed()} sayıya veya ${this.pairNeed()} çifte ulaştıysan elini aç.`;
     if (this.canDiscardNow() && this.finishAllowed()) return '<b>Son taş!</b> Göstergeye ya da sağ alttaki yığına at, el biter.';
     if (this.canLayNow()) return '<b>İşle ya da at:</b> taşı yerdeki bir pere sürükle. Yeşil çerçeve uyar, altın çerçeve okeyi geri alır.';
     return super.hintText();
@@ -1731,15 +1818,16 @@ class Okey101Game extends OkeyGame {
   refreshBar() {
     super.refreshBar();
     const key = this.hands[0].join(',') + this.okey.c + this.okey.n;
-    const opened = this.opened[0], key2 = key + opened;
+    const opened = this.opened[0], key2 = key + opened + this.seriNeed() + '/' + this.pairNeed();
     if (!this.planCache || this.planCache.key !== key2) this.planCache = { key: key2, plan: this.openPlan(0), pairs: this.pairPlan(0) };
     const { plan, pairs } = this.planCache, v = plan.v, np = pairs.length;
-    const txt = opened === 'seri' ? `Seriden açtın · per ${v}` : opened === 'cift' ? `Çiftten açtın · ${np} çift` : `Per ${v}/101 · Çift ${np}/5`;
+    const sn = this.seriNeed(), pn = this.pairNeed();
+    const txt = opened === 'seri' ? `Seriden açtın · per ${v}` : opened === 'cift' ? `Çiftten açtın · ${np} çift` : `Per ${v}/${sn} · Çift ${np}/${pn}`;
     if (this.perEl.textContent !== txt) this.perEl.textContent = txt;
-    this.perEl.classList.toggle('ok', !!opened || v >= 101 || np >= 5);
+    this.perEl.classList.toggle('ok', !!opened || v >= sn || np >= pn);
     const can = this.canDiscardNow();
-    this.openBtn.disabled = !(can && opened !== 'cift' && plan.melds.length && (opened || v >= 101));
-    this.pairBtn.disabled = !(can && opened !== 'seri' && np && (opened || np >= 5));
+    this.openBtn.disabled = !(can && opened !== 'cift' && plan.melds.length && (opened || v >= sn));
+    this.pairBtn.disabled = !(can && opened !== 'seri' && np && (opened || np >= pn));
   }
 }
 

@@ -37,26 +37,30 @@ Tek dosyada kalarak kural eksiklerini ve bilinen hataları kapatmak.
 
 **Okey**
 - [ ] 12-13-1 serisi
-- [ ] Puanlama: 20'den geriye sayım, okey atarak bitirme ve çiftten bitirme katları
+- [x] Puanlama: herkes 20 ile başlar. Düz bitişte bitiren 20'de kalır, diğerleri 2 düşer. Okeyle ya da çiftten bitiş 2 kat (4), ikisi birden 4 kat (8). Biri 0'a inince oyun biter, yeni oyunda herkes 20
+- [x] Botlar bitirebiliyorsa önce okeyi atarak bitirmeyi dener
 - [ ] Gösterge gösterme
 - [ ] Yerel kural seçenekleri (masa açarken)
 
-**101** (temel düzen: katlamalı, cezasız; 12-13-1 serisi yok)
+**101** (12-13-1 serisi yok)
 - [x] Çiftten açma: en az 5 çift, okey tek taşla eşlenebilir. Çiftten açan seri açamaz, seriden açan çift açamaz
-- [x] Katlama: okeyle bitme 2x, elden bitme (aynı turda açıp bitirme) 2x, ikisi birden 4x
+- [x] Bitiş katları (tüm modlar): okeyle bitme 2x, elden bitme (aynı turda açıp bitirme) 2x, ikisi birden 4x
 - [x] Ceza yazımı: açmayan 202, çiftten açanın kalan taşları 2 kat, elde kalan okey 101
 - [x] Deste biterse herkes kalan cezasını yazar
 - [x] Dikey ekranda açılmış perler üst üste binmeden dizilir
 - [x] Masa ayarı olarak dört mod: normal/cezalı × katlamalı/katlamasız
+- [x] Katlamalı: her açan, kendinden önce açanın sayısını geçmeli (120 → en az 121; 5 çift → en az 6 çift). Seri ve çift ayrı takip edilir. Katlamasızda 101 / 5 çift yeter
+- [x] Açılış sayısı: açıldığı turda açılan her şey (elden) sayılır, sonraki turlarda açılan perler sayılmaz
 - [x] Genel cezalar (tüm modlar): okey atan 101, işlek taş atan 101. Eli bitiren son taş muaf. Cezalar katlanmaz
 - [x] Cezalı mod: yandan alınan taş el açmada kullanılırsa atana taşın 10 katı ceza; okeyi başka oyuncu yerden alırsa per sahibine 101 ceza
+- [x] Cezalı mod ödülleri: açılışta 151'i geçen (152+) −101, 7 çift açan −101. Ödüller de katlanmaz
 - [x] Atmadan önce uyarı: okey ya da işlek taş tutulunca "At" yerine kırmızı "İşlek · 101 ceza" yazar; ceza yiyen oyuncunun üstünde ceza etiketi çıkar
 - [ ] Botlar cezalı modda solundakinin açmasına yarayacak taşı atmaktan kaçınsın
 - [x] Açılmış perlere taş işleme (kendi ve rakip perleri, seri uçları ve küte eksik renk). Sadece açmış oyuncu, açtığı turdan sonra; atacak bir taş kalmalı; çiftlere işlenmez
 - [x] Okeyi yerden alma: seride okeyin tuttuğu taş işlenince; kütte eksik renklerin hepsi gerçek taşla tamamlanınca (8 sarı, 8 kırmızı, okey → 8 mavi + 8 siyah)
 - [x] Sürükleyerek işleme: taşı tutunca uyan perler yeşil, okeyi geri aldıranlar altın çerçeveyle yanar
 - [ ] Perleri elle seçerek açma (şu an motor en iyisini seçiyor)
-- [ ] Yandan alınan taşla o turda açma zorunluluğu
+- [x] Yandan alınan taş o tur kullanılmak zorunda (el açarak ya da işleyerek). Bu tur kullanılamayacak taş yandan alınamaz; alınan taş kullanılmadan taş atılamaz; açılışta kullanılmayacaksa açılamaz
 
 **Kural altyapısı**
 - [x] `RULESETS`: her oyunun global varsayılanı ve masa ayarları tek yerde tanımlı
@@ -176,7 +180,8 @@ Amaç: oyunun kendi masrafını çıkarması, kazancın oyuna geri yatırılmas�
 | Sunucu | Düşük bütçeli tek sunucuyla başla, kullanım arttıkça bütçe ayır |
 | Giriş | Facebook, e-posta ve kendi kayıt sistemimiz |
 | Gelir | Reklam + jeton satışı. Gelir oyuna yeniden yatırılır |
-| 101 | 12-13-1 yok, çiftten açma en az 5 çift, okeyle bitme 2x, elden bitme 2x. Okey ve işlek taş atma her modda 101 ceza. Cezalı mod: yandan alınan taşla açılırsa atan 10 kat, okeyi yerden alınan 101 |
+| 101 | 12-13-1 yok, çiftten açma en az 5 çift, okeyle bitme 2x, elden bitme 2x. Okey ve işlek taş atma her modda 101 ceza. Yandan alınan taş o tur kullanılmalı. Katlamalı: önceki açılışı geçmek zorunlu. Cezalı: yandan alınan taşla açılırsa atan 10 kat, okeyi yerden alınan 101; 151 üstü ya da 7 çift açılış −101 ödül |
+| Okey | 20 puanla başlanır. Düz bitiş diğerlerinden 2, okeyle ya da çiftten 4, ikisi birden 8 düşürür |
 
 ## Karar bekleyen konular
 
