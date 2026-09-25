@@ -17,7 +17,16 @@ Dosya önizleme ekranları (ör. iPhone Dosyalar uygulamasındaki hızlı bakı�
 - Tüm bloklar toplanınca "Level Completed!" ekranı konfetiyle açılır. Bekleme yuvaları doluyken bir toplayıcı daha banttan dönerse bant tıkanır ve "Game Over" olur.
 - Bantta aynı anda en fazla 5 toplayıcı bulunabilir.
 
-Bölümler: Mantar (16×16), Çilek (16×16), Kedi (20×20). Toplayıcı sırası her bölüm için tohumlu üretilir ve bir çözücüyle çözülebilir olduğu doğrulanır; yeniden denemede aynı bulmaca gelir.
+İlk tema **Hayvanlar Âlemi** (15 bölüm, 12×12'den 20×20'ye). Açılışta bölüm haritası gelir; ilerleme tarayıcıda saklanır. İlk 3 bölümde öğretici ipuçları var. Ayarlardan ses, müzik ve titreşim kapatılabilir. Kaybedince bölüm başına bir kez "+1 yuva ile devam et" hakkı var.
+
+Toplayıcı sırası her bölüm için tohumlu üretilir ve bir çözücüyle çözülebilir olduğu doğrulanır; yeniden denemede aynı bulmaca gelir. Bölümün zorluğu, çözücünün ihtiyaç duyduğu en az yuva sayısıyla ayarlanır.
+
+## Yeni bölüm eklemek
+
+1. `araclar/donusturucu.html` dosyasını tarayıcıda aç, resmi yükle.
+2. Boyutu ve renk sayısını seç, gerekirse hücreleri elle düzelt.
+3. "Oyunda dene" ile test et; başlıkta çözücünün verdiği zorluk (1–5) yazar.
+4. "Kodu kopyala" ile çıkan kodu `index.html` başındaki `PT_DATA.levels` dizisine yapıştır.
 
 ## Yol haritası
 

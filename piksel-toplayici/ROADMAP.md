@@ -48,22 +48,28 @@ Her faz kendi kapısını geçmeden kapanmaz. Tutunma ve oynama süresi değerle
 Tek dosyada kalarak "tamamlanmış hissi veren" bir oyun yapmak.
 
 **Oynanış**
-- [ ] Ses efektleri (emme, dolma, yuva, kazanma, kaybetme) ve müzik, Web Audio ile kodda üretilmiş
-- [ ] Titreşim (Android'de `navigator.vibrate`, mobil pakette Capacitor Haptics)
-- [ ] Ayarlar: ses, müzik, titreşim
-- [ ] İlk 3 bölüme adım adım öğretici (tek parmak, vurgulu toplayıcı)
-- [ ] Bölüm seçim haritası ve kilitli bölümler
-- [ ] İlerleme kaydı (şimdilik `localStorage`)
-- [ ] Kaybedince "devam et" ekranı (ileride reklamla/altınla)
-- [ ] Yakın kayıp göstergesi: yuvalar dolmak üzereyken uyarı
+- [x] Ses efektleri (emme, dolma, yuva, kazanma, kaybetme, uyarı) ve müzik, Web Audio ile kodda üretilmiş
+- [x] Titreşim (`navigator.vibrate`; Android'de çalışır, iOS Safari desteklemez, iOS için Faz 3'te Capacitor Haptics)
+- [x] Ayarlar: ses, müzik, titreşim, ilerlemeyi sıfırla
+- [x] İlk 3 bölüme öğretici: 1. bölümde önerilen toplayıcı halka ve parmakla gösterilir, ilk yuvaya düşüşte ve 2.–3. bölüm başında ipucu çıkar
+- [x] Bölüm seçim haritası: tema başlığı, zikzak bölüm yolu, açılan bölümlerde resim önizlemesi, kilitli bölümler, ZOR/FİNAL etiketi
+- [x] İlerleme kaydı (`localStorage`, bozuk ya da kapalı depolamada varsayılanla açılır)
+- [x] Kaybedince "devam et" ekranı: +1 yuva ve takılan toplayıcı bandın başına döner. Şimdilik ücretsiz, bölüm başına bir kez; Faz 4'te ödüllü reklama bağlanacak
+- [x] Yakın kayıp göstergesi: son yuvaya düşünce uyarı sesi, titreşim ve yazı; ekran kenarında kırmızı nabız
 
 **Bölüm üretim hattı**
-- [ ] Resimden pixel art dönüştürücü: PNG yükle, 16×16 / 20×20 / 24×24'e indir, sabit paletle eşle, `art` dizisini ver
-- [ ] Zorluk puanı: çözücünün kaç yuvaya ihtiyaç duyduğu ve kaç hatalı hamleye tolerans tanıdığı
-- [ ] Zorluk eğrisi: kolay-kolay-orta-kolay-zor döngüsü, her 10 bölümde bir "zor bölüm"
-- [ ] Bölümleri tek dosyadan ayırıp `levels.json` olarak tut
+- [x] Resimden pixel art dönüştürücü: `araclar/donusturucu.html`. Resim yükle (dosya, sürükle-bırak, yapıştır), 12/14/16/20/24 boyut, renk sayısı sınırı, kenardaki arka planı boşaltma, elle boyama, kodu kopyalama, "Oyunda dene"
+- [x] Zorluk puanı: çözücünün bölümü bitirmek için ihtiyaç duyduğu en az yuva sayısı (1–5). Hatalı hamle toleransı henüz ölçülmüyor
+- [x] Zorluk eğrisi: her bölüme kolay/orta/zor hedefi verilir, üretici toplayıcı sırasını bu hedefe oturtur. 5., 10. ve 15. bölüm zor
+- [x] Bölüm verisi oyun dosyasının başında ayrı bir veri bloğunda (`PT_DATA`). Oyun tek dosya kalsın diye ayrı `levels.json` dosyasına Faz 3'teki derleme adımında geçilecek; `file://` ile açılan sayfa JSON dosyasını okuyamıyor
+
+**İçerik**
+- [x] Hayvanlar Âlemi teması, 15 bölüm: Uğur Böceği, Civciv, Kurbağa, Tavşan, Penguen, Arı, Fare, Baykuş, Tilki, Kaplumbağa, Panda, Köpek, Ayı, Fil, Kedi (final). Tablo 12×12'den 20×20'ye büyür
+- [x] Tablo zemini orta tona çekildi; siyah bloklar koyu zeminde kayboluyordu
 
 Çıkış ölçütü: Hayvanlar Âlemi teması (15 bölüm) bitmiş; ses, öğretici, harita çalışıyor. 5 kişi hiç açıklama almadan ilk 10 bölümü oynayabiliyor.
+
+Durum: teknik kısım tamam, otomatik testte 15 bölümün hepsi çözülüyor. **Kalan: 5 kişilik oyun testi.**
 
 ## Faz 1: Mekanikler, temalar ve kimlik (5–7 hafta)
 
