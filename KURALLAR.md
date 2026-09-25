@@ -18,13 +18,14 @@ Oyun motorunun uyguladığı kuralların yazılı hali. Bir kural değişirse ö
 - 106 taş, 4 renk × 1–13 × 2 + 2 sahte okey. Göstergenin bir üstü okeydir, sahte okey okeyin yerini tutar.
 - Başlayan 15, diğerleri 14 taş alır. Sırası gelen ortadan ya da solundan çeker, sağına atar.
 - Bitiş: kalan 14 taşın tamamı seri/küt perlere oturmalı ya da 7 çift olmalı. Bitiren son taşı göstergenin üstüne bırakır.
+- 12-13-1 serisi geçerlidir (11-12-13-1 gibi uzun seriler ve okeyli halleri dahil). 1 serinin sadece en üstünde olabilir, 13-1-2 geçmez.
+- **Gösterge gösterme:** Göstergenin eşini tutan oyuncu ilk taşını atmadan önce gösterebilir, diğer üç oyuncu 1 puan düşer. Elde bir kez yapılır.
 - **Puanlama:** Herkes 20 puanla başlar. Düz bitişte bitiren 20'de kalır, diğerleri 2 düşer. Okeyle bitiş 2 kat (4), çiftten bitiş 2 kat (4), ikisi birden 4 kat (8). Biri 0'a inince oyun biter, en yüksek puan kazanır.
-- Açık konu: 12-13-1 serisi Okey'de geçerli mi (şu an geçersiz).
 
 ## 101
 
 **Temel**
-- 21 taş, başlayan 22. 12-13-1 serisi yoktur.
+- 21 taş, başlayan 22. 12-13-1 serisi yoktur. Istaka 2×15 yuvadır.
 - Seriden açma: perlerin toplamı en az 101. Çiftten açma: en az 5 çift, okey tek bir taşla çift yapabilir.
 - Çiftten açan seri açamaz, seriden açan çift açamaz.
 - Açılış sayısı: açıldığı turda açılan her şey sayılır, sonraki turlarda açılan perler sayılmaz.

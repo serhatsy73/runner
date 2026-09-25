@@ -41,13 +41,13 @@ Sıra, online'a en kısa ve en güvenli yolu izler. Her aşama bir öncekinin ç
 ### Aşama 1: Prototipi kapat
 Küçük, tek dosyada kalan işler. Online'a geçmeden önce kural ve arayüz borcunu sıfırlamak.
 
-- [ ] 101: geniş ıstaka (2×15). 22 taşlık elde perlerin bir kısmı boşluksuz diziliyor
+- [x] 101: geniş ıstaka (2×15)
+- [x] Okey: 12-13-1 serisi, gösterge gösterme (diğerleri 1 puan düşer)
 - [ ] 101: perleri elle seçerek açma (şu an motor en iyi dizilimi kendisi seçiyor)
 - [ ] Poker: tam olmayan all-in artırması bahsi yeniden açmasın; el sonunda kazanan beş kartın vurgusu
 - [ ] Botlar: cezalı 101'de solundakinin açmasına yarayacak taşı atmaktan kaçınsın; katlamalı eşiğe göre açılış stratejisi
 - [ ] Masa ayarı: hamle süresi (hızlı / normal / yavaş)
 - [ ] Ses efektleri ve ses ayarı
-- [ ] Okey: gösterge gösterme (karar bekliyor, aşağıya bak)
 
 **Çıkış:** Dört oyun iki telefon boyutunda elle baştan sona oynanmış, açık kural sorusu kalmamış.
 
@@ -128,22 +128,17 @@ Online'ın temeli. Kurallar sunucuda çalışabilir hale gelir, her değişiklik
 | Sunucu | Düşük bütçeli tek sunucuyla başla, kullanım arttıkça bütçe ayır |
 | Giriş | Facebook, e-posta ve kendi kayıt sistemimiz |
 | Gelir | Reklam + jeton satışı; gelir oyuna yeniden yatırılır |
-| Oyun kuralları | [KURALLAR.md](KURALLAR.md) |
+| Oyun kuralları | [KURALLAR.md](KURALLAR.md). Düz Okey'de 12-13-1 geçerli, gösterge 1 puan. Hamle süreleri: Okey 20, 101 30, Batak 15, Poker 20 sn |
 
 ## Senden gerekenler
 
-**Kural kararları (Aşama 1)**
-1. Okey'de 12-13-1 serisi geçerli mi?
-2. Okey'de gösterge gösterme olsun mu, olursa kaç puan?
-3. Hamle süreleri (Okey 20, 101 30, Batak 15, Poker 20 sn) uygun mu?
-
 **Aşama 3 öncesi**
-4. Oyunun adı ve alan adı
-5. Sunucu için bir bulut hesabı (küçük bir sanal sunucu yeterli)
+1. Oyunun adı ve alan adı
+2. Sunucu için bir bulut hesabı (küçük bir sanal sunucu yeterli)
 
 **Aşama 4 öncesi**
-6. Meta (Facebook) geliştirici hesabı
+3. Meta (Facebook) geliştirici hesabı
 
 **Aşama 6 öncesi**
-7. Jeton satışı için hukuki görüş
-8. Jeton paketleri ve fiyatları
+4. Jeton satışı için hukuki görüş
+5. Jeton paketleri ve fiyatları
