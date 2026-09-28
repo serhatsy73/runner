@@ -69,4 +69,6 @@ Oyun motorunun uyguladığı kuralların yazılı hali. Bir kural değişirse ö
 
 - Kör: 10/20, 25/50 ya da 50/100. Başlangıç çipi: ₺1.000, ₺2.500 ya da ₺5.000.
 - Flop öncesi, flop, turn, river, showdown. Yan pot hesaplanır, eşitlikte pot bölünür.
+- Artırma en az bir önceki tam artırma kadar olmalıdır. Bundan küçük all-in (tam olmayan artırma) bahsi yeniden açmaz: o artırmadan önce hamle yapmış oyuncular sadece görebilir ya da pas geçebilir; henüz hamle yapmamış olanlar artırabilir.
+- Showdown'da kazanan beş kart vurgulanır; el adı ve belirleyici kart (kicker) yazılır.
 - Çipi biten oyuncuya yeni elde başlangıç çipi verilir (çevrimdışı prototipte).

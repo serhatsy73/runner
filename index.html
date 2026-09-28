@@ -637,7 +637,24 @@ function eval5(cs) {
   else if (gr[0][1] === 2 && gr[1][1] === 2) cat = 2; else if (gr[0][1] === 2) cat = 1; else cat = 0;
   const tb = sHi ? [sHi] : gr.map(g => g[0]);
   let score = cat; for (let i = 0; i < 5; i++) score = score * 15 + (tb[i] || 0);
-  return { score, cat };
+  return { score, cat, tb, cards: cs };
+}
+const RANK_TR = { 14: 'As', 13: 'Papaz', 12: 'Kız', 11: 'Vale' };
+const rankTr = r => RANK_TR[r] || String(r);
+// "Bir çift: Papaz, kicker As" gibi: eşitlikte neyin belirleyici olduğunu da söyler
+function handDetail(b) {
+  const t = b.tb, R = rankTr;
+  switch (b.cat) {
+    case 0: return `Yüksek kart: ${R(t[0])}, sonra ${R(t[1])}`;
+    case 1: return `Bir çift: ${R(t[0])}, kicker ${R(t[1])}`;
+    case 2: return `İki çift: ${R(t[0])} ve ${R(t[1])}, kicker ${R(t[2])}`;
+    case 3: return `Üçlü: ${R(t[0])}, kicker ${R(t[1])}`;
+    case 4: return `Kent: ${R(t[0])} yüksek`;
+    case 5: return `Renk: ${R(t[0])} yüksek`;
+    case 6: return `Ful: üç ${R(t[0])}, iki ${R(t[1])}`;
+    case 7: return `Kare: ${R(t[0])}, kicker ${R(t[1])}`;
+    default: return t[0] === 14 ? 'Floş royal' : `Sıralı renk: ${R(t[0])} yüksek`;
+  }
 }
 function bestHand(cs) {
   let best = null; const n = cs.length;
@@ -2073,6 +2090,8 @@ class PokerGame extends BaseGame {
     const sbS = (this.dealer + 1) % 4, bbS = (this.dealer + 2) % 4;
     this.put(sbS, this.sb); this.put(bbS, this.bb); this.lastMove[sbS] = 'Küçük kör'; this.lastMove[bbS] = 'Büyük kör';
     this.currentBet = this.bb; this.minRaise = this.bb;
+    // acted: son tam artırmadan beri hamle yapanlar. raiseClosed: tam olmayan all-in'den sonra sadece görebilir/pas geçebilir
+    this.acted = new Set(); this.raiseClosed = new Set(); this.bestCards = [];
     this.needToAct = new Set([0, 1, 2, 3].filter(s => !this.allIn[s]));
     this.turn = this.nextActor(bbS);
     this.phase = 'deal'; this.after(k * 0.09 + 0.5, () => { this.phase = 'play'; });
@@ -2090,15 +2109,19 @@ class PokerGame extends BaseGame {
       if (toCall <= 0) return 'Görülecek bahis yok, kontrol et';
       this.put(s, toCall); this.lastMove[s] = this.allIn[s] ? 'All-in' : 'Gör';
     } else if (move === 'raise') {
+      if (this.raiseClosed.has(s)) return 'Tam olmayan all-in artırması bahsi yeniden açmaz: sadece görebilir ya da pas geçebilirsin';
       const to = Math.floor(amount), maxTo = this.bets[s] + this.stacks[s];
       if (!(to > this.currentBet)) return 'Artış mevcut bahisten büyük olmalı';
       if (to > maxTo) return 'Yeterli çipin yok';
       if (to < this.currentBet + this.minRaise && to !== maxTo) return `En az ${tl(this.currentBet + this.minRaise)} olmalı`;
-      if (to - this.currentBet >= this.minRaise) this.minRaise = to - this.currentBet;
+      const full = to - this.currentBet >= this.minRaise;
+      if (full) { this.minRaise = to - this.currentBet; this.acted = new Set(); this.raiseClosed = new Set(); }
+      else this.acted.forEach(x => this.raiseClosed.add(x)); // eksik all-in: daha önce hamle yapanlar yeniden artıramaz
       this.currentBet = to; this.put(s, to - this.bets[s]);
       this.lastMove[s] = this.allIn[s] ? 'All-in' : 'Artır';
       this.needToAct = new Set(this.alive().filter(x => x !== s && !this.allIn[x]));
     } else return 'Geçersiz poker hamlesi';
+    this.acted.add(s);
     this.needToAct.delete(s);
     const alive = this.alive();
     if (alive.length === 1) { this.collect(); this.awardSingle(alive[0]); return; }
@@ -2110,7 +2133,7 @@ class PokerGame extends BaseGame {
     this.pot += this.bets.reduce((a, b) => a + b, 0); this.bets = [0, 0, 0, 0];
   }
   endStreet() {
-    this.collect(); this.currentBet = 0; this.minRaise = this.bb;
+    this.collect(); this.currentBet = 0; this.minRaise = this.bb; this.acted = new Set(); this.raiseClosed = new Set();
     for (let s = 0; s < 4; s++) if (!this.folded[s] && !this.allIn[s]) this.lastMove[s] = '';
     this.street++;
     if (this.street === 1) this.board.push(this.deck.pop(), this.deck.pop(), this.deck.pop());
@@ -2127,7 +2150,8 @@ class PokerGame extends BaseGame {
   doShowdown() {
     this.showdown = true;
     const alive = this.alive(), score = {};
-    for (const s of alive) { const b = bestHand([...this.hole[s], ...this.board]); score[s] = b.score; this.handNames[s] = HAND_NAMES[b.cat]; }
+    const best = {};
+    for (const s of alive) { const b = bestHand([...this.hole[s], ...this.board]); best[s] = b; score[s] = b.score; this.handNames[s] = HAND_NAMES[b.cat]; this.lastMove[s] = HAND_NAMES[b.cat]; }
     const levels = [...new Set(this.contrib.filter(x => x > 0))].sort((a, b) => a - b);
     const won = [0, 0, 0, 0]; let prev = 0;
     for (const lv of levels) {
@@ -2139,8 +2163,13 @@ class PokerGame extends BaseGame {
     }
     won.forEach((v, s) => this.stacks[s] += v); this.pot = 0;
     this.winners = [0, 1, 2, 3].filter(s => won[s] > 0);
-    const w = this.winners[0];
-    this.endRound({ title: `${this.winners.map(s => this.seats[s].name).join(' ve ')} kazandı`, text: `${this.handNames[w]} · ${tl(won[w])}`, rows: this.stackRows(this.winners, true) });
+    this.bestCards = this.winners.flatMap(s => best[s].cards.map(c => c.id)); // masada vurgulanır
+    const w = this.winners[0], split = this.winners.length > 1 && this.winners.every(s => score[s] === score[w]);
+    this.endRound({
+      title: `${this.winners.map(s => this.seats[s].name).join(' ve ')} kazandı`,
+      text: `${handDetail(best[w])}${split ? ' · pot bölündü' : ''} · ${this.winners.map(s => `${this.seats[s].name} ${tl(won[s])}`).join(', ')}`,
+      rows: this.stackRows(this.winners, true),
+    });
   }
   stackRows(ws, sd) { return this.seats.map((p, i) => [p.name, `${sd && this.handNames[i] ? this.handNames[i] + ' · ' : this.folded[i] ? 'Pas · ' : ''}${tl(this.stacks[i])}`, ws.includes(i)]); }
   strength(s) {
@@ -2160,7 +2189,7 @@ class PokerGame extends BaseGame {
     const A = (move, amount) => ({ type: 'POKER_ACTION', payload: { move, amount } });
     const call = toCall > 0 ? A('call') : A('check'), fold = toCall > 0 ? A('fold') : A('check');
     const raiseTo = x => {
-      const maxTo = this.bets[s] + stack; if (maxTo <= this.currentBet) return call;
+      const maxTo = this.bets[s] + stack; if (maxTo <= this.currentBet || this.raiseClosed.has(s)) return call;
       return A('raise', Math.min(maxTo, Math.max(this.currentBet + this.minRaise, Math.round(x / 10) * 10)));
     };
     if (str > 0.78 && r < 0.75) return raiseTo(this.currentBet + Math.max(this.minRaise, potNow * 0.6));
@@ -2195,7 +2224,7 @@ class PokerGame extends BaseGame {
   targets() {
     const L = this.L, out = [];
     this.hole[0].forEach((c, i) => {
-      out.push({ id: c.id, kind: 'card', data: c, x: L.cx + (i - 0.5) * L.cw * 0.78, y: L.handY, rot: (i - 0.5) * 0.14, w: L.cw, h: L.ch, faceUp: true, z: 200 + i, deal: this.dealIdx[c.id], stagger: 0.09, dim: this.folded[0] });
+      out.push({ id: c.id, kind: 'card', data: c, x: L.cx + (i - 0.5) * L.cw * 0.78, y: L.handY, rot: (i - 0.5) * 0.14, w: L.cw, h: L.ch, faceUp: true, z: 200 + i, deal: this.dealIdx[c.id], stagger: 0.09, ...this.cardMark(c, this.folded[0]) });
     });
     for (let s = 1; s < 4; s++) {
       const av = L.avatar[s], reveal = this.showdown && !this.folded[s];
@@ -2205,11 +2234,20 @@ class PokerGame extends BaseGame {
         else if (s === 1) { x = av.x - L.ar - L.sw * 0.7 + (i - 0.5) * L.sw * 0.55; y = av.y + L.ar * 0.1; }
         else { x = av.x + L.ar + L.sw * 0.7 + (i - 0.5) * L.sw * 0.55; y = av.y + L.ar * 0.1; }
         const sc = reveal ? 1.25 : 1;
-        out.push({ id: c.id, kind: 'card', data: c, x, y, rot: (i - 0.5) * 0.18, w: L.sw * sc, h: L.sh * sc, faceUp: reveal, z: 100 + i + (reveal ? 50 : 0), deal: this.dealIdx[c.id], stagger: 0.09, alpha: this.folded[s] ? 0.35 : 1 });
+        out.push({ id: c.id, kind: 'card', data: c, x, y, rot: (i - 0.5) * 0.18, w: L.sw * sc, h: L.sh * sc, faceUp: reveal, z: 100 + i + (reveal ? 50 : 0), deal: this.dealIdx[c.id], stagger: 0.09, alpha: this.folded[s] ? 0.35 : 1, ...(reveal ? this.cardMark(c, false) : {}) });
       });
     }
-    this.board.forEach((c, i) => out.push({ id: c.id, kind: 'card', data: c, x: L.cx + (i - 2) * (L.bw + L.bw * 0.1), y: L.boardY, w: L.bw, h: L.bh, faceUp: true, z: 150 + i }));
+    this.board.forEach((c, i) => {
+      const lift = this.bestCards.includes(c.id) ? L.bh * 0.08 : 0;
+      out.push({ id: c.id, kind: 'card', data: c, x: L.cx + (i - 2) * (L.bw + L.bw * 0.1), y: L.boardY - lift, w: L.bw, h: L.bh, faceUp: true, z: 150 + i, ...this.cardMark(c, false) });
+    });
     return out;
+  }
+  // Showdown'da kazanan beş kart çerçevelenir, kalanlar soluklaşır
+  cardMark(c, dim) {
+    if (!this.showdown || !this.bestCards.length) return { dim };
+    const win = this.bestCards.includes(c.id);
+    return { hl: win, dim: dim || !win };
   }
   update(dt) {
     super.update(dt);
@@ -2246,8 +2284,8 @@ class PokerGame extends BaseGame {
       g.beginPath(); g.arc(L.cx, L.potY, 46, 0, TAU); g.stroke(); g.restore();
     }
     // son hamle etiketleri
-    for (let s = 1; s < 4; s++) {
-      const m = this.lastMove[s]; if (m) this.seatPill(g, s, m, m === 'Pas' ? '#5a1f15' : '#2f5a3e');
+    for (let s = this.showdown ? 0 : 1; s < 4; s++) {
+      const m = this.lastMove[s]; if (m) this.seatPill(g, s, m, m === 'Pas' ? '#5a1f15' : this.showdown && this.winners.includes(s) ? '#7a5418' : '#2f5a3e');
     }
   }
   drawOverlay(g) {
@@ -2276,7 +2314,8 @@ class PokerGame extends BaseGame {
   act(move, amount) { dispatchAction({ type: 'POKER_ACTION', seat: 0, payload: amount != null ? { move, amount } : { move } }); }
   refreshBar() {
     const u = this.ui, my = this.isMyTurn(), toCall = my ? this.toCall(0) : 0;
-    const key = [my, toCall, this.currentBet, this.minRaise, this.stacks[0], this.phase, this.turn].join('|');
+    const closed = this.raiseClosed && this.raiseClosed.has(0);
+    const key = [my, toCall, this.currentBet, this.minRaise, this.stacks[0], this.phase, this.turn, closed].join('|');
     if (key === this.uiKey) return; this.uiKey = key;
     u.fold.disabled = u.call.disabled = u.raise.disabled = u.range.disabled = !my;
     u.call.textContent = toCall > 0 ? (toCall >= this.stacks[0] ? `All-in ${tl(this.stacks[0])}` : `Gör ${tl(toCall)}`) : 'Kontrol';
@@ -2284,8 +2323,9 @@ class PokerGame extends BaseGame {
     u.range.min = minTo; u.range.max = maxTo; u.range.step = 10;
     if (!(+u.range.value >= minTo)) u.range.value = minTo;
     u.out.textContent = tl(+u.range.value);
-    u.raise.disabled = !my || maxTo <= this.currentBet;
-    u.hint.hidden = my;
+    u.raise.disabled = u.range.disabled = !my || maxTo <= this.currentBet || closed;
+    u.hint.hidden = my && !closed;
+    if (my && closed) { u.hint.innerHTML = 'Tam olmayan all-in bahsi yeniden açmaz: görebilir ya da pas geçebilirsin.'; return; }
     u.hint.innerHTML = this.phase === 'deal' ? 'Kartlar dağıtılıyor…' : this.phase === 'end' ? 'El bitti.' : this.folded[0] ? 'Pas geçtin, eli izliyorsun.' : this.turn != null ? `${this.seats[this.turn].name} düşünüyor…` : 'Kartlar açılıyor…';
   }
   pointer(type, p) {

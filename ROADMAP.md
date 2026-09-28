@@ -44,7 +44,7 @@ Küçük, tek dosyada kalan işler. Online'a geçmeden önce kural ve arayüz bo
 - [x] 101: geniş ıstaka (2×15)
 - [x] Okey: 12-13-1 serisi, gösterge gösterme (diğerleri 1 puan düşer)
 - [x] 101: perleri elle seçerek açma: ıstakada boşlukla ayrılmış her grup bir per ya da çift adayıdır, geçerli olanlar yeşil/mavi çizgiyle gösterilir, "El aç" / "Çift aç" ıstakada görüneni açar
-- [ ] Poker: tam olmayan all-in artırması bahsi yeniden açmasın; el sonunda kazanan beş kartın vurgusu
+- [x] Poker: tam olmayan all-in artırması bahsi yeniden açmaz; showdown'da kazanan beş kart vurgulanır, el adı ve kicker yazılır
 - [ ] Botlar: cezalı 101'de solundakinin açmasına yarayacak taşı atmaktan kaçınsın; katlamalı eşiğe göre açılış stratejisi
 - [ ] Masa ayarı: hamle süresi (hızlı / normal / yavaş)
 - [ ] Ses efektleri ve ses ayarı
