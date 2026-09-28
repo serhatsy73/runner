@@ -1621,16 +1621,28 @@ class Okey101Game extends OkeyGame {
     const kind = (a.payload && a.payload.kind) || 'seri', was = this.opened[a.seat];
     if (kind !== 'seri' && kind !== 'cift') return 'Geçersiz açma türü';
     if (was && was !== kind) return was === 'cift' ? 'Çiftten açtın, artık sadece çift ekleyebilirsin' : 'Seriden açtın, çift açamazsın';
-    let melds, kinds;
-    if (kind === 'cift') {
+    let melds, kinds, value = 0;
+    const manual = a.payload && Array.isArray(a.payload.melds) ? a.payload.melds : null;
+    if (manual) {
+      // Oyuncunun ıstakada dizdiği gruplar: her biri sunucuda ayrıca doğrulanır
+      const h = this.hands[a.seat], seen = new Set();
+      for (const m of manual) {
+        if (!Array.isArray(m)) return 'Geçersiz per';
+        for (const id of m) { if (!h.includes(id) || seen.has(id)) return 'Bu taş sende yok'; seen.add(id); }
+      }
+      if (seen.size >= h.length) return 'Atacak bir taş bırakmalısın: bir taşı perlerin dışında tut';
+      const parsed = manual.map(m => kind === 'cift' ? this.parsePair(m) : this.parseMeld(m));
+      const bad = parsed.findIndex(x => !x);
+      if (bad >= 0) return `${bad + 1}. grup geçerli bir ${kind === 'cift' ? 'çift' : 'per'} değil`;
+      melds = parsed.map(x => x.ids); kinds = parsed.map(x => x.kind); value = parsed.reduce((n, x) => n + (x.value || 0), 0);
+    } else if (kind === 'cift') {
       melds = this.pairPlan(a.seat); kinds = melds.map(() => 'pair');
-      if (!melds.length) return 'Açılacak çift yok';
-      if (!was && melds.length < this.pairNeed()) return `Çiftten açmak için en az ${this.pairNeed()} çift gerek, ${melds.length} çiftin var`;
     } else {
-      const plan = this.openPlan(a.seat); melds = plan.melds; kinds = plan.kinds;
-      if (!melds.length) return 'Açılacak per yok';
-      if (!was && plan.v < this.seriNeed()) return `Açmak için en az ${this.seriNeed()} gerek, perlerin ${plan.v}`;
+      const plan = this.openPlan(a.seat); melds = plan.melds; kinds = plan.kinds; value = plan.v;
     }
+    if (!melds.length) return kind === 'cift' ? 'Açılacak çift yok' : 'Açılacak per yok';
+    if (kind === 'cift') { if (!was && melds.length < this.pairNeed()) return `Çiftten açmak için en az ${this.pairNeed()} çift gerek, ${melds.length} çiftin var`; }
+    else if (!was && value < this.seriNeed()) return `Açmak için en az ${this.seriNeed()} gerek, perlerin ${value}`;
     if (!was && this.sidePending(a.seat) && !melds.some(m => m.includes(this.sideTake.tileId))) return 'Yandan aldığın taş bu açılışta kullanılmalı';
     const h = this.hands[a.seat];
     melds.forEach((m, k) => { for (const id of m) h.splice(h.indexOf(id), 1); this.melds[a.seat].push(m); this.meldKinds[a.seat].push(kinds[k]); });
@@ -1651,6 +1663,72 @@ class Okey101Game extends OkeyGame {
         if (!this.isOkey(t)) { const n = effTile(t, this.okey).n; this.addPenalty(st.from, n * 10, `Attığı ${n} ile ${this.seats[a.seat].name} açtı`); }
       }
     }
+  }
+  // ---- Elle açma: ıstakada boşlukla ayrılmış her grup bir per (ya da çift) adayıdır ----
+  // Seri önce ıstaka sırasıyla denenir (okey bulunduğu yeri tutar); olmazsa taşlar sıralanır, okeyler boşluklara ve uçlara konur.
+  // Hem seri hem küt olabilen grupta (5, okey, okey) değeri yüksek olan seçilir. Dönen ids, seride sayı sırasıdır.
+  parseMeld(ids) {
+    if (!ids || ids.length < 3) return null;
+    const ts = ids.map(id => this.tileById[id]); if (ts.some(t => !t)) return null;
+    const isJ = ts.map(t => this.isOkey(t)), jokers = ids.filter((_, k) => isJ[k]);
+    const real = ids.map((id, k) => ({ id, k, e: isJ[k] ? null : effTile(ts[k], this.okey) })).filter(x => x.e);
+    if (!real.length) return null;
+    const sum = (a, b) => (a + b) * (b - a + 1) / 2, cands = [];
+    const c = real[0].e.c;
+    if (real.every(x => x.e.c === c)) {
+      const st = real[0].e.n - real[0].k, en = st + ids.length - 1;
+      if (st >= 1 && en <= 13 && real.every(x => x.e.n === st + x.k)) cands.push({ kind: 'run', ids: ids.slice(), value: sum(st, en) });
+      else {
+        const ns = real.map(x => x.e.n).sort((a, b) => a - b);
+        let extra = jokers.length - (ns[ns.length - 1] - ns[0] + 1 - ns.length);
+        if (new Set(ns).size === ns.length && extra >= 0) {
+          let s0 = ns[0], e0 = ns[ns.length - 1];
+          while (extra > 0 && e0 < 13) { e0++; extra--; }
+          while (extra > 0 && s0 > 1) { s0--; extra--; }
+          if (!extra) {
+            const byN = {}, jj = jokers.slice(), out = [];
+            real.forEach(x => byN[x.e.n] = x.id);
+            for (let n = s0; n <= e0; n++) out.push(byN[n] || jj.pop());
+            cands.push({ kind: 'run', ids: out, value: sum(s0, e0) });
+          }
+        }
+      }
+    }
+    const n = real[0].e.n;
+    if (ids.length <= 4 && real.every(x => x.e.n === n) && new Set(real.map(x => x.e.c)).size === real.length) cands.push({ kind: 'set', ids: ids.slice(), value: n * ids.length });
+    return cands.sort((x, y) => y.value - x.value)[0] || null;
+  }
+  parsePair(ids) {
+    if (!ids || ids.length !== 2) return null;
+    const [a, b] = ids.map(id => this.tileById[id]); if (!a || !b) return null;
+    if (this.isOkey(a) || this.isOkey(b)) return { kind: 'pair', ids: ids.slice() };
+    const ea = effTile(a, this.okey), eb = effTile(b, this.okey);
+    return ea.c === eb.c && ea.n === eb.n ? { kind: 'pair', ids: ids.slice() } : null;
+  }
+  rackGroups() {
+    const out = [];
+    for (let r = 0; r < 2; r++) {
+      let cur = null;
+      for (let c = 0; c <= this.cols; c++) {
+        const i = r * this.cols + c, id = c < this.cols ? this.rack[i] : null;
+        if (id) { if (!cur) cur = { ids: [], first: i }; cur.ids.push(id); cur.last = i; }
+        else if (cur) { out.push(cur); cur = null; }
+      }
+    }
+    return out;
+  }
+  rackPlan(kind) {
+    const melds = [];
+    for (const g of this.rackGroups()) { const m = kind === 'cift' ? this.parsePair(g.ids) : this.parseMeld(g.ids); if (m) melds.push({ ...m, first: g.first, last: g.last }); }
+    return { melds, v: melds.reduce((n, m) => n + (m.value || 0), 0) };
+  }
+  openFromRack(kind) {
+    const plan = this.rackPlan(kind);
+    if (!plan.melds.length) {
+      toast(kind === 'cift' ? 'Istakada çift yok: çiftleri aralarında boşluk bırakarak diz ya da Çift diz\'e bas' : 'Istakada geçerli per yok: perleri aralarında boşluk bırakarak diz ya da Seri diz\'e bas');
+      return;
+    }
+    dispatchAction({ type: 'OPEN_HAND', seat: 0, payload: { kind, melds: plan.melds.map(m => m.ids) } });
   }
   // ---- Yandan alınan taş o tur kullanılmak zorunda (el açarak ya da işleyerek) ----
   sidePending(s) { const st = this.sideTake; return !!(st && st.seat === s && this.hands[s].includes(st.tileId)); }
@@ -1761,6 +1839,7 @@ class Okey101Game extends OkeyGame {
   }
   drawBoard(g) {
     super.drawBoard(g);
+    this.drawRackGroups(g);
     const id = this.drag && this.drag.moved && this.drag.from === 'rack' ? this.drag.id : this.sel;
     if (!id || !this.canLayNow()) return;
     const pulse = REDUCED ? 0.7 : 0.55 + 0.45 * Math.sin(this.time * 4);
@@ -1769,6 +1848,24 @@ class Okey101Game extends OkeyGame {
       g.save(); g.strokeStyle = r.reclaim ? `rgba(242,196,106,${0.6 + pulse * 0.4})` : `rgba(155,227,167,${0.5 + pulse * 0.4})`; g.lineWidth = 2.5;
       rr(g, b.x0 - 4, b.y0 - 4, b.x1 - b.x0 + 8, b.y1 - b.y0 + 8, 6); g.stroke(); g.restore();
     }
+  }
+  // Istakadaki geçerli seri/küt yeşil, geçerli çift mavi çizgiyle; seri değerleri yazılır
+  drawRackGroups(g) {
+    const rk = this.rackCache; if (!rk || this.phase === 'deal') return;
+    const L = this.L, o = this.opened[0];
+    const draw = (m, color, label) => {
+      const a = this.slotPos(m.first), b = this.slotPos(m.last), x0 = a.x - L.tw / 2 + 1, x1 = b.x + L.tw / 2 - 1, y = a.y + L.th / 2 + 3;
+      g.save(); g.strokeStyle = color; g.lineWidth = 3; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke();
+      if (label) {
+        g.font = `800 10px ${F_NUM}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+        const w = g.measureText(label).width + 8, cx = (x0 + x1) / 2;
+        rr(g, cx - w / 2, y - 6, w, 12, 6); g.fillStyle = color; g.fill(); g.fillStyle = '#10301f'; g.fillText(label, cx, y + 0.5);
+      }
+      g.restore();
+    };
+    if (o !== 'cift') rk.rs.melds.forEach(m => draw(m, '#9be3a7', String(m.value)));
+    if (o !== 'seri') rk.rc.melds.forEach(m => draw(m, '#8ec5ff', ''));
   }
   onFinish(a) {
     const e = this.turnCheck(a); if (e) return e;
@@ -1923,13 +2020,18 @@ class Okey101Game extends OkeyGame {
   buildBar(el) {
     super.buildBar(el);
     el.insertAdjacentHTML('afterbegin', `<span class="per" id="perOut">Per 0/101</span><button class="act primary" id="btnOpen">El aç</button><button class="act primary" id="btnPairs">Çift aç</button>`);
-    el.querySelector('#btnOpen').onclick = () => dispatchAction({ type: 'OPEN_HAND', seat: 0, payload: { kind: 'seri' } });
-    el.querySelector('#btnPairs').onclick = () => dispatchAction({ type: 'OPEN_HAND', seat: 0, payload: { kind: 'cift' } });
+    el.querySelector('#btnOpen').onclick = () => this.openFromRack('seri');
+    el.querySelector('#btnPairs').onclick = () => this.openFromRack('cift');
     this.perEl = el.querySelector('#perOut'); this.openBtn = el.querySelector('#btnOpen'); this.pairBtn = el.querySelector('#btnPairs');
   }
   hintText() {
     if (this.canDiscardNow() && this.sidePending(0) && this.sideUsable(0, this.sideTake.tileId)) return `<b>Yandan aldığın taşı bu tur kullan:</b> ${this.opened[0] ? 'pere işle ya da yeni per aç.' : 'onunla elini aç.'}`;
-    if (this.canDiscardNow() && !this.opened[0]) return `<b>Taş at</b> ya da ${this.seriNeed()} sayıya veya ${this.pairNeed()} çifte ulaştıysan elini aç.`;
+    if (this.canDiscardNow() && !this.opened[0]) {
+      const pc = this.planCache, rk = this.rackCache;
+      if (pc && rk && rk.rs.v < this.seriNeed() && pc.plan.v >= this.seriNeed()) return `<b>Açabilirsin:</b> en iyi dizilim ${pc.plan.v}. <b>Seri diz</b>'e bas ya da perlerini kendin diz, sonra <b>El aç</b>.`;
+      if (pc && rk && rk.rc.melds.length < this.pairNeed() && pc.pairs.length >= this.pairNeed()) return `<b>Çiftten açabilirsin:</b> ${pc.pairs.length} çiftin var. <b>Çift diz</b>'e bas, sonra <b>Çift aç</b>.`;
+      return `<b>Taş at</b> ya da perlerini ıstakada aralarında boşlukla diz: ${this.seriNeed()} sayıya veya ${this.pairNeed()} çifte ulaşınca elini aç.`;
+    }
     if (this.canDiscardNow() && this.finishAllowed()) return '<b>Son taş!</b> Göstergeye ya da sağ alttaki yığına at, el biter.';
     if (this.canLayNow()) return '<b>İşle ya da at:</b> taşı yerdeki bir pere sürükle. Yeşil çerçeve uyar, altın çerçeve okeyi geri alır.';
     return super.hintText();
@@ -1939,13 +2041,15 @@ class Okey101Game extends OkeyGame {
     const key = this.hands[0].join(',') + this.okey.c + this.okey.n;
     const opened = this.opened[0], key2 = key + opened + this.seriNeed() + '/' + this.pairNeed();
     if (!this.planCache || this.planCache.key !== key2) this.planCache = { key: key2, plan: this.openPlan(0), pairs: this.pairPlan(0) };
-    const { plan, pairs } = this.planCache, v = plan.v, np = pairs.length;
+    // Sayaç ve düğmeler ıstakadaki dizilime göre: ne görüyorsan o açılır
+    const rs = this.rackPlan('seri'), rc = this.rackPlan('cift'), v = rs.v, np = rc.melds.length;
+    this.rackCache = { rs, rc };
     const sn = this.seriNeed(), pn = this.pairNeed();
-    const txt = opened === 'seri' ? `Seriden açtın · per ${v}` : opened === 'cift' ? `Çiftten açtın · ${np} çift` : `Per ${v}/${sn} · Çift ${np}/${pn}`;
+    const txt = opened === 'seri' ? `Seriden açtın · ıstakada ${v}` : opened === 'cift' ? `Çiftten açtın · ıstakada ${np} çift` : `Per ${v}/${sn} · Çift ${np}/${pn}`;
     if (this.perEl.textContent !== txt) this.perEl.textContent = txt;
     this.perEl.classList.toggle('ok', !!opened || v >= sn || np >= pn);
     const can = this.canDiscardNow();
-    this.openBtn.disabled = !(can && opened !== 'cift' && plan.melds.length && (opened || v >= sn));
+    this.openBtn.disabled = !(can && opened !== 'cift' && rs.melds.length && (opened || v >= sn));
     this.pairBtn.disabled = !(can && opened !== 'seri' && np && (opened || np >= pn));
   }
 }

@@ -26,6 +26,7 @@ Oyun motorunun uyguladığı kuralların yazılı hali. Bir kural değişirse ö
 
 **Temel**
 - 21 taş, başlayan 22. 12-13-1 serisi yoktur. Istaka 2×15 yuvadır.
+- **Açma nasıl yapılır:** Oyuncu perlerini ıstakada aralarında boşluk bırakarak dizer; boşlukla ayrılmış her grup bir per (ya da çift) sayılır ve "El aç" / "Çift aç" ıstakada görüneni açar. Seride okey ıstakada bulunduğu yeri tutar; sıra karışıksa taşlar sayı sırasına dizilir. Hem seri hem küt olabilen grup (5, okey, okey) değeri yüksek olan olarak sayılır. (Varsayılan)
 - Seriden açma: perlerin toplamı en az 101. Çiftten açma: en az 5 çift, okey tek bir taşla çift yapabilir.
 - Çiftten açan seri açamaz, seriden açan çift açamaz.
 - Açılış sayısı: açıldığı turda açılan her şey sayılır, sonraki turlarda açılan perler sayılmaz.
