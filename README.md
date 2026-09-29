@@ -1,6 +1,8 @@
-# Kıraathane
+# Masa
 
-HTML5 Canvas ve saf JavaScript ile yazılmış kıraathane oyun platformu prototipi: Okey, 101, Batak ve Poker (Texas Hold'em).
+Mahalle kahvesi havasında bir oyun platformu prototipi: Okey, 101, Batak ve Poker (Texas Hold'em). HTML5 Canvas ve saf JavaScript ile yazıldı.
+
+Oyunun adı, sloganı ve logosu `index.html` içindeki `BRAND` sabitinde ve `logoSVG()` fonksiyonunda. Adı değiştirmek için sadece orayı değiştirmek yeter.
 
 ## Çalıştırma
 
@@ -8,7 +10,9 @@ HTML5 Canvas ve saf JavaScript ile yazılmış kıraathane oyun platformu protot
 
 ## Neler var
 
-- **Lobi:** Okey, 101, Batak ve Poker sekmeleri, her sekmede masa listesi. "Otur" deyince boş koltuklara 3 bot oturur. "Masanı kur" ile global kurallar yerine masa ayarı seçilebilir (Batak, 101 ve Poker).
+- **Açılış ekranı:** Logo ve slogan, dokununca ya da 1,6 saniye sonra lobiye geçer.
+- **Lobi:** Üstte logo ve profil (ad, renk, oyun başına kazanılan/oynanan el; sadece bu cihazda saklanır). "Hızlı oyna" seçili oyundaki en dolu masaya oturtur. Okey, 101, Batak ve Poker sekmelerinde masa kartları: masanın küçük önizlemesi, oturan müdavimler, boş koltuklar, kural etiketleri ve masa rengi. "Otur" deyince boş koltuklara 3 bot oturur. "Masanı kur" ile global kurallar yerine masa ayarı ve masa rengi seçilir.
+- **Masa temaları:** Yeşil çuha, Bordo kadife, Gece mavisi, Zeytin ve Kurum. Her masanın kendi rengi var; oyun masası lobideki kartla aynı renkte açılır (`THEMES`).
 - **Batak:** 52'lik deste, yelpaze şeklinde el, ortaya sürükle-bırak ya da iki kez dokun. Tekli ya da eşli, koz maça ya da ihaleli, 3-5-7 el. Renk verme ve yükseltme zorunlu.
 - **Okey:** 106 taş, gösterge ve okey, çift sıra ıstaka. Ortadan ya da soldan taş çek, sağ alttaki yığına at, göstergeye bırakarak bitir. Seri ve çift bitiş denetlenir, 12-13-1 geçerli. Göstergenin eşi olan ilk taşını atmadan önce gösterebilir, diğerleri 1 puan düşer. "Seri diz" ve "Çift diz" düğmeleri var. Herkes 20 puanla başlar; düz bitiş diğerlerinden 2, okeyle ya da çiftten 4, ikisi birden 8 puan düşürür. Biri 0'a inince oyun biter.
 - **101:** 21 taşla başlanır, ıstaka 2×15. Perlerini ıstakada aralarında boşlukla dizersin; geçerli perlerin altında yeşil çizgi ve değeri, çiftlerin altında mavi çizgi çıkar. Toplam 101'e ulaşınca "El aç", en az 5 çift varsa "Çift aç" ıstakada görüneni açar. Açtıktan sonraki turlarda yerdeki perlere taş işlenebilir; okeyin yerine geçen taş işlenirse okey yerden alınır (kütte eksik renklerin hepsi tamamlanınca). Yandan alınan taş o tur kullanılmak zorunda. Okeyle ve elden bitme 2x, ikisi birden 4x. Açmayan 202, çiftten açanın kalan taşları 2 kat yazar. Okey ya da işlek taş atan 101 ceza yer. 12-13-1 serisi yok. Dört masa modu: normal/cezalı × katlamalı/katlamasız. Katlamalıda her açan önceki açılışı geçmeli. Cezalıda yandan alınan taşla el açılırsa atan taşın 10 katı, okeyi yerden alınan 101 ceza yer; 151 üstü ya da 7 çift açılış −101 ödül alır.

@@ -1,4 +1,4 @@
-# Kıraathane Kural Kitabı
+# Masa Kural Kitabı
 
 Oyun motorunun uyguladığı kuralların yazılı hali. Bir kural değişirse önce burası, sonra kod ve test değişir.
 "Varsayılan" işaretli maddeler senin açıkça belirtmediğin, en yaygın varyantla doldurduğumuz yerlerdir; istenirse değişir.

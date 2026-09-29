@@ -1,5 +1,8 @@
-<title>Kıraathane Masası</title>
+<title>Masa · Okey, 101, Batak, Poker</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c130d">
+<meta name="description" content="Masa: mahalle kahvesinin sıcaklığında Okey, 101, Batak ve Poker.">
+<link rel="icon" id="favicon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans+Condensed:wght@600;700;800&family=Fira+Sans:wght@400;500;700&family=Yeseva+One&display=swap">
@@ -31,28 +34,63 @@
   button { font: inherit; color: inherit; cursor: pointer; }
   button:focus-visible, input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 
+  /* ---------- Logo ---------- */
+  .brand { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+  .brand svg { flex: none; filter: drop-shadow(0 3px 6px rgba(0,0,0,.4)); }
+  .brand-name { font-family: var(--display); font-weight: 400; line-height: 1; color: var(--ivory); letter-spacing: .01em; }
+
+  /* ---------- Açılış ekranı ---------- */
+  #splash {
+    position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; align-content: center; gap: 14px;
+    background: radial-gradient(90% 70% at 50% 42%, #3a2414, #140c07 70%); text-align: center; padding: 24px;
+    transition: opacity .45s ease, visibility .45s;
+  }
+  #splash.out { opacity: 0; visibility: hidden; }
+  #splash .brand { flex-direction: column; gap: 14px; }
+  #splash .brand svg { width: 112px; height: 112px; animation: rise .8s cubic-bezier(.2,.8,.2,1) both; }
+  #splash .brand-name { font-size: 64px; animation: rise .8s .12s cubic-bezier(.2,.8,.2,1) both; }
+  #splash .tagline { color: var(--brass); font-size: 13px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; animation: rise .8s .24s cubic-bezier(.2,.8,.2,1) both; }
+  #splash small { color: var(--muted); font-size: 13px; margin-top: 18px; animation: fade 1s .6s both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { #splash *, #splash { animation: none !important; transition: none !important; } }
+
   /* ---------- Lobi ---------- */
   #lobby {
     position: fixed; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
-    padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
+    padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
     display: grid; justify-items: center; align-content: start;
   }
-  .lobby-inner { width: 100%; max-width: 760px; display: grid; gap: 18px; }
-  .sign {
-    background: linear-gradient(180deg, #4a2b16, #2f1b0e); border: 1px solid var(--line);
-    border-radius: 14px; padding: 18px 20px 16px; box-shadow: 0 12px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,220,160,.12);
-    display: grid; gap: 6px;
+  .lobby-inner { width: 100%; max-width: 760px; display: grid; gap: 16px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .topbar .brand-name { font-size: 34px; }
+  .profile-chip {
+    display: flex; align-items: center; gap: 9px; min-width: 0; padding: 5px 12px 5px 5px; border-radius: 999px;
+    border: 1px solid var(--line); background: rgba(20,12,7,.78); text-align: left;
   }
-  .sign-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .profile-chip span { display: grid; min-width: 0; }
+  .profile-chip b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+  .profile-chip small { font-size: 11.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .ava {
+    flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    font-weight: 700; font-size: 13px; font-style: normal; color: #fff7e6; border: 2px solid rgba(245,236,215,.6);
+    background: radial-gradient(circle at 35% 30%, var(--c, #c38b31), #2a1a0c 110%);
+  }
+  .sign {
+    background: linear-gradient(180deg, rgba(74,43,22,.92), rgba(47,27,14,.92)); border: 1px solid var(--line);
+    border-radius: 16px; padding: 16px 18px; box-shadow: 0 12px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,220,160,.12);
+    display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: center;
+  }
   .eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--brass); font-weight: 700; }
-  .sign h1 { font-family: var(--display); font-weight: 400; font-size: clamp(34px, 8vw, 54px); line-height: 1; margin: 2px 0 0; color: var(--ivory); text-wrap: balance; text-shadow: 0 2px 0 rgba(0,0,0,.35); }
-  .sign p { margin: 4px 0 0; color: var(--muted); font-size: 15px; line-height: 1.5; max-width: 58ch; }
-  .net-pill { font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: rgba(0,0,0,.35); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .sign h1 { font-family: var(--display); font-weight: 400; font-size: clamp(24px, 6vw, 34px); line-height: 1.1; margin: 2px 0 0; text-wrap: balance; }
+  .sign p { margin: 2px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; max-width: 52ch; }
+  .sign .quick { grid-row: 1 / 4; grid-column: 2; font-size: 17px; padding: 13px 20px; }
+  .net-pill { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.35); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; justify-self: start; }
   .net-pill i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--brass); margin-right: 6px; vertical-align: 1px; }
 
   .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .tab {
-    border: 1px solid var(--line); background: rgba(20,12,7,.72); border-radius: 12px;
+    border: 1px solid var(--line); background: rgba(20,12,7,.78); border-radius: 12px;
     padding: 10px 6px 9px; display: grid; justify-items: center; gap: 2px; text-align: center;
   }
   .tab .glyph { font-family: var(--display); font-size: 22px; line-height: 1.1; color: var(--brass); }
@@ -63,26 +101,67 @@
   .mode-head > div { display: grid; gap: 4px; }
   .mode-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 26px; }
   .mode-head p { margin: 0; color: var(--muted); font-size: 14px; }
-  .tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
   .table-card {
-    background: radial-gradient(120% 90% at 50% 0%, #237a4f, var(--felt-deep)); border-radius: 14px;
-    border: 6px solid #5a3319; box-shadow: 0 10px 28px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.35);
-    padding: 14px 14px 12px; display: grid; gap: 10px;
+    --f1: #24804f; --f2: #1d6843; --f3: #10402a; --w1: #8e552b; --w2: #6b3f1f; --w3: #4a2a13;
+    background: linear-gradient(180deg, rgba(58,34,19,.95), rgba(33,20,11,.95)); border-radius: 16px;
+    border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(0,0,0,.4);
+    padding: 12px 12px 12px; display: grid; gap: 10px;
   }
-  .table-card h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 21px; }
-  .table-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: #d8ecd9; }
-  .seats { display: flex; gap: 6px; align-items: center; }
-  .seats b { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(245,236,215,.7); }
-  .seats b.on { background: var(--brass); border-color: var(--brass); }
+  .mini {
+    position: relative; height: 112px; border-radius: 12px; display: grid; place-items: center;
+    background: radial-gradient(60% 70% at 50% 30%, rgba(255,220,160,.07), transparent), rgba(0,0,0,.22);
+  }
+  .mini .top {
+    position: absolute; inset: 20px 42px; border-radius: 14px;
+    background: linear-gradient(180deg, var(--w1), var(--w2) 50%, var(--w3)); box-shadow: 0 6px 14px rgba(0,0,0,.45);
+  }
+  .mini .top::after {
+    content: ""; position: absolute; inset: 6px; border-radius: 9px;
+    background: radial-gradient(circle at 50% 42%, var(--f1), var(--f2) 60%, var(--f3)); box-shadow: inset 0 0 0 2px rgba(0,0,0,.28);
+  }
+  .mini .deco { position: relative; z-index: 1; font-family: var(--display); font-size: 17px; color: rgba(245,236,215,.8); text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  .mini .st { position: absolute; z-index: 2; transform: translate(-50%, -50%); width: 28px; height: 28px; font-size: 10.5px; }
+  .mini .st.empty { background: rgba(20,12,7,.6); border: 2px dashed rgba(217,165,75,.7); color: var(--brass); font-size: 15px; }
+  .mini .st:nth-of-type(1) { left: 50%; top: 88%; }
+  .mini .st:nth-of-type(2) { left: 88%; top: 50%; }
+  .mini .st:nth-of-type(3) { left: 50%; top: 12%; }
+  .mini .st:nth-of-type(4) { left: 12%; top: 50%; }
+  .table-card h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 21px; line-height: 1.15; }
+  .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .card-head small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chips span { font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: rgba(0,0,0,.3); border: 1px solid var(--line); color: #ecdcb8; }
   .table-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .table-foot small { color: #cfe3d0; font-size: 12px; }
+  .table-foot small { color: var(--muted); font-size: 12.5px; }
   .sit {
-    border: 0; border-radius: 10px; padding: 8px 16px; font-weight: 700; font-size: 15px;
+    border: 0; border-radius: 10px; padding: 8px 18px; font-weight: 700; font-size: 15px;
     background: linear-gradient(180deg, #e9bb62, #c38b31); color: #2a1a0c; box-shadow: 0 2px 0 #7a5418;
   }
   .sit:active { transform: translateY(1px); box-shadow: none; }
   .lobby-note { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0; padding: 0 2px; }
+  .lobby-note summary { cursor: pointer; color: var(--brass); font-weight: 700; }
   .lobby-note code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: var(--brass); }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatch { position: relative; cursor: pointer; }
+  .swatch input { position: absolute; opacity: 0; pointer-events: none; }
+  .swatch i { display: block; width: 34px; height: 34px; border-radius: 50%; background: var(--c); border: 3px solid transparent; box-shadow: inset 0 0 0 2px rgba(0,0,0,.3); }
+  .swatch:has(input:checked) i { border-color: var(--ivory); }
+  .swatch:has(input:focus-visible) i { outline: 2px solid var(--brass); outline-offset: 2px; }
+  .text-in { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,.3); color: var(--ivory); font: inherit; font-size: 16px; user-select: text; -webkit-user-select: text; }
+  .theme-choice { display: flex; align-items: center; gap: 8px; }
+  .theme-choice i { flex: none; width: 22px; height: 22px; border-radius: 6px; background: radial-gradient(circle, var(--f1), var(--f3)); box-shadow: 0 0 0 3px var(--w2); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .stats div { display: grid; justify-items: center; padding: 8px 4px; border-radius: 10px; background: rgba(0,0,0,.25); }
+  .stats b { font-family: var(--num); font-size: 19px; font-variant-numeric: tabular-nums; }
+  .stats small { font-size: 11.5px; color: var(--muted); }
+  @media (max-width: 520px) {
+    .sign { grid-template-columns: 1fr; }
+    .sign .quick { grid-row: auto; grid-column: auto; width: 100%; margin-top: 6px; }
+    .topbar .brand-name { font-size: 28px; }
+    .profile-chip b { max-width: 96px; }
+  }
+  @media (max-width: 370px) { .hud-title svg { display: none; } }
 
   /* ---------- Masa üst çubuğu ---------- */
   #hud {
@@ -92,7 +171,9 @@
     background: linear-gradient(180deg, rgba(20,12,7,.95), rgba(20,12,7,.8)); border-bottom: 1px solid var(--line);
   }
   .hud-btn { border: 1px solid var(--line); background: rgba(0,0,0,.3); border-radius: 9px; padding: 6px 11px; font-size: 14px; font-weight: 700; }
-  .hud-title { min-width: 0; display: grid; }
+  .hud-title { min-width: 0; display: flex; align-items: center; gap: 9px; }
+  .hud-title > div { min-width: 0; display: grid; }
+  .hud-title svg { flex: none; }
   .hud-title b { font-family: var(--display); font-weight: 400; font-size: 18px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .hud-title span { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 
@@ -129,16 +210,19 @@
   .per.ok { color: #9be3a7; }
 
   /* ---------- El sonu penceresi, bildirim ---------- */
-  #modal, #setup { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(10,6,3,.55); }
+  #modal, #setup, #profile { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(10,6,3,.55); }
   .modal-card {
-    width: min(380px, 100%); background: linear-gradient(180deg, #4a2b16, #2d1a0d); border: 1px solid var(--line);
+    width: min(380px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; background: linear-gradient(180deg, #4a2b16, #2d1a0d); border: 1px solid var(--line);
     border-radius: 16px; padding: 18px 18px 16px; display: grid; gap: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.6);
   }
   .modal-card h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1.15; text-wrap: balance; }
   .modal-card p { margin: 0; color: var(--muted); font-size: 14px; }
   .rows { display: grid; gap: 4px; }
   .rows div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(0,0,0,.25); font-size: 14.5px; font-variant-numeric: tabular-nums; }
-  .rows div.win { background: rgba(217,165,75,.2); color: #ffe2a8; font-weight: 700; }
+  .rows div.win { background: rgba(217,165,75,.2); color: #ffe2a8; font-weight: 700; box-shadow: inset 3px 0 0 var(--brass); }
+  .rows div.win span:first-child::before { content: "★ "; color: var(--brass); }
+  .rows div.me span:first-child { text-decoration: underline; text-decoration-color: rgba(217,165,75,.6); text-underline-offset: 3px; }
+  .modal-card .ribbon { display: flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--brass); font-weight: 700; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
   .fields { display: grid; gap: 14px; }
   .fields fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
@@ -172,15 +256,26 @@
 
 <canvas id="cv" aria-label="Oyun masası"></canvas>
 
+<div id="splash" role="presentation">
+  <div class="brand"><span data-logo="112"></span><span class="brand-name" data-brand></span></div>
+  <div class="tagline" data-tagline></div>
+  <small>Dokun, masaya geç</small>
+</div>
+
 <main id="lobby">
   <div class="lobby-inner">
+    <div class="topbar">
+      <div class="brand"><span data-logo="40"></span><span class="brand-name" data-brand></span></div>
+      <button class="profile-chip" id="profileBtn" type="button" aria-label="Profilini düzenle">
+        <i class="ava" id="profileAva"></i><span><b id="profileName"></b><small id="profileStats"></small></span>
+      </button>
+    </div>
+
     <header class="sign">
-      <div class="sign-top">
-        <span class="eyebrow">Mahallenin kahvesi · Çay ocağı açık</span>
-        <span class="net-pill" id="netPill"><i></i>Çevrimdışı · botlarla oyna</span>
-      </div>
-      <h1>Kıraathane</h1>
-      <p>Bir masa seç, otur. Boş koltuklara kahvenin müdavimleri geçer: Rıza Abi, Nuri Usta ve Sevim Abla.</p>
+      <span class="net-pill" id="netPill"><i></i>Çevrimdışı · botlarla oyna</span>
+      <h1>Mahallenin kahvesi, cebinde.</h1>
+      <p>Bir masa seç, otur. Boş koltuklara müdavimler geçer: Rıza Abi, Nuri Usta ve Sevim Abla.</p>
+      <button class="sit quick" id="quickBtn" type="button">Hızlı oyna</button>
     </header>
 
     <nav class="tabs" role="tablist" aria-label="Oyun türü">
@@ -195,13 +290,16 @@
       <button class="act" id="setupBtn" type="button">Masanı kur</button>
     </div>
     <section class="tables" id="tableList" aria-live="polite"></section>
-    <p class="lobby-note">Prototip notu: her hamle <code>dispatchAction({ type, seat, payload })</code> ile gönderilir. Şu an <code>LocalTransport</code> hamleyi tarayıcıdaki oyun motoruna iletiyor. Online sürümde aynı mesajlar <code>WebSocketTransport</code> ile sunucuya gidecek. Masada sağ üstteki “Olaylar” düğmesi bu akışı canlı gösterir.</p>
+    <details class="lobby-note">
+      <summary>Geliştirici notu</summary>
+      <p>Her hamle <code>dispatchAction({ type, seat, payload })</code> ile gönderilir. Şu an <code>LocalTransport</code> hamleyi tarayıcıdaki oyun motoruna iletiyor. Online sürümde aynı mesajlar <code>WebSocketTransport</code> ile sunucuya gidecek. Masada sağ üstteki “Olaylar” düğmesi bu akışı canlı gösterir.</p>
+    </details>
   </div>
 </main>
 
 <header id="hud" hidden>
   <button class="hud-btn" id="backBtn" aria-label="Lobiye dön">‹ Lobi</button>
-  <div class="hud-title"><b id="hudTitle"></b><span id="hudSub"></span></div>
+  <div class="hud-title"><span data-logo="30"></span><div><b id="hudTitle"></b><span id="hudSub"></span></div></div>
   <button class="hud-btn" id="logBtn" aria-expanded="false" aria-controls="logPanel">Olaylar</button>
 </header>
 <aside id="logPanel" hidden>
@@ -212,6 +310,7 @@
 <footer id="actionBar" hidden></footer>
 <div id="modal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="ribbon"><span data-logo="22"></span><span id="modalRibbon"></span></div>
     <h2 id="modalTitle"></h2>
     <p id="modalText"></p>
     <div class="rows" id="modalRows"></div>
@@ -232,13 +331,28 @@
     </div>
   </form>
 </div>
+<div id="profile" hidden>
+  <form class="modal-card" id="profileForm" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <h2 id="profileTitle">Profilin</h2>
+    <p>Masada bu adla ve renkle oturursun. Bilgiler sadece bu cihazda saklanır.</p>
+    <div class="fields">
+      <fieldset><legend><label for="profileInput">Adın</label></legend><input class="text-in" id="profileInput" name="name" maxlength="14" autocomplete="nickname" placeholder="Misafir"></fieldset>
+      <fieldset><legend>Rengin</legend><div class="swatches" id="profileColors"></div></fieldset>
+      <fieldset><legend>İstatistik</legend><div class="stats" id="profileStatRows"></div></fieldset>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="act" id="profileCancel">Vazgeç</button>
+      <button type="submit" class="act primary">Kaydet</button>
+    </div>
+  </form>
+</div>
 <button id="backToGame" class="act primary" hidden>Oyuna dön</button>
 <div id="toast" role="status" hidden></div>
 
 <script>
 'use strict';
 /* =====================================================================
-   KIRAATHANE — istemci prototipi
+   MASA — istemci prototipi (Okey, 101, Batak, Poker)
    Katmanlar:
    1) Yardımcılar ve çizim fırçaları (kart, taş, çip, çay bardağı)
    2) Ağ katmanı: EventBus, dispatchAction, LocalTransport / WebSocketTransport
@@ -258,6 +372,52 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const F_NUM = "'Fira Sans Condensed', 'Arial Narrow', sans-serif";
 const F_BODY = "'Fira Sans', 'Segoe UI', sans-serif";
 const F_DISP = "'Yeseva One', Georgia, serif";
+
+/* ---------- Marka: ad, slogan ve logo tek yerde ---------- */
+const BRAND = { name: 'Masa', tagline: 'Okey · 101 · Batak · Poker', key: 'masa' };
+// Logo: dört sandalyeli masa, ortada ince belli çay bardağı. Favicon boyutunda da okunur.
+function logoSVG(size) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true">
+    <g fill="#d9a54b"><rect x="22" y="3" width="20" height="7" rx="3.5"/><rect x="22" y="54" width="20" height="7" rx="3.5"/><rect x="3" y="22" width="7" height="20" rx="3.5"/><rect x="54" y="22" width="7" height="20" rx="3.5"/></g>
+    <rect x="12" y="12" width="40" height="40" rx="10" fill="#6b3f1f"/><rect x="12" y="12" width="40" height="20" rx="10" fill="#8e552b" opacity=".55"/>
+    <rect x="16.5" y="16.5" width="31" height="31" rx="6.5" fill="#1d6843"/>
+    <ellipse cx="32" cy="41" rx="8.5" ry="2.6" fill="#f5ecd7"/>
+    <path d="M26.6 22.5h10.8c0 4.4-3.2 5.7-3.2 8.6s3.2 4.2 3.2 8.6H26.6c0-4.4 3.2-5.7 3.2-8.6s-3.2-4.2-3.2-8.6z" fill="#b3361f" stroke="#f5ecd7" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M27.4 22.5h9.2" stroke="#f5ecd7" stroke-width="1.6" stroke-linecap="round"/>
+  </svg>`;
+}
+function applyBrand() {
+  document.querySelectorAll('[data-brand]').forEach(e => e.textContent = BRAND.name);
+  document.querySelectorAll('[data-tagline]').forEach(e => e.textContent = BRAND.tagline);
+  document.querySelectorAll('[data-logo]').forEach(e => e.innerHTML = logoSVG(+e.dataset.logo));
+  document.getElementById('favicon').href = 'data:image/svg+xml,' + encodeURIComponent(logoSVG(64));
+}
+
+/* Masa temaları: çuha (felt) ve ahşap renkleri. Lobideki masa kartı ve oyun masası aynı temayı kullanır. */
+const THEMES = {
+  cuha:   { name: 'Yeşil çuha',  felt: ['#24804f', '#1d6843', '#10402a'], wood: ['#8e552b', '#6b3f1f', '#4a2a13'], mark: 'rgba(8,40,24,.42)' },
+  kadife: { name: 'Bordo kadife', felt: ['#93303d', '#72202c', '#3d0e16'], wood: ['#5e3c25', '#422817', '#27170c'], mark: 'rgba(40,6,12,.45)' },
+  gece:   { name: 'Gece mavisi',  felt: ['#2b6296', '#1f4b78', '#0e2644'], wood: ['#7c5334', '#5a3a22', '#3a2414'], mark: 'rgba(6,18,38,.45)' },
+  zeytin: { name: 'Zeytin',       felt: ['#6f7d34', '#56622a', '#2b3113'], wood: ['#a0703f', '#7b522c', '#50331a'], mark: 'rgba(28,32,10,.45)' },
+  kurum:  { name: 'Kurum',        felt: ['#454b52', '#33383d', '#17191c'], wood: ['#b58a4a', '#8a6433', '#5a3f1f'], mark: 'rgba(0,0,0,.4)' },
+};
+const themeOf = key => THEMES[key] || THEMES.cuha;
+const themeVars = t => `--f1:${t.felt[0]};--f2:${t.felt[1]};--f3:${t.felt[2]};--w1:${t.wood[0]};--w2:${t.wood[1]};--w3:${t.wood[2]}`;
+
+/* Profil: ad, renk ve el istatistikleri sadece bu cihazda (localStorage). Online sürümde hesaba taşınır. */
+const AVATAR_COLORS = ['#c38b31', '#b0593a', '#56805e', '#3f6fa0', '#7a5a9e', '#a8456b'];
+function initialsOf(name) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return (parts.length > 1 ? parts[0][0] + parts[1][0] : (parts[0] || 'S').slice(0, 2)).toLocaleUpperCase('tr-TR');
+}
+const PROFILE = (() => {
+  const p = { name: '', color: AVATAR_COLORS[0], stats: {} };
+  try { Object.assign(p, JSON.parse(localStorage.getItem(BRAND.key + '.profile')) || {}); } catch (e) {}
+  if (!AVATAR_COLORS.includes(p.color)) p.color = AVATAR_COLORS[0];
+  return p;
+})();
+function saveProfile() { try { localStorage.setItem(BRAND.key + '.profile', JSON.stringify(PROFILE)); } catch (e) {} }
+const myName = () => PROFILE.name || 'Sen';
 const tl = n => '₺' + n.toLocaleString('tr-TR');
 
 function rr(g, x, y, w, h, r) {
@@ -712,7 +872,7 @@ class Sprite {
 // ---------- 3. Oyun motorları ----------
 const DIRS = [{ x: 0, y: 1 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: -1, y: 0 }];
 const SEATS = () => [
-  { name: 'Sen', bot: false, color: '#c38b31', initials: 'S' },
+  { name: myName(), bot: false, color: PROFILE.color, initials: PROFILE.name ? initialsOf(PROFILE.name) : 'S' },
   { name: 'Rıza Abi', bot: true, color: '#56805e', initials: 'RA' },
   { name: 'Nuri Usta', bot: true, color: '#7a5a9e', initials: 'NU' },
   { name: 'Sevim Abla', bot: true, color: '#b0593a', initials: 'SA' },
@@ -878,12 +1038,18 @@ class BaseGame {
       }
       g.fillStyle = '#fff7e6'; g.font = `700 ${L.ar * 0.72}px ${F_BODY}`; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(seat.initials, p.x, p.y + 1);
-      const info = this.seatInfo(s) + (this.away[s] ? ' · uzakta' : ''), label = seat.name + (info ? ' · ' + info : '');
-      g.font = `700 12px ${F_BODY}`;
-      const tw = g.measureText(label).width + 14, ly = p.y + L.ar + 11;
-      let lx = clamp(p.x, L.felt.x + tw / 2 + 2, L.felt.r - tw / 2 - 2);
-      rr(g, lx - tw / 2, ly - 9, tw, 18, 9); g.fillStyle = 'rgba(20,12,7,.78)'; g.fill();
-      g.fillStyle = on ? '#ffe2a8' : '#f5ecd7'; g.fillText(label, lx, ly + 0.5);
+      // Etiket: ad parlak, bilgi (taş, puan, çip) soluk; sıradaki oyuncunun etiketi pirinç çerçeveli
+      const info = this.seatInfo(s) + (this.away[s] ? ' · uzakta' : ''), rest = info ? ' · ' + info : '';
+      g.font = `700 12px ${F_BODY}`; const nw = g.measureText(seat.name).width;
+      g.font = `500 12px ${F_BODY}`; const iw = g.measureText(rest).width;
+      const tw = nw + iw + 16, ly = p.y + L.ar + 11;
+      const lx = clamp(p.x, L.felt.x + tw / 2 + 2, L.felt.r - tw / 2 - 2), x0 = lx - tw / 2 + 8;
+      rr(g, lx - tw / 2, ly - 9.5, tw, 19, 9.5); g.fillStyle = 'rgba(20,12,7,.82)'; g.fill();
+      if (on) { g.strokeStyle = 'rgba(242,196,106,.8)'; g.lineWidth = 1.2; g.stroke(); }
+      g.textAlign = 'left';
+      g.font = `700 12px ${F_BODY}`; g.fillStyle = on ? '#ffe2a8' : '#f5ecd7'; g.fillText(seat.name, x0, ly + 0.5);
+      g.font = `500 12px ${F_BODY}`; g.fillStyle = '#cbbf9f'; g.fillText(rest, x0 + nw, ly + 0.5);
+      g.textAlign = 'center';
       if (seat.bot) {
         g.font = `700 9px ${F_BODY}`; rr(g, p.x + L.ar * 0.45, p.y - L.ar - 3, 24, 13, 6); g.fillStyle = '#2a1a0c'; g.fill();
         g.fillStyle = '#d9a54b'; g.fillText('BOT', p.x + L.ar * 0.45 + 12, p.y - L.ar + 3.5);
@@ -2294,7 +2460,7 @@ class PokerGame extends BaseGame {
     g.fillStyle = '#2a1a0c'; g.font = `800 11px ${F_NUM}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('D', dx, dy + 0.5); g.restore();
   }
   seatInfo(s) { return tl(this.stacks[s]); }
-  hudSub() { return `Kör ${this.sb}/${this.bb} · ${['Flop öncesi', 'Flop', 'Turn', 'River', 'Showdown'][this.street]} · ${this.table.name}`; }
+  hudSub() { return `Kör ${this.sb}/${this.bb} · ${['Flop öncesi', 'Flop', 'Turn', 'River', 'Showdown'][this.street]}`; }
   buildBar(el) {
     el.innerHTML = `
       <button class="act danger" id="pFold">Pas</button>
@@ -2376,10 +2542,10 @@ function paintRoom(g, w, h) {
   g.strokeStyle = 'rgba(255,200,140,.03)'; g.lineWidth = 1;
   for (let x = 0; x < w; x += 58) for (let k = 1; k < 5; k++) { g.beginPath(); g.moveTo(x + k * 11, 0); g.bezierCurveTo(x + k * 11 + 6, h * 0.3, x + k * 11 - 6, h * 0.7, x + k * 11, h); g.stroke(); }
 }
-function paintTable(g, t, rim, label) {
+function paintTable(g, t, rim, label, theme = THEMES.cuha) {
   g.save();
   g.fillStyle = 'rgba(0,0,0,.45)'; rr(g, t.x + 4, t.y + 8, t.w, t.h, 26); g.fill();
-  const wg = g.createLinearGradient(t.x, t.y, t.x, t.y + t.h); wg.addColorStop(0, '#8e552b'); wg.addColorStop(0.5, '#6b3f1f'); wg.addColorStop(1, '#4a2a13');
+  const wg = g.createLinearGradient(t.x, t.y, t.x, t.y + t.h); wg.addColorStop(0, theme.wood[0]); wg.addColorStop(0.5, theme.wood[1]); wg.addColorStop(1, theme.wood[2]);
   rr(g, t.x, t.y, t.w, t.h, 26); g.fillStyle = wg; g.fill();
   g.save(); g.clip(); g.strokeStyle = 'rgba(255,215,160,.08)'; g.lineWidth = 1;
   for (let i = 0; i < 26; i++) { const yy = t.y + (i / 26) * t.h; g.beginPath(); g.moveTo(t.x, yy); g.bezierCurveTo(t.x + t.w * 0.3, yy - 6, t.x + t.w * 0.6, yy + 6, t.x + t.w, yy); g.stroke(); }
@@ -2387,60 +2553,96 @@ function paintTable(g, t, rim, label) {
   g.strokeStyle = 'rgba(255,215,160,.25)'; g.lineWidth = 1; rr(g, t.x + 1, t.y + 1, t.w - 2, t.h - 2, 25); g.stroke();
   const f = { x: t.x + rim, y: t.y + rim, w: t.w - 2 * rim, h: t.h - 2 * rim };
   const fg = g.createRadialGradient(f.x + f.w / 2, f.y + f.h * 0.45, 10, f.x + f.w / 2, f.y + f.h / 2, Math.max(f.w, f.h) * 0.7);
-  fg.addColorStop(0, '#24804f'); fg.addColorStop(0.6, '#1d6843'); fg.addColorStop(1, '#10402a');
+  fg.addColorStop(0, theme.felt[0]); fg.addColorStop(0.6, theme.felt[1]); fg.addColorStop(1, theme.felt[2]);
   rr(g, f.x, f.y, f.w, f.h, 18); g.fillStyle = fg; g.fill();
   g.save(); g.clip(); g.fillStyle = getFeltPattern(g); g.globalAlpha = 0.5; g.fillRect(f.x, f.y, f.w, f.h); g.globalAlpha = 1;
   g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 8; rr(g, f.x - 3, f.y - 3, f.w + 6, f.h + 6, 20); g.stroke();
   g.restore();
   if (label) {
     g.font = `${clamp(f.w * 0.05, 18, 34)}px ${F_DISP}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillStyle = 'rgba(8,40,24,.42)'; g.fillText(label, f.x + f.w / 2, f.y + f.h * 0.5 + clamp(f.h * 0.14, 50, 110));
+    g.fillStyle = theme.mark; g.fillText(label, f.x + f.w / 2, f.y + f.h * 0.5 + clamp(f.h * 0.14, 50, 110));
   }
   g.restore();
 }
 
 // --- Lobi ---
+const MODE_GLYPH = { okey: '7', '101': '101', batak: '♠︎', poker: '₺' };
 const TABLES = {
   okey: { title: 'Okey Masaları', desc: '106 taş, gösterge ve okey. Istakanı diz, sağa taş at.', list: [
-    { name: 'Çınaraltı', level: 'Acemi', seated: 3 }, { name: 'Ocak Başı', level: 'Orta', seated: 2 },
-    { name: 'Pencere Önü', level: 'Usta', seated: 3 }, { name: 'Tavla Köşesi', level: 'Orta', seated: 1 }] },
+    { name: 'Çınaraltı', level: 'Acemi', seated: 3, theme: 'cuha' }, { name: 'Ocak Başı', level: 'Orta', seated: 2, theme: 'zeytin' },
+    { name: 'Pencere Önü', level: 'Usta', seated: 3, theme: 'gece' }, { name: 'Tavla Köşesi', level: 'Orta', seated: 1, theme: 'kurum' }] },
   '101': { title: '101 Masaları', desc: '21 taşla başla, perlerin 101 sayıyı bulunca elini aç.', list: [
-    { name: 'Emekliler Masası', seated: 3, rules: { cezali: false, katlama: true } }, { name: 'Bahçe', seated: 2, rules: { cezali: false, katlama: false } },
-    { name: 'Arka Oda', seated: 3, rules: { cezali: true, katlama: true } }, { name: 'Kış Bahçesi', seated: 1, rules: { cezali: true, katlama: false } }] },
+    { name: 'Emekliler Masası', seated: 3, theme: 'cuha', rules: { cezali: false, katlama: true } }, { name: 'Bahçe', seated: 2, theme: 'zeytin', rules: { cezali: false, katlama: false } },
+    { name: 'Arka Oda', seated: 3, theme: 'kadife', rules: { cezali: true, katlama: true } }, { name: 'Kış Bahçesi', seated: 1, theme: 'gece', rules: { cezali: true, katlama: false } }] },
   batak: { title: 'Batak Masaları', desc: "52'lik deste. Tekli ya da eşli, koz maça ya da ihaleli.", list: [
-    { name: 'Semaver Yanı', seated: 3, rules: { teams: false, bidding: false, hands: 3 } }, { name: 'Radyo Altı', seated: 2, rules: { teams: true, bidding: false, hands: 5 } },
-    { name: 'Kapı Önü', seated: 1, rules: { teams: false, bidding: true, hands: 5 } }, { name: 'Ocak Başı', seated: 3, rules: { teams: true, bidding: true, hands: 7 } }] },
+    { name: 'Semaver Yanı', seated: 3, theme: 'cuha', rules: { teams: false, bidding: false, hands: 3 } }, { name: 'Radyo Altı', seated: 2, theme: 'kurum', rules: { teams: true, bidding: false, hands: 5 } },
+    { name: 'Kapı Önü', seated: 1, theme: 'zeytin', rules: { teams: false, bidding: true, hands: 5 } }, { name: 'Ocak Başı', seated: 3, theme: 'kadife', rules: { teams: true, bidding: true, hands: 7 } }] },
   poker: { title: 'Poker Masaları', desc: "Texas Hold'em. Elde iki kart, ortada beş kart.", list: [
-    { name: 'Kadife Masa', seated: 3, rules: { blinds: 10, stack: 1000 } }, { name: 'Gece Masası', seated: 2, rules: { blinds: 25, stack: 2500 } },
-    { name: 'Loca', seated: 3, rules: { blinds: 50, stack: 5000 } }] },
+    { name: 'Kadife Masa', seated: 3, theme: 'kadife', rules: { blinds: 10, stack: 1000 } }, { name: 'Gece Masası', seated: 2, theme: 'gece', rules: { blinds: 25, stack: 2500 } },
+    { name: 'Loca', seated: 3, theme: 'kurum', rules: { blinds: 50, stack: 5000 } }] },
 };
+const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+function statTotals(mode) {
+  const list = mode ? [PROFILE.stats[mode] || {}] : Object.values(PROFILE.stats);
+  return list.reduce((t, x) => ({ played: t.played + (x.played || 0), won: t.won + (x.won || 0) }), { played: 0, won: 0 });
+}
+function renderProfileChip() {
+  const ava = $('profileAva'); ava.style.setProperty('--c', PROFILE.color); ava.textContent = PROFILE.name ? initialsOf(PROFILE.name) : 'S';
+  $('profileName').textContent = PROFILE.name || 'Misafir';
+  const t = statTotals();
+  $('profileStats').textContent = t.played ? `${t.played} el · ${t.won} galibiyet` : 'Profilini düzenle';
+}
 const LobbyState = {
   mode: 'okey',
   enter() {
     $('lobby').hidden = false; $('hud').hidden = true; $('actionBar').hidden = true; $('logPanel').hidden = true;
-    try { this.mode = localStorage.getItem('kiraathane.tab') || 'okey'; } catch (e) {}
+    try { this.mode = localStorage.getItem(BRAND.key + '.tab') || 'okey'; } catch (e) {}
     if (!TABLES[this.mode]) this.mode = 'okey';
-    this.renderList(); this.bg = null; this.time = 0;
+    this.renderList(); renderProfileChip(); this.bg = null; this.time = 0;
   },
   exit() { $('lobby').hidden = true; },
   renderList() {
     document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === this.mode)));
-    const m = TABLES[this.mode]; $('modeTitle').textContent = m.title; $('modeDesc').textContent = m.desc;
-    $('tableList').innerHTML = m.list.map((t, i) => `
-      <article class="table-card">
-        <h3>${t.name}</h3>
-        <div class="table-meta"><span>${t.level || ruleLabel(this.mode, t.rules)}</span><span class="seats" aria-label="${t.seated} dolu, ${4 - t.seated} boş koltuk">${[0, 1, 2, 3].map(k => `<b class="${k < t.seated ? 'on' : ''}"></b>`).join('')}</span></div>
-        <div class="table-foot"><small>${t.seated} müdavim · ${4 - t.seated} boş</small><button class="sit" data-i="${i}">Otur</button></div>
-      </article>`).join('');
-    $('setupBtn').hidden = !RULESETS[this.mode].options.length;
+    const m = TABLES[this.mode], bots = SEATS();
+    $('modeTitle').textContent = m.title; $('modeDesc').textContent = m.desc;
+    $('tableList').innerHTML = m.list.map((t, i) => {
+      const th = themeOf(t.theme), chips = [t.level, ...(t.rules ? ruleLabel(this.mode, t.rules).split(' · ') : [])].filter(Boolean);
+      // Koltuk 0 senin (boş), diğerleri sırayla müdavimler; oturmayanların yeri boş görünür
+      const seats = [0, 1, 2, 3].map(k => k > 0 && k <= t.seated
+        ? `<i class="ava st" style="--c:${bots[k].color}" title="${esc(bots[k].name)}">${bots[k].initials}</i>`
+        : `<i class="ava st empty" title="Boş koltuk">+</i>`).join('');
+      return `<article class="table-card" style="${themeVars(th)}">
+        <div class="mini" aria-hidden="true"><div class="top"></div><span class="deco">${MODE_GLYPH[this.mode]}</span>${seats}</div>
+        <div class="card-head"><h3>${esc(t.name)}</h3><small>${th.name}</small></div>
+        <div class="chips">${chips.map(c => `<span>${esc(c)}</span>`).join('')}</div>
+        <div class="table-foot"><small>${t.seated} müdavim · ${4 - t.seated} boş</small><button class="sit" data-i="${i}" aria-label="${esc(t.name)} masasına otur">Otur</button></div>
+      </article>`;
+    }).join('');
   },
   openSetup() {
     const rs = RULESETS[this.mode];
     $('setupTitle').textContent = `${TABLES[this.mode].title.replace(' Masaları', '')} masanı kur`;
+    const themeField = `<fieldset><legend>Masa rengi</legend><div class="choice-row">${Object.entries(THEMES).map(([k, t], n) =>
+      `<label class="choice" style="${themeVars(t)}"><input type="radio" name="theme" value="${k}"${n === 0 ? ' checked' : ''}><span class="theme-choice"><i></i><b>${t.name}</b></span></label>`).join('')}</div></fieldset>`;
     $('setupFields').innerHTML = rs.options.map(o => `<fieldset><legend>${o.label}</legend><div class="choice-row">${o.choices.map(([v, lbl, sub], k) =>
-      `<label class="choice"><input type="radio" name="${o.id}" id="rule-${o.id}-${k}" value="${k}"${v === rs.defaults[o.id] ? ' checked' : ''}><b>${lbl}</b>${sub ? `<small>${sub}</small>` : ''}</label>`).join('')}</div></fieldset>`).join('');
+      `<label class="choice"><input type="radio" name="${o.id}" id="rule-${o.id}-${k}" value="${k}"${v === rs.defaults[o.id] ? ' checked' : ''}><b>${lbl}</b>${sub ? `<small>${sub}</small>` : ''}</label>`).join('')}</div></fieldset>`).join('') + themeField;
     $('setup').hidden = false;
     const first = $('setupFields').querySelector('input:checked'); if (first) first.focus();
+  },
+  quickPlay() {
+    // En dolu masalardan birine otur: bekleme en kısa orada
+    const list = TABLES[this.mode].list, most = Math.max(...list.map(t => t.seated));
+    const pick = list.filter(t => t.seated === most);
+    app.change(TableState, { mode: this.mode, table: pick[rand(pick.length)] });
+  },
+  openProfile() {
+    $('profileInput').value = PROFILE.name;
+    $('profileColors').innerHTML = AVATAR_COLORS.map(c =>
+      `<label class="swatch" style="--c:${c}"><input type="radio" name="color" value="${c}"${c === PROFILE.color ? ' checked' : ''} aria-label="Renk ${c}"><i></i></label>`).join('');
+    $('profileStatRows').innerHTML = Object.keys(TABLES).map(k => {
+      const t = statTotals(k); return `<div><b>${t.won}/${t.played}</b><small>${TABLES[k].title.replace(' Masaları', '')}</small></div>`;
+    }).join('');
+    $('profile').hidden = false; $('profileInput').focus();
   },
   resize() { this.bg = null; },
   buildBg() {
@@ -2478,9 +2680,10 @@ const LobbyState = {
   },
 };
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
-  LobbyState.mode = b.dataset.mode; try { localStorage.setItem('kiraathane.tab', b.dataset.mode); } catch (e) {}
+  LobbyState.mode = b.dataset.mode; try { localStorage.setItem(BRAND.key + '.tab', b.dataset.mode); } catch (e) {}
   LobbyState.renderList();
 }));
+$('quickBtn').onclick = () => LobbyState.quickPlay();
 $('setupBtn').onclick = () => LobbyState.openSetup();
 $('setupCancel').onclick = () => { $('setup').hidden = true; };
 $('setupForm').addEventListener('submit', e => {
@@ -2488,7 +2691,16 @@ $('setupForm').addEventListener('submit', e => {
   const mode = LobbyState.mode, rules = {};
   for (const o of RULESETS[mode].options) rules[o.id] = o.choices[+e.target.elements[o.id].value][0];
   $('setup').hidden = true;
-  app.change(TableState, { mode, table: { name: 'Senin masan', rules } });
+  app.change(TableState, { mode, table: { name: 'Senin masan', rules, theme: e.target.elements.theme.value } });
+});
+$('profileBtn').onclick = () => LobbyState.openProfile();
+$('profileCancel').onclick = () => { $('profile').hidden = true; };
+$('profileForm').addEventListener('submit', e => {
+  e.preventDefault();
+  let name = e.target.elements.name.value.trim().replace(/\s+/g, ' ').slice(0, 14);
+  if (SEATS().slice(1).some(b => b.name.toLocaleLowerCase('tr-TR') === name.toLocaleLowerCase('tr-TR'))) { toast('Bu ad masadaki bir müdavimin'); return; }
+  PROFILE.name = name; PROFILE.color = e.target.elements.color.value || PROFILE.color;
+  saveProfile(); $('profile').hidden = true; renderProfileChip(); LobbyState.renderList();
 });
 $('tableList').addEventListener('click', e => {
   const b = e.target.closest('.sit'); if (!b) return;
@@ -2503,11 +2715,12 @@ const TableState = {
     this.sprites = new Map(); this.roundSeen = -1; this.bg = null;
     net.server.attach(this.game);
     $('hud').hidden = false; $('actionBar').hidden = false; $('modal').hidden = true;
+    this.mode = mode; this.theme = themeOf(table.theme);
     $('hudTitle').textContent = `${this.game.title} · ${table.name}`;
     $('logList').innerHTML = '';
     this.game.buildBar($('actionBar'));
     this.subs = [
-      bus.on('ROUND_END', r => this.showResult(r)),
+      bus.on('ROUND_END', r => { this.countStats(r); this.showResult(r); }),
       bus.on('ACTION_REJECTED', ({ action, reason }) => { this.log(action, reason); if (action.seat === 0) toast(reason); }),
       bus.on('ACTION_SENT', a => this.log(a)),
       bus.on('TURN_TIMEOUT', ({ seat, away }) => { if (seat === 0) toast(away ? 'Süren üst üste doldu, senin yerine otomatik oynanıyor' : 'Süre doldu, hamlen otomatik yapıldı'); }),
@@ -2526,11 +2739,19 @@ const TableState = {
     li.textContent = err ? `✕ #${a.id} ${a.type} → ${err}` : `#${a.id} ${a.type} seat:${a.seat} ${JSON.stringify(a.payload || {})}`;
     const list = $('logList'); list.prepend(li); while (list.children.length > 40) list.lastChild.remove();
   },
+  // Kazanan satırlarından birinde senin adın varsa (eşli Batak'ta "A + B") el senin sayılır
+  isMine(name) { return String(name).split(' + ').includes(this.game.seats[0].name); },
+  countStats(r) {
+    const st = PROFILE.stats[this.mode] || (PROFILE.stats[this.mode] = { played: 0, won: 0 });
+    st.played++; if (r.rows.some(([n, , w]) => w && this.isMine(n))) st.won++;
+    saveProfile();
+  },
   showResult(r) {
     setTimeout(() => {
       if (app.state !== this || this.game.phase !== 'end') return;
       $('modalTitle').textContent = r.title; $('modalText').textContent = r.text || '';
-      $('modalRows').innerHTML = r.rows.map(([n, v, w]) => `<div class="${w ? 'win' : ''}"><span>${n}</span><span>${v}</span></div>`).join('');
+      $('modalRibbon').textContent = `${this.game.title} · ${this.game.table.name}`;
+      $('modalRows').innerHTML = r.rows.map(([n, v, w]) => `<div class="${[w ? 'win' : '', this.isMine(n) ? 'me' : ''].join(' ').trim()}"><span>${esc(n)}</span><span>${v}</span></div>`).join('');
       $('modalNext').textContent = r.next || 'Yeni el';
       $('modal').hidden = false; $('modalNext').focus();
     }, 900);
@@ -2541,7 +2762,7 @@ const TableState = {
   },
   buildBg() {
     const c = document.createElement('canvas'); c.width = W * DPR; c.height = H * DPR; const g = c.getContext('2d'); g.scale(DPR, DPR);
-    const L = this.game.L; paintRoom(g, W, H); paintTable(g, L.table, L.rim, this.game.wordmark ? 'Kıraathane' : '');
+    const L = this.game.L; paintRoom(g, W, H); paintTable(g, L.table, L.rim, this.game.wordmark ? BRAND.name : '', this.theme);
     drawSugar(g, L.glass.x - L.glass.s * 0.9, L.glass.y - L.glass.s * 0.25, L.glass.s * 0.22);
     this.bg = c;
   },
@@ -2600,10 +2821,18 @@ function frame(now) {
   app.update(dt); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); app.draw(ctx);
   requestAnimationFrame(frame);
 }
+applyBrand();
 resize();
 app.change(LobbyState);
+// Açılış ekranı: kısa bir karşılama, dokununca ya da 1,6 sn sonra kapanır
+(() => {
+  const sp = $('splash'); let done = false;
+  const close = () => { if (done) return; done = true; sp.classList.add('out'); setTimeout(() => sp.remove(), 500); };
+  sp.addEventListener('pointerdown', close); addEventListener('keydown', close, { once: true });
+  setTimeout(close, REDUCED ? 700 : 1600);
+})();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { faceCache.clear(); LobbyState.bg = null; if (TableState.bg) TableState.bg = null; });
 requestAnimationFrame(frame);
 
-window.KIRAATHANE = { app, bus, net, dispatchAction, solveMelds, bestHand, packRack };
+window.MASA = window.KIRAATHANE = { app, bus, net, dispatchAction, solveMelds, bestHand, packRack, BRAND, THEMES };
 </script>

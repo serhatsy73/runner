@@ -1,8 +1,8 @@
-# Kıraathane Yol Haritası
+# Masa Yol Haritası
 
 **Nerdeyiz:** `index.html` içinde tek dosyalık, çevrimdışı çalışan bir prototip. Okey, 101, Batak ve Poker kurallarıyla oynanıyor, boş koltuklarda botlar var, hamle süresi sayacı çalışıyor. Kuralların tamamı [KURALLAR.md](KURALLAR.md) dosyasında.
 
-**Hedef:** Gerçek oyuncuların telefondan online oynadığı, kuralları eksiksiz, hilesi zor, masrafını reklam ve jeton satışıyla çıkaran bir kıraathane.
+**Hedef:** Gerçek oyuncuların telefondan online oynadığı, kuralları eksiksiz, hilesi zor, masrafını reklam ve jeton satışıyla çıkaran bir mahalle kahvesi.
 
 ## Değişmeyecek ilkeler
 
@@ -43,6 +43,10 @@ Küçük, tek dosyada kalan işler. Online'a geçmeden önce kural ve arayüz bo
 
 - [x] 101: geniş ıstaka (2×15)
 - [x] Okey: 12-13-1 serisi, gösterge gösterme (diğerleri 1 puan düşer)
+- [x] Ad ve logo: **Masa**, açılış ekranı, favicon
+- [x] Lobi: profil (ad, renk, istatistik), "Hızlı oyna", önizlemeli masa kartları
+- [x] Masa temaları: beş çuha/ahşap rengi, "Masanı kur"da renk seçimi
+- [x] Oyun içi: üst çubukta logo, iki tonlu oyuncu etiketleri, el sonu penceresinde kazanan ve senin satırın vurgulu
 - [x] 101: perleri elle seçerek açma: ıstakada boşlukla ayrılmış her grup bir per ya da çift adayıdır, geçerli olanlar yeşil/mavi çizgiyle gösterilir, "El aç" / "Çift aç" ıstakada görüneni açar
 - [x] Poker: tam olmayan all-in artırması bahsi yeniden açmaz; showdown'da kazanan beş kart vurgulanır, el adı ve kicker yazılır
 - [ ] Botlar: cezalı 101'de solundakinin açmasına yarayacak taşı atmaktan kaçınsın; katlamalı eşiğe göre açılış stratejisi
@@ -124,6 +128,7 @@ Online'ın temeli. Kurallar sunucuda çalışabilir hale gelir, her değişiklik
 
 | Konu | Karar |
 |---|---|
+| Oyunun adı | **Masa** (global, kısa, her dilde okunur). Alan adı henüz alınmadı |
 | Kural setleri | Global kurallar varsayılan; farklı kurallar masa ayarı |
 | Sunucu | Düşük bütçeli tek sunucuyla başla, kullanım arttıkça bütçe ayır |
 | Giriş | Facebook, e-posta ve kendi kayıt sistemimiz |
@@ -133,7 +138,7 @@ Online'ın temeli. Kurallar sunucuda çalışabilir hale gelir, her değişiklik
 ## Senden gerekenler
 
 **Aşama 3 öncesi**
-1. Oyunun adı ve alan adı
+1. Alan adı (ör. playmasa.com, masa.games; uygunluğu kontrol edilmeli)
 2. Sunucu için bir bulut hesabı (küçük bir sanal sunucu yeterli)
 
 **Aşama 4 öncesi**
