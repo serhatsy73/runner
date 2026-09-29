@@ -2277,11 +2277,7 @@ class Okey101Game extends OkeyGame {
     let cw, seriA, ciftA, K = 2, ROWS = 13;
     if (L.center) {
       seriA = L.areas.seri; ciftA = L.areas.cift;
-      // Alçak yatay ekranda (telefon) 13 satır taşları okunmaz kılar: kapasite 26'nın altına düşmeden 3 × 9 ya da 4 × 7 denenir
-      const size = k => Math.min((seriA.x1 - seriA.x0 - colGap * (k - 1)) / (k * SPAN), (seriA.y1 - seriA.y0) / (Math.ceil(26 / k) * CH));
-      cw = size(2);
-      for (const k of [3, 4]) if (size(k) > cw * 1.25 && size(k) > (K === 2 ? 0 : size(K))) { K = k; }
-      ROWS = Math.ceil(26 / K); cw = size(K);
+      cw = Math.min((seriA.x1 - seriA.x0 - colGap) / (K * SPAN), (seriA.y1 - seriA.y0) / (ROWS * CH));
     } else {
       const B = L.board, x0 = B.x0 + 8, x1 = B.x1 - 8, top = B.y0 + 22;
       cw = Math.min((x1 - x0 - colGap) / (K * SPAN), (B.y1 - 8 - top - 26) / ((ROWS + 2) * CH)); // altta en az 2 satır çift
@@ -2291,7 +2287,7 @@ class Okey101Game extends OkeyGame {
     }
     const ch = cw * CH, mw = cw * 0.9, mh = mw * 1.36;
     cw = Math.max(cw, 3);
-    const colCells = Math.max(SPAN, Math.floor((seriA.x1 - seriA.x0 - colGap * (K - 1)) / K / cw)), sw = K * colCells * cw + colGap * (K - 1);
+    const colCells = SPAN, sw = K * colCells * cw + colGap * (K - 1); // her tarafta tam 13 sütun: sütun numarası taşın sayısı
     const seri = { x0: seriA.x0 + Math.max(0, (seriA.x1 - seriA.x0 - sw) / 2), y0: seriA.y0, K, rows: ROWS, colCells, colGap };
     const pairCols = Math.max(1, Math.floor((Math.floor((ciftA.x1 - ciftA.x0) / cw) + 1) / 3)), cRows = Math.max(1, Math.floor((ciftA.y1 - ciftA.y0) / ch));
     const pw = (pairCols * 3 - 1) * cw;
@@ -2356,10 +2352,18 @@ class Okey101Game extends OkeyGame {
     }
     g.restore();
   }
-  // Yer yerleşimi: açılış sırasıyla, her per bir satıra. Seri alanında önce sol sütunun 13 satırı, sonra sağ sütun dolar.
+  // Perin ızgaradaki ilk sütunu (1-13, görünmez numaralar): seride taşlar kendi sayısının sütununa oturur (5-6-7 → 5., 6., 7.),
+  // kütte taşlar sayının sütununu ortalar (7-7-7 → 6., 7., 8.; 7-7-7-7 → 6.–9.). Okey yerine geçtiği sayının sütununda durur.
+  meldStartCol(s, i) {
+    const m = this.melds[s][i], ts = m.map(id => this.tileById[id]), k0 = ts.findIndex(t => !this.isOkey(t));
+    if (k0 < 0) return 1;
+    const n = effTile(ts[k0], this.okey).n;
+    return clamp(this.meldKinds[s][i] === 'run' ? n - k0 : n - Math.floor((m.length - 1) / 2), 1, 14 - m.length);
+  }
+  // Yer yerleşimi: açılış sırasıyla, her per bir satıra. Seri alanında önce sol tarafın 13 satırı, sonra sağ taraf dolar.
   groundLayout() {
     const L = this.L, G = L.grid, S = G.seri, C = G.cift;
-    const key = [L.W, L.H, L.topH, L.botH, L.rightW, this.openOrder.join(''), ...this.melds.map(ms => ms.map(m => m.length).join('.'))].join('|');
+    const key = [L.W, L.H, L.topH, L.botH, L.rightW, this.openOrder.join(''), ...this.melds.map(ms => ms.map(m => m.join(',')).join('.'))].join('|');
     if (this.groundCache && this.groundCache.key === key) return this.groundCache;
     const out = [], used = Array.from({ length: S.K }, () => Array(S.rows).fill(0));
     let k = 0, pk = 0;
@@ -2369,12 +2373,12 @@ class Okey101Game extends OkeyGame {
         out.push({ s, i, x: C.x0 + pc * 3 * G.cw, y: C.y0 + row * G.ch });
         return;
       }
-      let col, row, c0 = 0;
+      let col, row, c0 = this.meldStartCol(s, i) - 1;
       if (k < S.K * S.rows) { col = Math.floor(k / S.rows); row = k % S.rows; }
       else { // 26 satır dolarsa (kurallara göre olmaz) en boş satırın sonuna
         let best = [0, 0];
         for (let a = 0; a < S.K; a++) for (let r = 0; r < S.rows; r++) if (used[a][r] < used[best[0]][best[1]]) best = [a, r];
-        [col, row] = best; c0 = used[col][row] + 1;
+        [col, row] = best; c0 = Math.min(used[col][row] + 1, S.colCells - m.length);
       }
       k++; used[col][row] = c0 + m.length;
       out.push({ s, i, x: S.x0 + col * (S.colCells * G.cw + S.colGap) + c0 * G.cw, y: S.y0 + row * G.ch });
