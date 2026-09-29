@@ -46,7 +46,8 @@ Küçük, tek dosyada kalan işler. Online'a geçmeden önce kural ve arayüz bo
 - [x] Ad ve logo: **Masa**, açılış ekranı, favicon
 - [x] Lobi: profil (ad, renk, istatistik), "Hızlı oyna", önizlemeli masa kartları
 - [x] Masa temaları: beş çuha/ahşap rengi, "Masanı kur"da renk seçimi
-- [x] 101 yer düzeni: oyuncu başına başlıklı per/çift alanı, ekrana göre ölçeklenen eşit taş boyu, deste ve göstergenin yerden ayrılması
+- [x] 101 masa düzeni (klasik 101 masası örnek alındı): ortak ızgaralı yer, sütunlu seri ve çift alanları, bilgi sütunu ve per sayacı, köşelerde yığınlar, ıstaka uçlarında diz düğmeleri, işleme için yeşil +, Taşları işle
+- [ ] 101: taşları yere sürükleyip orada per kurma ve Geri topla (şu an perler ıstakada dizilip açılıyor)
 - [x] Oyun içi: üst çubukta logo, iki tonlu oyuncu etiketleri, el sonu penceresinde kazanan ve senin satırın vurgulu
 - [x] 101: perleri elle seçerek açma: ıstakada boşlukla ayrılmış her grup bir per ya da çift adayıdır, geçerli olanlar yeşil/mavi çizgiyle gösterilir, "El aç" / "Çift aç" ıstakada görüneni açar
 - [x] Poker: tam olmayan all-in artırması bahsi yeniden açmaz; showdown'da kazanan beş kart vurgulanır, el adı ve kicker yazılır

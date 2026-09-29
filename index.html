@@ -209,6 +209,28 @@
   .per { font-family: var(--num); font-weight: 700; font-size: 15px; padding: 6px 10px; border-radius: 9px; background: rgba(0,0,0,.35); font-variant-numeric: tabular-nums; }
   .per.ok { color: #9be3a7; }
 
+  /* Yan sütun (yatay 101): hamle düğmeleri masanın sağında, dizme düğmeleri ıstakanın iki ucunda */
+  #actionBar.side {
+    left: auto; right: 0; bottom: 0; width: clamp(112px, 13vw, 150px); box-sizing: border-box;
+    flex-direction: column; flex-wrap: nowrap; justify-content: center; align-items: stretch; gap: 8px;
+    padding: 10px 8px calc(env(safe-area-inset-bottom, 0px) + 10px);
+    border-top: 0; border-left: 1px solid var(--line); background: linear-gradient(90deg, rgba(20,12,7,.9), rgba(20,12,7,.97));
+  }
+  #actionBar.side .act { width: 100%; min-width: 0; padding: 10px 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  #actionBar.side .hint { flex: 0 0 auto; font-size: 12px; line-height: 1.35; text-align: left; margin-top: 6px; }
+  #actionBar.side .act.diz { position: fixed; flex-direction: column; gap: 8px; padding: 6px 4px; font-size: 13px; line-height: 1.1; background: linear-gradient(180deg, #2a1a0f, #140c07); border-color: rgba(217,165,75,.45); }
+  #actionBar.side .act.diz b { font-size: 15px; letter-spacing: .04em; }
+  .act.diz b { font-weight: 700; }
+  .act.diz br { display: none; }
+  #actionBar.side .act.diz br { display: inline; }
+  .act { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .mini-tiles { display: inline-flex; gap: 2px; }
+  .mini-tiles i {
+    display: grid; place-items: center; width: 13px; height: 17px; border-radius: 3px; background: #f5ecd7; box-shadow: 0 1px 0 rgba(0,0,0,.4);
+    font: 800 10.5px/1 var(--num); font-style: normal; color: #c3342b;
+  }
+  .mini-tiles i.k { color: #1f1b17; } .mini-tiles i.m { color: #1d5fb3; }
+
   /* ---------- El sonu penceresi, bildirim ---------- */
   #modal, #setup, #profile { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(10,6,3,.55); }
   .modal-card {
@@ -988,10 +1010,11 @@ class BaseGame {
   }
 
   // ---- Görünüm ----
-  layout(W, H, topH, botH) {
-    const L = { W, H, portrait: H > W * 1.05, topH, botH };
+  // rightW: hamle düğmeleri yan sütundaysa (yatay 101) masanın sağında ayrılan genişlik
+  layout(W, H, topH, botH, rightW = 0) {
+    const L = { W, H, portrait: H > W * 1.05, topH, botH, rightW };
     const m = 6;
-    L.table = { x: m, y: topH + 4, w: W - 2 * m, h: H - topH - botH - 10 };
+    L.table = { x: m, y: topH + 4, w: W - 2 * m - rightW, h: H - topH - botH - 10 };
     L.rim = clamp(Math.min(W, H) * 0.022, 8, 16);
     const f = L.felt = { x: L.table.x + L.rim, y: L.table.y + L.rim, w: L.table.w - 2 * L.rim, h: L.table.h - 2 * L.rim };
     f.r = f.x + f.w; f.b = f.y + f.h;
@@ -1039,16 +1062,34 @@ class BaseGame {
       g.fillStyle = '#fff7e6'; g.font = `700 ${L.ar * 0.72}px ${F_BODY}`; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(seat.initials, p.x, p.y + 1);
       // Etiket: ad parlak, bilgi (taş, puan, çip) soluk; sıradaki oyuncunun etiketi pirinç çerçeveli
-      const info = this.seatInfo(s) + (this.away[s] ? ' · uzakta' : ''), rest = info ? ' · ' + info : '';
-      g.font = `700 12px ${F_BODY}`; const nw = g.measureText(seat.name).width;
-      g.font = `500 12px ${F_BODY}`; const iw = g.measureText(rest).width;
-      const tw = nw + iw + 16, ly = p.y + L.ar + 11;
-      const lx = clamp(p.x, L.felt.x + tw / 2 + 2, L.felt.r - tw / 2 - 2), x0 = lx - tw / 2 + 8;
-      rr(g, lx - tw / 2, ly - 9.5, tw, 19, 9.5); g.fillStyle = 'rgba(20,12,7,.82)'; g.fill();
-      if (on) { g.strokeStyle = 'rgba(242,196,106,.8)'; g.lineWidth = 1.2; g.stroke(); }
+      // Konum: 'below' (altta tek satır), 'stack' (altta iki satır), 'right' / 'left' (avatarın yanında tek satır)
+      const info = this.seatInfo(s) + (this.away[s] ? ' · uzakta' : ''), style = (L.labelStyle && L.labelStyle[s]) || 'below';
+      const nameC = on ? '#ffe2a8' : '#f5ecd7', box = (x, y, w, h) => {
+        rr(g, x, y, w, h, Math.min(9.5, h / 2)); g.fillStyle = 'rgba(20,12,7,.82)'; g.fill();
+        if (on) { g.strokeStyle = 'rgba(242,196,106,.8)'; g.lineWidth = 1.2; g.stroke(); }
+      };
       g.textAlign = 'left';
-      g.font = `700 12px ${F_BODY}`; g.fillStyle = on ? '#ffe2a8' : '#f5ecd7'; g.fillText(seat.name, x0, ly + 0.5);
-      g.font = `500 12px ${F_BODY}`; g.fillStyle = '#cbbf9f'; g.fillText(rest, x0 + nw, ly + 0.5);
+      if (style === 'stack') {
+        g.font = `700 11.5px ${F_BODY}`; const nw = g.measureText(seat.name).width;
+        g.font = `500 11px ${F_BODY}`; const iw = g.measureText(info).width;
+        const tw = Math.max(nw, iw) + 14, top = p.y + L.ar + 4, lx = clamp(p.x, L.felt.x + tw / 2 + 2, L.felt.r - tw / 2 - 2);
+        box(lx - tw / 2, top, tw, info ? 29 : 17); g.textAlign = 'center';
+        g.font = `700 11.5px ${F_BODY}`; g.fillStyle = nameC; g.fillText(seat.name, lx, top + 9);
+        if (info) { g.font = `500 11px ${F_BODY}`; g.fillStyle = '#cbbf9f'; g.fillText(info, lx, top + 21.5); }
+      } else {
+        const rest = info ? ' · ' + info : '';
+        g.font = `700 12px ${F_BODY}`; const nw = g.measureText(seat.name).width;
+        g.font = `500 12px ${F_BODY}`; const iw = g.measureText(rest).width;
+        const tw = nw + iw + 16;
+        let lx, ly;
+        if (style === 'right') { lx = p.x + L.ar + 6 + tw / 2; ly = p.y; }
+        else if (style === 'left') { lx = p.x - L.ar - 6 - tw / 2; ly = p.y; }
+        else { lx = clamp(p.x, L.felt.x + tw / 2 + 2, L.felt.r - tw / 2 - 2); ly = p.y + L.ar + 11; }
+        const x0 = lx - tw / 2 + 8;
+        box(lx - tw / 2, ly - 9.5, tw, 19);
+        g.font = `700 12px ${F_BODY}`; g.fillStyle = nameC; g.fillText(seat.name, x0, ly + 0.5);
+        g.font = `500 12px ${F_BODY}`; g.fillStyle = '#cbbf9f'; g.fillText(rest, x0 + nw, ly + 0.5);
+      }
       g.textAlign = 'center';
       if (seat.bot) {
         g.font = `700 9px ${F_BODY}`; rr(g, p.x + L.ar * 0.45, p.y - L.ar - 3, 24, 13, 6); g.fillStyle = '#2a1a0c'; g.fill();
@@ -1598,7 +1639,7 @@ class OkeyGame extends BaseGame {
     }
     this.piles.forEach((pile, s) => pile.forEach((id, i) => {
       const p = L.pile[s], j = hash(id);
-      out.push({ id, kind: 'tile', data: this.tileById[id], x: p.x + (j - 0.5) * 4, y: p.y - Math.min(i, 8) * 0.8, rot: (j - 0.5) * 0.12, w: L.tw, h: L.th, faceUp: true, z: 20 + i, okey: this.isOkey(this.tileById[id]) }); }));
+      out.push({ id, kind: 'tile', data: this.tileById[id], x: p.x + (j - 0.5) * 4, y: p.y - Math.min(i, 8) * 0.8, rot: (j - 0.5) * 0.12, w: L.pw || L.tw, h: L.ph || L.th, faceUp: true, z: 20 + i, okey: this.isOkey(this.tileById[id]) }); }));
     out.push({ id: this.indicator.id, kind: 'tile', data: this.indicator, x: L.ind.x, y: L.ind.y, w: L.tw, h: L.th, faceUp: true, z: 10 });
     if (this.finishTile) out.push({ id: this.finishTile, kind: 'tile', data: this.tileById[this.finishTile], x: L.ind.x + 4, y: L.ind.y - 6, rot: 0.08, w: L.tw, h: L.th, faceUp: false, z: 11 });
     this.extraTargets(out);
@@ -1625,7 +1666,8 @@ class OkeyGame extends BaseGame {
     // Yığın yerleri
     L.pile.forEach((p, s) => {
       g.save(); g.setLineDash([4, 4]); g.strokeStyle = 'rgba(245,236,215,.2)'; g.lineWidth = 1.5;
-      rr(g, p.x - L.tw * 0.62, p.y - L.th * 0.62, L.tw * 1.24, L.th * 1.24, 8); g.stroke(); g.restore();
+      const pw = L.pw || L.tw, ph = L.ph || L.th;
+      rr(g, p.x - pw * 0.62, p.y - ph * 0.62, pw * 1.24, ph * 1.24, 8); g.stroke(); g.restore();
     });
     const pulse = REDUCED ? 0.7 : 0.55 + 0.45 * Math.sin(this.time * 4);
     const glow = (x, y, w, h, label) => {
@@ -1654,11 +1696,11 @@ class OkeyGame extends BaseGame {
     if (this.canDrawNow()) {
       glow(L.deck.x, L.deck.y, L.tw * 1.25, L.th * 1.2, 'Çek');
       const p3 = this.piles[3];
-      if (p3.length && this.canTakeSideCached(p3[p3.length - 1])) glow(L.pile[3].x, L.pile[3].y, L.tw * 1.25, L.th * 1.2, 'Soldan al');
+      if (p3.length && this.canTakeSideCached(p3[p3.length - 1])) glow(L.pile[3].x, L.pile[3].y, (L.pw || L.tw) * 1.25, (L.ph || L.th) * 1.2, 'Soldan al');
     }
     const dragging = this.drag && this.drag.moved && this.drag.from === 'rack';
     if (this.canDiscardNow() && (dragging || this.sel)) {
-      glow(L.pile[0].x, L.pile[0].y, L.tw * 1.3, L.th * 1.25, this.discardLabel(dragging ? this.drag.id : this.sel));
+      glow(L.pile[0].x, L.pile[0].y, (L.pw || L.tw) * 1.3, (L.ph || L.th) * 1.25, this.discardLabel(dragging ? this.drag.id : this.sel));
       if (this.finishAllowed()) glow(L.ind.x, L.ind.y, L.tw * 1.3, L.th * 1.25, 'Bitir');
     }
     drawRackWood(g, L.rackX, L.rackY, L.rackW, L.rackH, L.rowH);
@@ -1761,6 +1803,7 @@ class Okey101Game extends OkeyGame {
     this.openTurn = [-1, -1, -1, -1]; this.turnNo = 0; this.planCache = null;
     this.penalties = [[], [], [], []]; this.penaltyFx = []; this.sideTake = null;
     this.lastOpen = { seri: 0, cift: 0 }; this.openStats = [null, null, null, null];
+    this.openOrder = []; // yerde gruplar açılış sırasıyla durur, sonradan açan öncekileri kaydırmaz
   }
   // Katlamalı: her açan kendinden önce açanın sayısını geçmeli (seri ve çift ayrı). Katlamasız: 101 / 5 çift.
   seriNeed() { return this.rules.katlama && this.lastOpen && this.lastOpen.seri ? this.lastOpen.seri + 1 : 101; }
@@ -1839,7 +1882,7 @@ class Okey101Game extends OkeyGame {
       }
     }
     if (!was) {
-      this.opened[a.seat] = kind; this.openTurn[a.seat] = this.turnNo;
+      this.opened[a.seat] = kind; this.openTurn[a.seat] = this.turnNo; this.openOrder.push(a.seat);
       const st = this.sideTake;
       if (this.rules.cezali && st && st.seat === a.seat && melds.some(m => m.includes(st.tileId))) {
         const t = this.tileById[st.tileId];
@@ -2021,17 +2064,9 @@ class Okey101Game extends OkeyGame {
     return super.zoneAt(p);
   }
   drawBoard(g) {
-    super.drawBoard(g);
     this.drawGround(g);
+    super.drawBoard(g);
     this.drawRackGroups(g);
-    const id = this.drag && this.drag.moved && this.drag.from === 'rack' ? this.drag.id : this.sel;
-    if (!id || !this.canLayNow()) return;
-    const pulse = REDUCED ? 0.7 : 0.55 + 0.45 * Math.sin(this.time * 4);
-    for (const b of this.meldBoxes) {
-      const r = this.layCheck(id, b.owner, b.meld); if (r.error) continue;
-      g.save(); g.strokeStyle = r.reclaim ? `rgba(242,196,106,${0.6 + pulse * 0.4})` : `rgba(155,227,167,${0.5 + pulse * 0.4})`; g.lineWidth = 2.5;
-      rr(g, b.x0 - 4, b.y0 - 4, b.x1 - b.x0 + 8, b.y1 - b.y0 + 8, 6); g.stroke(); g.restore();
-    }
   }
   // Istakadaki geçerli seri/küt yeşil, geçerli çift mavi çizgiyle; seri değerleri yazılır
   drawRackGroups(g) {
@@ -2097,10 +2132,12 @@ class Okey101Game extends OkeyGame {
     if (this.penaltyFx) this.penaltyFx = this.penaltyFx.filter(f => (f.t += dt) < 3);
   }
   drawOverlay(g) {
+    this.drawLayMarks(g);
     if (!this.penaltyFx) return;
     const L = this.L;
     for (const f of this.penaltyFx) {
-      const av = L.avatar[f.s], a = f.t < 2.4 ? 1 : 1 - (f.t - 2.4) / 0.6, y = av.y - L.ar - 16 - Math.min(f.t, 1) * 14;
+      const av = L.avatar[f.s], a = f.t < 2.4 ? 1 : 1 - (f.t - 2.4) / 0.6, top = av.y < L.felt.y + L.ar * 3;
+      const y = top ? av.y + L.ar + 44 + Math.min(f.t, 1) * 10 : av.y - L.ar - 16 - Math.min(f.t, 1) * 14;
       g.save(); g.globalAlpha = Math.max(0, a); g.font = `700 12px ${F_BODY}`; g.textAlign = 'center';
       const w = g.measureText(f.text).width + 14, x = clamp(av.x, L.felt.x + w / 2 + 2, L.felt.r - w / 2 - 2);
       rr(g, x - w / 2, y - 10, w, 20, 10); g.fillStyle = f.reward ? '#1f5a3a' : '#7a1e18'; g.fill(); g.strokeStyle = f.reward ? '#9be3a7' : '#e0574a'; g.lineWidth = 1; g.stroke();
@@ -2162,134 +2199,284 @@ class Okey101Game extends OkeyGame {
     if (was !== 'seri') { const pairs = this.pairPlan(s); if (pairs.length && (was || pairs.length >= this.pairNeed())) return { type: 'OPEN_HAND', payload: { kind: 'cift' } }; }
     return this.botLay(s);
   }
-  // ---- Yer (açılmış perler) düzeni ----
-  // Masanın ortası "yer"dir: her oyuncunun perleri kendi başlıklı alanında durur. Nuri üstte, Sevim ve Rıza ortada yan yana, sen altta.
-  // Deste ve gösterge yerin üstüne alınır; taş boyu, tüm alanlar yere sığacak en büyük değer olarak hepsinde aynı seçilir.
+  // ---- Masa düzeni (referans: klasik 101 masası) ----
+  // Ortada koyu, ızgaralı ortak "yer": solda seri alanı (sütunlu, her oyuncunun perleri yeni satırdan başlar), sağda dar çift alanı,
+  // aralarında bilgi sütunu (masa ayarları, gösterge, deste, per sayacı). Dört atık yığını yerin iki yanında köşelerde.
+  // Altta geniş ıstaka; yatayda Çift diz / Seri diz ıstakanın iki ucunda, aç / işle düğmeleri sağ sütunda.
+  sideBar(W, H) { return W > H * 1.05; }
   layoutGame(L) {
-    super.layoutGame(L);
-    const f = L.felt, a2 = L.avatar[2], topBottom = a2.y + L.ar + 22 + L.sh;
-    if (L.portrait) {
-      const yB = topBottom + Math.max(L.ar, L.th * 0.5) + 18;
-      L.avatar[3] = { x: f.x + L.ar + 10, y: yB }; L.avatar[1] = { x: f.r - L.ar - 10, y: yB };
-      L.deck = { x: L.cx - L.tw * 0.75, y: yB }; L.ind = { x: L.cx + L.tw * 0.75, y: yB };
-      L.ground = { x0: f.x + 6, x1: f.r - 6, y0: yB + L.ar + 24, y1: Math.min(L.pile[0].y - L.th * 0.62, L.avatar[0].y - L.ar) - 8 };
+    const f = L.felt, cols = this.cols, side = !L.portrait, gap = side ? 3 : 2;
+    const dizW = side ? clamp(f.w * 0.07, 46, 84) : 0;
+    L.tw = Math.min((f.w - 2 * dizW - (side ? 24 : 14)) / cols - gap - 0.8, L.H * (side ? 0.078 : 0.068), 62);
+    L.th = L.tw * 1.36; L.gap = gap;
+    L.rackPad = Math.max(6, L.tw * 0.16); L.rowH = L.th + L.rackPad * 1.1;
+    L.rackW = cols * (L.tw + gap) - gap + L.rackPad * 2; L.rackH = L.rowH * 2 + L.rackPad * 0.4;
+    L.rackX = L.cx - L.rackW / 2; L.rackY = f.b - L.rackH - 4;
+    L.sw = L.tw * 0.3; L.sh = L.sw * 1.36; // rakip taşları avatarın arkasında durur, görünmez
+    const ar = L.ar;
+    if (side) {
+      const rowY = f.y + ar + 7, room = L.rackY - 8 - (rowY + ar + 9) - 6 - (ar * 2 + 33 + 6);
+      L.ph = Math.min(L.th, room / 2.48); L.pw = L.ph / 1.36; // kenarda iki yığın ve senin avatarın üst üste sığsın
+    } else { L.pw = L.tw; L.ph = L.th; }
+    const pbW = L.pw * 1.24, pbH = L.ph * 1.24;
+    if (side) {
+      const rowY = f.y + ar + 7;
+      L.avatar = [null, { x: f.r - ar - 10, y: rowY }, { x: L.cx, y: rowY }, { x: f.x + ar + 10, y: rowY }];
+      L.labelStyle = ['stack', 'left', 'right', 'right'];
+      const MW = Math.max(pbW + 14, 88), y0 = rowY + ar + 9, y1 = L.rackY - 8;
+      L.pile = [{ x: f.r - MW / 2, y: y1 - pbH / 2 }, { x: f.r - MW / 2, y: y0 + pbH / 2 + 6 }, { x: f.x + MW / 2, y: y0 + pbH / 2 + 6 }, { x: f.x + MW / 2, y: y1 - pbH / 2 }];
+      // Avatar + iki satırlık etiket, üst ve alt yığının tam arasına
+      const midY = (L.pile[2].y + L.pile[3].y) / 2;
+      L.avatar[0] = { x: f.x + MW / 2, y: midY - 16.5 };
+      L.glass = { x: f.r - MW / 2, y: midY, s: ar * 1.1 };
+      const B = L.board = { x0: f.x + MW, x1: f.r - MW, y0, y1 }, bw = B.x1 - B.x0;
+      // Bilgi sütunu: yer varsa masa ayarı etiketleri, gösterge, deste ve per sayacı alt alta; alçak ekranda gösterge ile deste yan yana
+      const stacked = B.y1 - B.y0 - 16 >= 16 + L.th * 2 + 14 + 16 + 40;
+      const cw = stacked ? Math.max(L.tw * 1.6, 62) : Math.max(L.tw * 2.6 + 12, 70);
+      const ciftW = clamp(bw * 0.2, 96, 280), c0 = B.x1 - ciftW - cw, cX = c0 + cw / 2;
+      L.center = { x0: c0, x1: c0 + cw };
+      const need = stacked ? 16 + L.th + 14 + L.th + 16 + 40 : 16 + L.th + 16 + 40, spare = B.y1 - B.y0 - 16 - need;
+      const chips = this.ruleChips().slice(0, clamp(Math.floor(spare / 24), 0, 3));
+      let y = B.y0 + 10;
+      L.chips = chips.map(t => { const c = { x: cX, y: y + 10, w: cw - 12, text: t }; y += 24; return c; });
+      y += 16;
+      if (stacked) { L.ind = { x: cX, y: y + L.th / 2 }; y += L.th + 14; L.deck = { x: cX, y: y + L.th / 2 }; y += L.th + 16; }
+      else { L.deck = { x: cX - L.tw * 0.65, y: y + L.th / 2 }; L.ind = { x: cX + L.tw * 0.65, y: y + L.th / 2 }; y += L.th + 16; }
+      L.counter = { x: cX, y: y + 12, w: Math.min(cw - 12, 70) };
+      L.areas = { seri: { x0: B.x0 + 10, x1: c0 - 8, y0: B.y0 + 24, y1: B.y1 - 10 }, cift: { x0: c0 + cw + 8, x1: B.x1 - 10, y0: B.y0 + 24, y1: B.y1 - 10 } };
+      L.diz = { left: { x: f.x + 4, y: L.rackY + 2, w: L.rackX - f.x - 10, h: L.rackH - 4 }, right: { x: L.rackX + L.rackW + 6, y: L.rackY + 2, w: f.r - L.rackX - L.rackW - 10, h: L.rackH - 4 } };
     } else {
-      // Yatayda deste ve gösterge Nuri'nin yanına çıkar, yer için dikey alan kalır
-      const side = Math.max(L.ar + L.sw + 16, 100), fan = Math.max(Math.min(L.sw * 0.62 * 10, f.w * 0.25), 80);
-      const yT = Math.max(a2.y + L.ar * 0.4, f.y + L.th * 0.5 + 16);
-      L.deck = { x: L.cx + fan + L.tw * 0.9, y: yT }; L.ind = { x: L.deck.x + L.tw * 1.5, y: yT };
-      const bottom = L.avatar[0].y > L.rackY ? L.rackY : L.avatar[0].y - L.ar - 4;
-      L.ground = {
-        x0: Math.max(L.avatar[3].x + side, L.pile[3].x + L.tw * 0.62 + 10), x1: Math.min(L.avatar[1].x - side, L.pile[0].x - L.tw * 0.62 - 10),
-        y0: Math.max(topBottom, yT + L.th / 2) + 10, y1: bottom - 8,
-      };
+      const rowY = f.y + ar + 6;
+      L.avatar = [null, { x: f.r - f.w / 6, y: rowY }, { x: L.cx, y: rowY }, { x: f.x + f.w / 6, y: rowY }];
+      L.labelStyle = ['right', 'stack', 'stack', 'stack'];
+      const r2 = rowY + ar + 4 + 29 + 18 + pbH / 2, r4 = L.rackY - 8 - pbH / 2;
+      L.pile = [{ x: f.r - pbW / 2 - 6, y: r4 }, { x: f.r - pbW / 2 - 6, y: r2 }, { x: f.x + pbW / 2 + 6, y: r2 }, { x: f.x + pbW / 2 + 6, y: r4 }];
+      L.deck = { x: L.cx - L.tw * 1.4, y: r2 }; L.ind = { x: L.cx, y: r2 };
+      L.counter = { x: L.cx + L.tw * 1.4 + 18, y: r2 - 6, w: 48 };
+      L.glass = { x: (L.counter.x + 24 + L.pile[1].x - pbW / 2) / 2, y: r2, s: ar * 0.95 };
+      L.avatar[0] = { x: L.cx - 56, y: r4 };
+      const B = L.board = { x0: f.x + 6, x1: f.r - 6, y0: r2 + pbH / 2 + 8, y1: r4 - pbH / 2 - 8 };
+      L.center = null; L.chips = []; L.diz = null; L.areas = this.portraitAreas(L, 0.68); // seri/çift sınırı yere göre kayar (groundLayout)
     }
-    L.glass = L.portrait ? { x: (L.cx + f.w * 0.25 + L.pile[1].x - L.tw * 0.62) / 2, y: L.pile[1].y, s: L.ar * 1.1 }
-      : { x: (L.ind.x + L.tw * 0.62 + L.pile[1].x - L.tw * 0.62) / 2, y: L.ind.y, s: L.ar * 1.1 };
-    this.groundCache = null;
+    this.groundCache = null; this.placeDom();
   }
-  // Dikey ekranda yandaki oyuncuların taşları avatarın yanında küçük bir yığın olur; yer ortada geniş kalır
-  oppSlot(s, i, m) {
-    const L = this.L;
-    if (L.portrait && s !== 2) { const av = L.avatar[s], dir = s === 1 ? -1 : 1; return { x: av.x + dir * (L.ar + L.sw * 0.5 + 3), y: av.y - L.ar * 0.3 - Math.min(i, 10) * 0.7 }; }
-    return super.oppSlot(s, i, m);
+  portraitAreas(L, sp) {
+    const B = L.board, split = B.y0 + (B.y1 - B.y0) * sp;
+    return { split, seri: { x0: B.x0 + 8, x1: B.x1 - 8, y0: B.y0 + 22, y1: split - 6 }, cift: { x0: B.x0 + 8, x1: B.x1 - 8, y0: split + 20, y1: B.y1 - 8 } };
   }
-  groundLayout() {
-    const L = this.L, G = L.ground, gw = G.x1 - G.x0, gh = G.y1 - G.y0;
-    const key = [L.W, L.H, L.topH, L.botH, ...this.melds.map(ms => ms.map(m => m.length).join('.'))].join('|');
-    if (this.groundCache && this.groundCache.key === key) return this.groundCache;
-    // Dizilim seçenekleri: üç satır (Nuri / Sevim + Rıza / sen), rakipler yan yana + sen, tek satır. Taşı en büyük gösteren seçilir.
-    const plans = [[[2], [3, 1], [0]], [[3, 2, 1], [0]], [[3, 2, 1, 0]]].map(p => p.map(r => r.filter(s => this.melds[s].length)).filter(r => r.length));
-    const pad = 6, head = 16, rowGap = 6, colGap = 8;
-    const attempt = (order, mw) => {
-      const mh = mw * 1.36, gap = Math.max(1, mw * 0.06), mg = Math.max(6, mw * 0.4), lineH = mh + 5;
-      let ok = true;
-      const rows = order.map(r => {
-        const w = (gw - colGap * (r.length - 1)) / r.length, iw = w - 2 * pad;
-        const zones = r.map((s, k) => {
-          let x = 0, line = 0; const place = [];
-          this.melds[s].forEach((m, i) => {
-            const mwid = m.length * (mw + gap) - gap;
-            if (mwid > iw) ok = false;
-            if (x > 0 && x + mwid > iw) { line++; x = 0; }
-            place.push({ i, dx: x, line }); x += mwid + mg;
-          });
-          return { s, k, w, place, h: pad + head + (line + 1) * lineH - 5 + pad };
-        });
-        return { zones, h: Math.max(...zones.map(z => z.h)) };
-      });
-      const total = rows.reduce((n, r) => n + r.h, 0) + rowGap * Math.max(0, rows.length - 1);
-      return { ok: ok && total <= gh, mw, mh, gap, lineH, rows, total };
+  ruleChips() {
+    const r = this.rules;
+    return [r.cezali ? 'Cezalı' : 'Normal', r.katlama ? 'Katlamalı' : 'Katlamasız', `Açılış ${this.seriNeed ? this.seriNeed() : 101}`];
+  }
+  // Çift diz / Seri diz düğmeleri yatayda ıstakanın iki ucuna oturur
+  placeDom() {
+    const L = this.L; if (!L) return;
+    for (const [id, r] of [['btnCift', L.diz && L.diz.left], ['btnSeri', L.diz && L.diz.right]]) {
+      const b = document.getElementById(id); if (!b) continue;
+      Object.assign(b.style, r ? { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' } : { left: '', top: '', width: '', height: '' });
+    }
+  }
+  oppSlot(s) { const av = this.L.avatar[s]; return { x: av.x, y: av.y }; }
+  // Yerin sabit kısmı (panel, ızgara, başlıklar, masa etiketleri) masa arka planına bir kez çizilir
+  paintStatic(g) {
+    const L = this.L, B = L.board, A = L.areas; if (!B) return;
+    g.save();
+    rr(g, B.x0, B.y0, B.x1 - B.x0, B.y1 - B.y0, 12); g.fillStyle = 'rgba(7,16,27,.66)'; g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1; g.stroke();
+    g.save(); g.clip();
+    g.strokeStyle = 'rgba(255,255,255,.045)'; g.beginPath();
+    const step = clamp(L.tw * 0.36, 12, 20);
+    for (let x = B.x0 + step; x < B.x1; x += step) { const xx = Math.round(x) + 0.5; g.moveTo(xx, B.y0); g.lineTo(xx, B.y1); }
+    for (let y = B.y0 + step; y < B.y1; y += step) { const yy = Math.round(y) + 0.5; g.moveTo(B.x0, yy); g.lineTo(B.x1, yy); }
+    g.stroke();
+    // Bölümler: yatayda seri | bilgi | çift, dikeyde seri üstte, çift altta
+    g.strokeStyle = 'rgba(255,255,255,.16)'; g.beginPath();
+    if (L.center) {
+      g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(L.center.x0, B.y0, L.center.x1 - L.center.x0, B.y1 - B.y0);
+      for (const x of [L.center.x0, L.center.x1]) { g.moveTo(Math.round(x) + 0.5, B.y0); g.lineTo(Math.round(x) + 0.5, B.y1); }
+    }
+    g.stroke();
+    // Filigran ve alan başlıkları
+    const wm = (a, text) => {
+      const sz = clamp(Math.min(a.x1 - a.x0, a.y1 - a.y0) * 0.42, 22, 120);
+      g.font = `${sz}px ${F_DISP}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(255,255,255,.035)';
+      g.fillText(text, (a.x0 + a.x1) / 2, (a.y0 + a.y1) / 2);
     };
-    const maxMw = Math.min(L.tw * (L.portrait ? 1 : 0.8), 44), minMw = 10;
-    let res = null;
-    for (const order of plans) {
-      let r = attempt(order, maxMw);
-      for (let mw = maxMw - 0.5; !r.ok && mw >= minMw; mw -= 0.5) r = attempt(order, mw);
-      if (!res || (r.ok && (!res.ok || r.mw > res.mw + 1.5))) res = r; // eşite yakınsa ilk (coğrafi) dizilim kalır
+    if (L.center) {
+      wm(A.seri, '101');
+      g.font = `700 10px ${F_BODY}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(245,236,215,.45)';
+      g.fillText('SERİ', A.seri.x0, A.seri.y0 - 11); g.fillText('ÇİFT', A.cift.x0, A.cift.y0 - 11);
+    } else wm({ x0: B.x0, x1: B.x1, y0: B.y0, y1: B.y1 }, '101');
+    g.restore();
+    for (const c of L.chips) {
+      g.font = `700 11px ${F_BODY}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      rr(g, c.x - c.w / 2, c.y - 10, c.w, 20, 6);
+      g.fillStyle = c.text === 'Cezalı' ? '#7a1e18' : c.text.startsWith('Katlama') ? '#5a2436' : '#1d3346'; g.fill();
+      g.fillStyle = '#f5ecd7'; g.fillText(c.text, c.x, c.y + 0.5);
     }
-    // Satırlar yerin ortasında toplanır; ikili satırda iki alan aynı boydadır
-    let y = G.y0 + Math.max(0, (gh - res.total) / 2);
-    const zones = [];
-    for (const r of res.rows) {
-      for (const z of r.zones) zones.push({ s: z.s, x: G.x0 + z.k * (z.w + colGap), y, w: z.w, h: r.h, place: z.place });
-      y += r.h + rowGap;
+    g.restore();
+  }
+  // Yer yerleşimi: açılış sırasıyla oyuncular, her oyuncunun grubu yeni satırdan başlar.
+  // Taş boyu seri ve çift alanına birlikte sığan en büyük değer; seri alanı yatayda tercihen iki sütun.
+  groundLayout() {
+    const L = this.L, A = L.areas;
+    const key = [L.W, L.H, L.topH, L.botH, L.rightW, this.openOrder.join(''), ...this.melds.map(ms => ms.map(m => m.length).join('.'))].join('|');
+    if (this.groundCache && this.groundCache.key === key) return this.groundCache;
+    const items = { seri: [], cift: [] };
+    for (const s of this.openOrder) this.melds[s].forEach((m, i) => items[this.meldKinds[s][i] === 'pair' ? 'cift' : 'seri'].push({ s, i, n: m.length }));
+    const flow = (a, list, mw, K, force) => {
+      const gap = Math.max(1, mw * 0.06), pitch = mw + gap, mh = mw * 1.36, lineH = mh + Math.max(7, mh * 0.32), mg = Math.max(6, mw * 0.5), colGap = 14;
+      const colW = (a.x1 - a.x0 - colGap * (K - 1)) / K, lines = Math.max(1, Math.floor((a.y1 - a.y0 - mh) / lineH) + 1);
+      let col = 0, line = 0, x = 0, prev = null; const out = [];
+      for (const it of list) {
+        const w = it.n * pitch - gap;
+        if (w > colW && !force) return null;
+        if (x > 0 && (it.s !== prev || x + w > colW)) { line++; x = 0; }
+        if (line >= lines && col < K - 1) { col++; line = 0; x = 0; }
+        if (line >= lines && !force) return null;
+        out.push({ ...it, x0: a.x0 + col * (colW + colGap) + x, y: a.y0 + line * lineH + mh / 2 });
+        x += w + mg; prev = it.s;
+      }
+      return { out, mw, mh, gap, K, colW, colGap };
+    };
+    const side = !!L.center, maxMw = side ? Math.min(L.tw * 0.72, 44) : Math.min(L.tw * 1.05, 30), minMw = 9;
+    const pairCols = (a, mw) => { const pw = 2 * (mw + Math.max(1, mw * 0.06)) + 10; return Math.max(1, Math.floor((a.x1 - a.x0 + 14) / (pw + 14))); };
+    // Her alan kendi taş boyunu bulur (çift alanı dolunca seri küçülmez)
+    const fit = (a, list, Ks) => {
+      for (let mw = maxMw; mw >= minMw; mw -= 0.5) for (const K of Ks(mw)) { const r = flow(a, list, mw, K); if (r) return r; }
+      return flow(a, list, minMw, Ks(minMw)[0], true);
+    };
+    const best = { score: -1 };
+    // Dikeyde seri/çift sınırı için birkaç oran denenir; ikisinin küçük taşını en büyük yapan seçilir
+    for (const sp of side ? [null] : [0.68, 0.8, 0.56, 0.9, 0.45]) {
+      const A2 = sp == null ? A : this.portraitAreas(L, sp);
+      const seri = fit(A2.seri, items.seri, () => side ? [2, 1, 3] : [1, 2]), cift = fit(A2.cift, items.cift, mw => [pairCols(A2.cift, mw)]);
+      const score = Math.min(items.seri.length ? seri.mw : 99, items.cift.length ? cift.mw : 99);
+      if (score > best.score + 0.25) Object.assign(best, { score, seri, cift, areas: A2 });
     }
-    this.groundCache = { key, zones, mw: res.mw, mh: res.mh, gap: res.gap, lineH: res.lineH, pad, head };
+    const { seri, cift, areas } = best;
+    this.groundCache = { key, seri, cift, areas };
     return this.groundCache;
+
   }
   extraTargets(out) {
-    const lay = this.groundLayout(), { mw, mh, gap, lineH, pad, head } = lay;
-    this.meldBoxes = []; this.zones = lay.zones;
-    for (const z of lay.zones) for (const { i, dx, line } of z.place) {
-      const m = this.melds[z.s][i], x0 = z.x + pad + dx, y = z.y + pad + head + line * lineH + mh / 2;
-      this.meldBoxes.push({ owner: z.s, meld: i, x0, x1: x0 + m.length * (mw + gap) - gap, y0: y - mh / 2, y1: y + mh / 2, pair: this.meldKinds[z.s][i] === 'pair' });
+    const lay = this.groundLayout();
+    this.meldBoxes = [];
+    for (const r of [lay.seri, lay.cift]) for (const it of r.out) {
+      const { mw, mh, gap } = r, m = this.melds[it.s][it.i], x0 = it.x0, y = it.y;
+      this.meldBoxes.push({ owner: it.s, meld: it.i, x0, x1: x0 + m.length * (mw + gap) - gap, y0: y - mh / 2, y1: y + mh / 2, pair: this.meldKinds[it.s][it.i] === 'pair', mw, gap });
       m.forEach((id, k) => out.push({ id, kind: 'tile', data: this.tileById[id], x: x0 + k * (mw + gap) + mw / 2, y, w: mw, h: mh, faceUp: true, z: 60 + k, okey: this.isOkey(this.tileById[id]) }));
     }
   }
-  // Alan başlığı: ad + seri toplamı ya da çift sayısı. Sıradaki oyuncunun alanı pirinç çerçeveli, çift alanı mavi tonlu.
+  // Yerin değişen kısmı: sütun çizgileri, per altlıkları (altında sahibinin rengi), per sayacı
   drawGround(g) {
-    if (!this.zones) return;
-    for (const z of this.zones) {
-      const cift = this.opened[z.s] === 'cift', on = this.turn === z.s && this.actingPhase();
+    const L = this.L, lay = this.groundCache; if (!L.board || !lay) return;
+    g.save(); g.strokeStyle = 'rgba(255,255,255,.1)'; g.setLineDash([4, 5]); g.beginPath();
+    if (!L.center) {
+      const y = Math.round(lay.areas.split) + 0.5; g.moveTo(L.board.x0, y); g.lineTo(L.board.x1, y);
+    }
+    for (const [a, r] of [[lay.areas.seri, lay.seri], [lay.areas.cift, lay.cift]])
+      for (let k = 1; k < r.K; k++) { const x = Math.round(a.x0 + k * (r.colW + r.colGap) - r.colGap / 2) + 0.5; g.moveTo(x, a.y0 - 4); g.lineTo(x, a.y1 + 4); }
+    g.stroke(); g.setLineDash([]);
+    if (!L.center) {
+      g.font = `700 10px ${F_BODY}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(245,236,215,.45)';
+      g.fillText('SERİ', lay.areas.seri.x0, lay.areas.seri.y0 - 11); g.fillText('ÇİFT', lay.areas.cift.x0, lay.areas.cift.y0 - 11);
+    }
+    for (const b of this.meldBoxes) {
+      rr(g, b.x0 - 3, b.y0 - 3, b.x1 - b.x0 + 6, b.y1 - b.y0 + 6, 4); g.fillStyle = 'rgba(0,0,0,.3)'; g.fill();
+      rr(g, b.x0, b.y1 + 2.5, b.x1 - b.x0, 3, 1.5); g.fillStyle = this.seats[b.owner].color; g.fill();
+    }
+    g.restore();
+    this.drawCounter(g);
+  }
+  // Per sayacı: ıstakada dizili geçerli perlerin toplamı (referanstaki dijital sayaç); altında çift sayısı
+  drawCounter(g) {
+    const c = this.L.counter, rk = this.rackCache; if (!c || !rk) return;
+    const o = this.opened[0], v = rk.rs.v, np = rk.rc.melds.length, ok = !!o || v >= this.seriNeed() || np >= this.pairNeed();
+    g.save(); g.textAlign = 'center'; g.textBaseline = 'middle';
+    rr(g, c.x - c.w / 2, c.y - 12, c.w, 24, 8); g.fillStyle = '#0a0e13'; g.fill();
+    g.strokeStyle = ok ? 'rgba(155,227,167,.8)' : 'rgba(255,255,255,.25)'; g.lineWidth = 1.2; g.stroke();
+    g.font = `800 16px ${F_NUM}`; g.fillStyle = ok ? '#9be3a7' : '#f5ecd7';
+    g.fillText(String(Math.min(o === 'cift' ? np : v, 999)).padStart(3, '0'), c.x, c.y + 1);
+    g.font = `700 10px ${F_BODY}`; g.fillStyle = '#cbbf9f';
+    g.fillText(o === 'seri' ? 'seriden açtın' : o === 'cift' ? 'çiftten açtın' : `/${this.seriNeed()} · ${np} çift`, c.x, c.y + 21);
+    g.restore();
+  }
+  // İşleme ipucu: seçilen ya da sürüklenen taş hangi pere girerse oraya yeşil "+", okeyi geri alacaksa okeyin üstüne altın "+"
+  drawLayMarks(g) {
+    const id = this.drag && this.drag.moved && this.drag.from === 'rack' ? this.drag.id : this.sel, lay = this.groundCache;
+    if (!id || !lay || !this.canLayNow()) return;
+    const pulse = REDUCED ? 1 : 0.85 + 0.15 * Math.sin(this.time * 5);
+    for (const b of this.meldBoxes) {
+      if (b.pair) continue;
+      const r = this.layCheck(id, b.owner, b.meld); if (r.error) continue;
+      const cy = (b.y0 + b.y1) / 2, rad = clamp((b.y1 - b.y0) * 0.26, 7, 12) * pulse;
+      let x;
+      if (r.reclaim) x = b.x0 + this.melds[b.owner][b.meld].indexOf(r.reclaim) * (b.mw + b.gap) + b.mw / 2;
+      else x = r.ids[0] === id ? b.x0 - 2 : b.x1 + 2;
       g.save();
-      rr(g, z.x, z.y, z.w, z.h, 10); g.fillStyle = cift ? 'rgba(20,40,70,.28)' : 'rgba(0,0,0,.2)'; g.fill();
-      g.lineWidth = on ? 1.6 : 1; g.strokeStyle = on ? 'rgba(242,196,106,.75)' : cift ? 'rgba(142,197,255,.4)' : 'rgba(245,236,215,.14)'; g.stroke();
-      const ms = this.melds[z.s], ks = this.meldKinds[z.s];
-      const info = cift ? `Çift · ${ms.length}` : `Seri · ${this.meldValue(ms.filter((_, i) => ks[i] !== 'pair'), ks.filter(k => k !== 'pair'))}`;
-      g.textBaseline = 'middle'; g.textAlign = 'left';
-      const ty = z.y + 6 + 7, name = this.seats[z.s].name;
-      g.font = `700 11px ${F_BODY}`; g.fillStyle = on ? '#ffe2a8' : '#f5ecd7'; g.fillText(name, z.x + 8, ty);
-      const nw = g.measureText(name).width;
-      g.font = `700 10.5px ${F_NUM}`; g.fillStyle = cift ? '#8ec5ff' : '#9be3a7'; g.fillText(' · ' + info, z.x + 8 + nw, ty);
+      g.strokeStyle = r.reclaim ? 'rgba(242,196,106,.9)' : 'rgba(155,227,167,.75)'; g.lineWidth = 1.5;
+      rr(g, b.x0 - 4, b.y0 - 4, b.x1 - b.x0 + 8, b.y1 - b.y0 + 8, 5); g.stroke();
+      g.beginPath(); g.arc(x, cy, rad, 0, TAU); g.fillStyle = r.reclaim ? '#c38b31' : '#2f9e57'; g.fill();
+      g.lineWidth = 1.5; g.strokeStyle = '#fff'; g.stroke();
+      g.beginPath(); g.moveTo(x - rad * 0.5, cy); g.lineTo(x + rad * 0.5, cy); g.moveTo(x, cy - rad * 0.5); g.lineTo(x, cy + rad * 0.5);
+      g.lineWidth = 2.2; g.lineCap = 'round'; g.stroke();
       g.restore();
     }
-    // Her perin altında hafif bir altlık: gruplar birbirinden ayrı okunur
-    g.save(); g.fillStyle = 'rgba(0,0,0,.22)';
-    for (const b of this.meldBoxes) { rr(g, b.x0 - 2.5, b.y0 - 2.5, b.x1 - b.x0 + 5, b.y1 - b.y0 + 5, 4); g.fill(); }
-    g.restore();
+  }
+  // Taşları işle: işlenebilen her taşı (okey hariç, en az bir taş elde kalır) sırayla yerdeki perlere işler
+  findLay() {
+    const h = this.hands[0]; if (!this.canLayNow() || h.length < 2) return null;
+    for (const id of h) {
+      if (this.isOkey(this.tileById[id])) continue;
+      for (let o = 0; o < 4; o++) for (let i = 0; i < this.melds[o].length; i++)
+        if (this.meldKinds[o][i] !== 'pair' && !this.layCheck(id, o, i).error) return { id, o, i };
+    }
+    return null;
+  }
+  layAll() {
+    const step = first => {
+      if (!this.scene || this.scene.game !== this) return;
+      const c = this.findLay();
+      if (!c) { if (first) toast(this.canLayNow() ? 'İşlenecek taş yok' : this.layBlock(0) || (this.isMyTurn() ? 'Önce taş çek' : 'Sıranı bekle')); return; }
+      this.sel = null; this.pendingSlot = this.rack.indexOf(c.id);
+      dispatchAction({ type: 'LAY_TILE', seat: 0, payload: { tileId: c.id, owner: c.o, meld: c.i } });
+      setTimeout(() => step(false), 260);
+    };
+    step(true);
   }
   seatInfo(s) {
     if (!this.hands) return '';
-    return `${this.hands[s].length} taş`; // açma durumu yerdeki alan başlığında
+    const o = this.opened && this.opened[s];
+    return `${this.hands[s].length} taş${o ? ' · ' + (o === 'cift' ? 'çift' : 'seri') : ''}`;
   }
   buildBar(el) {
-    super.buildBar(el);
-    el.insertAdjacentHTML('afterbegin', `<span class="per" id="perOut">Per 0/101</span><button class="act primary" id="btnOpen">El aç</button><button class="act primary" id="btnPairs">Çift aç</button>`);
+    const T = ns => `<span class="mini-tiles" aria-hidden="true">${ns.map(([n, c]) => `<i class="${c || ''}">${n}</i>`).join('')}</span>`;
+    el.innerHTML = `<button class="act primary" id="btnOpen">${T([[1], [2], [3]])}<span>Seri aç</span></button>`
+      + `<button class="act primary" id="btnPairs">${T([[8, 'k'], [8, 'k']])}<span>Çift aç</span></button>`
+      + `<button class="act" id="btnLayAll">Taşları işle</button>`
+      + `<button class="act diz" id="btnCift">${T([[5, 'm'], [5, 'm']])}<b>Çift <br>diz</b></button>`
+      + `<button class="act diz" id="btnSeri">${T([[1], [2], [3]])}<b>Seri <br>diz</b></button>`
+      + `<span class="hint" id="oHint"></span>`;
     el.querySelector('#btnOpen').onclick = () => this.openFromRack('seri');
     el.querySelector('#btnPairs').onclick = () => this.openFromRack('cift');
-    this.perEl = el.querySelector('#perOut'); this.openBtn = el.querySelector('#btnOpen'); this.pairBtn = el.querySelector('#btnPairs');
+    el.querySelector('#btnLayAll').onclick = () => this.layAll();
+    el.querySelector('#btnSeri').onclick = () => this.arrange('seri');
+    el.querySelector('#btnCift').onclick = () => this.arrange('cift');
+    this.openBtn = el.querySelector('#btnOpen'); this.pairBtn = el.querySelector('#btnPairs'); this.layAllBtn = el.querySelector('#btnLayAll');
+    this.hintEl = el.querySelector('#oHint'); this.showBtn = null;
+    this.placeDom();
   }
   hintText() {
     if (this.canDiscardNow() && this.sidePending(0) && this.sideUsable(0, this.sideTake.tileId)) return `<b>Yandan aldığın taşı bu tur kullan:</b> ${this.opened[0] ? 'pere işle ya da yeni per aç.' : 'onunla elini aç.'}`;
     if (this.canDiscardNow() && !this.opened[0]) {
       const pc = this.planCache, rk = this.rackCache;
-      if (pc && rk && rk.rs.v < this.seriNeed() && pc.plan.v >= this.seriNeed()) return `<b>Açabilirsin:</b> en iyi dizilim ${pc.plan.v}. <b>Seri diz</b>'e bas ya da perlerini kendin diz, sonra <b>El aç</b>.`;
+      if (pc && rk && rk.rs.v < this.seriNeed() && pc.plan.v >= this.seriNeed()) return `<b>Açabilirsin:</b> en iyi dizilim ${pc.plan.v}. <b>Seri diz</b>'e bas ya da perlerini kendin diz, sonra <b>Seri aç</b>.`;
       if (pc && rk && rk.rc.melds.length < this.pairNeed() && pc.pairs.length >= this.pairNeed()) return `<b>Çiftten açabilirsin:</b> ${pc.pairs.length} çiftin var. <b>Çift diz</b>'e bas, sonra <b>Çift aç</b>.`;
-      return `<b>Taş at</b> ya da perlerini ıstakada aralarında boşlukla diz: ${this.seriNeed()} sayıya veya ${this.pairNeed()} çifte ulaşınca elini aç.`;
+      return `<b>Taş at</b> ya da perlerini ıstakada aralarında boşlukla diz: ${this.seriNeed()} sayıya veya ${this.pairNeed()} çifte ulaşınca aç.`;
     }
     if (this.canDiscardNow() && this.finishAllowed()) return '<b>Son taş!</b> Göstergeye ya da sağ alttaki yığına at, el biter.';
-    if (this.canLayNow()) return '<b>İşle ya da at:</b> taşı yerdeki bir pere sürükle. Yeşil çerçeve uyar, altın çerçeve okeyi geri alır.';
+    if (this.canLayNow()) return '<b>İşle ya da at:</b> taşı seç, yerde <b>+</b> çıkan pere dokun ya da sürükle. Hepsi için <b>Taşları işle</b>.';
     return super.hintText();
   }
   refreshBar() {
@@ -2300,13 +2487,11 @@ class Okey101Game extends OkeyGame {
     // Sayaç ve düğmeler ıstakadaki dizilime göre: ne görüyorsan o açılır
     const rs = this.rackPlan('seri'), rc = this.rackPlan('cift'), v = rs.v, np = rc.melds.length;
     this.rackCache = { rs, rc };
-    const sn = this.seriNeed(), pn = this.pairNeed();
-    const txt = opened === 'seri' ? `Seriden açtın · ıstakada ${v}` : opened === 'cift' ? `Çiftten açtın · ıstakada ${np} çift` : `Per ${v}/${sn} · Çift ${np}/${pn}`;
-    if (this.perEl.textContent !== txt) this.perEl.textContent = txt;
-    this.perEl.classList.toggle('ok', !!opened || v >= sn || np >= pn);
-    const can = this.canDiscardNow();
+    const sn = this.seriNeed(), pn = this.pairNeed(), can = this.canDiscardNow();
     this.openBtn.disabled = !(can && opened !== 'cift' && rs.melds.length && (opened || v >= sn));
     this.pairBtn.disabled = !(can && opened !== 'seri' && np && (opened || np >= pn));
+    const lk = this.version + '|' + this.hands[0].length;
+    if (this.layKey !== lk) { this.layKey = lk; this.layAllBtn.disabled = !this.findLay(); }
   }
 }
 
@@ -2804,7 +2989,7 @@ const TableState = {
   exit() {
     this.subs.forEach(u => u()); net.server.attach(null);
     $('hud').hidden = true; $('actionBar').hidden = true; $('modal').hidden = true; $('logPanel').hidden = true; $('backToGame').hidden = true;
-    $('logBtn').setAttribute('aria-expanded', 'false'); $('actionBar').innerHTML = '';
+    $('logBtn').setAttribute('aria-expanded', 'false'); $('actionBar').innerHTML = ''; $('actionBar').classList.remove('side'); $('actionBar').style.top = '';
   },
   log(a, err) {
     const li = document.createElement('li');
@@ -2830,12 +3015,16 @@ const TableState = {
     }, 900);
   },
   resize() {
-    const top = $('hud').offsetHeight || 52, bot = $('actionBar').offsetHeight || 56;
-    this.game.layout(W, H, top, bot); this.bg = null;
+    // Oyun isterse (yatay 101) hamle çubuğu sağda dikey sütun olur; yoksa altta yatay çubuk
+    const bar = $('actionBar'), side = !!(this.game.sideBar && this.game.sideBar(W, H)), top = $('hud').offsetHeight || 52;
+    bar.classList.toggle('side', side); bar.style.top = side ? top + 'px' : '';
+    const bot = side ? 0 : bar.offsetHeight || 56, right = side ? bar.offsetWidth : 0;
+    this.game.layout(W, H, top, bot, right); this.bg = null; this.barH = bar.offsetHeight;
   },
   buildBg() {
     const c = document.createElement('canvas'); c.width = W * DPR; c.height = H * DPR; const g = c.getContext('2d'); g.scale(DPR, DPR);
     const L = this.game.L; paintRoom(g, W, H); paintTable(g, L.table, L.rim, this.game.wordmark ? BRAND.name : '', this.theme);
+    if (this.game.paintStatic) this.game.paintStatic(g);
     drawSugar(g, L.glass.x - L.glass.s * 0.9, L.glass.y - L.glass.s * 0.25, L.glass.s * 0.22);
     this.bg = c;
   },
