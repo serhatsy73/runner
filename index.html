@@ -212,7 +212,7 @@
   /* Yan sütun (yatay 101): hamle düğmeleri masanın sağında, dizme düğmeleri ıstakanın iki ucunda */
   #actionBar.side {
     left: auto; right: 0; bottom: 0; width: clamp(112px, 13vw, 150px); box-sizing: border-box;
-    flex-direction: column; flex-wrap: nowrap; justify-content: center; align-items: stretch; gap: 8px;
+    flex-direction: column; flex-wrap: nowrap; justify-content: safe center; align-items: stretch; gap: 8px; overflow-y: auto;
     padding: 10px 8px calc(env(safe-area-inset-bottom, 0px) + 10px);
     border-top: 0; border-left: 1px solid var(--line); background: linear-gradient(90deg, rgba(20,12,7,.9), rgba(20,12,7,.97));
   }
@@ -221,6 +221,10 @@
   #actionBar.side .act.diz { position: fixed; flex-direction: column; gap: 8px; padding: 6px 4px; font-size: 13px; line-height: 1.1; background: linear-gradient(180deg, #2a1a0f, #140c07); border-color: rgba(217,165,75,.45); }
   #actionBar.side .act.diz b { font-size: 15px; letter-spacing: .04em; }
   .act.diz b { font-weight: 700; }
+  #actionBar.side .act.diz.compact { gap: 2px; font-size: 12px; }
+  #actionBar.side .act.diz.compact .mini-tiles { display: none; }
+  #actionBar.side .act.diz.compact b { font-size: 13px; }
+  @media (max-height: 420px) and (orientation: landscape) { #hud { padding-top: calc(env(safe-area-inset-top, 0px) + 3px); padding-bottom: 3px; } .hud-title span { display: none; } .hud-btn { padding: 4px 10px; } }
   .act.diz br { display: none; }
   #actionBar.side .act.diz br { display: inline; }
   .act { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
@@ -443,7 +447,7 @@ const myName = () => PROFILE.name || 'Sen';
 const tl = n => '₺' + n.toLocaleString('tr-TR');
 
 function rr(g, x, y, w, h, r) {
-  r = Math.min(r, w / 2, h / 2);
+  w = Math.max(0, w); h = Math.max(0, h); r = Math.max(0, Math.min(r, w / 2, h / 2)); // çok küçük ekranda negatif ölçü çizimi durdurmasın
   g.beginPath(); g.moveTo(x + r, y);
   g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
   g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
@@ -2205,30 +2209,32 @@ class Okey101Game extends OkeyGame {
   // Altta geniş ıstaka; yatayda Çift diz / Seri diz ıstakanın iki ucunda, aç / işle düğmeleri sağ sütunda.
   sideBar(W, H) { return W > H * 1.05; }
   layoutGame(L) {
-    const f = L.felt, cols = this.cols, side = !L.portrait, gap = side ? 3 : 2;
-    const dizW = side ? clamp(f.w * 0.07, 46, 84) : 0;
-    L.tw = Math.min((f.w - 2 * dizW - (side ? 24 : 14)) / cols - gap - 0.8, L.H * (side ? 0.078 : 0.068), 62);
+    // Oturma: sen altta, Rıza (1) sağda, Nuri (2) üstte, Sevim (3) solda. Sıra saat yönünün tersine: soldakinden alır, sağındakine atarsın.
+    const f = L.felt, cols = this.cols, side = !L.portrait, gap = side ? 3 : 2, short = L.H < 420;
+    const leftW = side ? clamp(f.w * 0.09, 66, 100) : 0, rightW = side ? clamp(f.w * 0.075, 52, 90) : 0;
+    L.tw = Math.min((f.w - leftW - rightW - (side ? 24 : 14)) / cols - gap - 0.8, L.H * (side ? (short ? 0.07 : 0.078) : 0.068), 62);
     L.th = L.tw * 1.36; L.gap = gap;
     L.rackPad = Math.max(6, L.tw * 0.16); L.rowH = L.th + L.rackPad * 1.1;
     L.rackW = cols * (L.tw + gap) - gap + L.rackPad * 2; L.rackH = L.rowH * 2 + L.rackPad * 0.4;
-    L.rackX = L.cx - L.rackW / 2; L.rackY = f.b - L.rackH - 4;
+    L.rackX = side ? f.x + leftW + (f.w - leftW - rightW - L.rackW) / 2 : L.cx - L.rackW / 2; L.rackY = f.b - L.rackH - 4;
     L.sw = L.tw * 0.3; L.sh = L.sw * 1.36; // rakip taşları avatarın arkasında durur, görünmez
-    const ar = L.ar;
+    const ar = L.ar, blockH = ar * 2 + 33; // avatar + iki satırlık etiket
     if (side) {
-      const rowY = f.y + ar + 7, room = L.rackY - 8 - (rowY + ar + 9) - 6 - (ar * 2 + 33 + 6);
-      L.ph = Math.min(L.th, room / 2.48); L.pw = L.ph / 1.36; // kenarda iki yığın ve senin avatarın üst üste sığsın
+      const rowY = f.y + ar + 7, room = L.rackY - 8 - (rowY + ar + 9) - 12 - (blockH + 6);
+      L.ph = clamp(room / 2.48, 10, L.th); L.pw = L.ph / 1.36; // kenarda iki yığın ve arada yan oyuncu sığsın
     } else { L.pw = L.tw; L.ph = L.th; }
     const pbW = L.pw * 1.24, pbH = L.ph * 1.24;
     if (side) {
       const rowY = f.y + ar + 7;
-      L.avatar = [null, { x: f.r - ar - 10, y: rowY }, { x: L.cx, y: rowY }, { x: f.x + ar + 10, y: rowY }];
-      L.labelStyle = ['stack', 'left', 'right', 'right'];
-      const MW = Math.max(pbW + 14, 88), y0 = rowY + ar + 9, y1 = L.rackY - 8;
+      const MW = Math.max(pbW + 14, 88), y0 = rowY + ar + 9, y1 = Math.max(L.rackY - 8, y0 + 60);
       L.pile = [{ x: f.r - MW / 2, y: y1 - pbH / 2 }, { x: f.r - MW / 2, y: y0 + pbH / 2 + 6 }, { x: f.x + MW / 2, y: y0 + pbH / 2 + 6 }, { x: f.x + MW / 2, y: y1 - pbH / 2 }];
-      // Avatar + iki satırlık etiket, üst ve alt yığının tam arasına
-      const midY = (L.pile[2].y + L.pile[3].y) / 2;
-      L.avatar[0] = { x: f.x + MW / 2, y: midY - 16.5 };
-      L.glass = { x: f.r - MW / 2, y: midY, s: ar * 1.1 };
+      const midY = (L.pile[2].y + L.pile[3].y) / 2 - 16.5;
+      L.avatar = [
+        { x: f.x + 4 + (L.rackX - f.x - 10) / 2, y: L.rackY + L.rackH / 2 - 16.5 }, // sen: ıstakanın solunda
+        { x: f.r - MW / 2, y: midY }, { x: L.cx, y: rowY }, { x: f.x + MW / 2, y: midY },
+      ];
+      L.labelStyle = ['stack', 'stack', 'right', 'stack'];
+      L.glass = { x: f.r - ar * 1.6, y: rowY, s: ar };
       const B = L.board = { x0: f.x + MW, x1: f.r - MW, y0, y1 }, bw = B.x1 - B.x0;
       // Bilgi sütunu: yer varsa masa ayarı etiketleri, gösterge, deste ve per sayacı alt alta; alçak ekranda gösterge ile deste yan yana
       const stacked = B.y1 - B.y0 - 16 >= 16 + L.th * 2 + 14 + 16 + 40;
@@ -2244,18 +2250,20 @@ class Okey101Game extends OkeyGame {
       else { L.deck = { x: cX - L.tw * 0.65, y: y + L.th / 2 }; L.ind = { x: cX + L.tw * 0.65, y: y + L.th / 2 }; y += L.th + 16; }
       L.counter = { x: cX, y: y + 12, w: Math.min(cw - 12, 70) };
       L.areas = { seri: { x0: B.x0 + 10, x1: c0 - 8, y0: B.y0 + 24, y1: B.y1 - 10 }, cift: { x0: c0 + cw + 8, x1: B.x1 - 10, y0: B.y0 + 24, y1: B.y1 - 10 } };
-      L.diz = { left: { x: f.x + 4, y: L.rackY + 2, w: L.rackX - f.x - 10, h: L.rackH - 4 }, right: { x: L.rackX + L.rackW + 6, y: L.rackY + 2, w: f.r - L.rackX - L.rackW - 10, h: L.rackH - 4 } };
+      // Çift diz ve Seri diz ıstakanın sağında üst üste
+      const rx = L.rackX + L.rackW + 6, rw = f.r - rx - 4, bh = (L.rackH - 10) / 2;
+      L.diz = { cift: { x: rx, y: L.rackY + 2, w: rw, h: bh }, seri: { x: rx, y: L.rackY + 8 + bh, w: rw, h: bh } };
     } else {
-      const rowY = f.y + ar + 6;
-      L.avatar = [null, { x: f.r - f.w / 6, y: rowY }, { x: L.cx, y: rowY }, { x: f.x + f.w / 6, y: rowY }];
-      L.labelStyle = ['right', 'stack', 'stack', 'stack'];
-      const r2 = rowY + ar + 4 + 29 + 18 + pbH / 2, r4 = L.rackY - 8 - pbH / 2;
-      L.pile = [{ x: f.r - pbW / 2 - 6, y: r4 }, { x: f.r - pbW / 2 - 6, y: r2 }, { x: f.x + pbW / 2 + 6, y: r2 }, { x: f.x + pbW / 2 + 6, y: r4 }];
-      L.deck = { x: L.cx - L.tw * 1.4, y: r2 }; L.ind = { x: L.cx, y: r2 };
-      L.counter = { x: L.cx + L.tw * 1.4 + 18, y: r2 - 6, w: 48 };
-      L.glass = { x: (L.counter.x + 24 + L.pile[1].x - pbW / 2) / 2, y: r2, s: ar * 0.95 };
-      L.avatar[0] = { x: L.cx - 56, y: r4 };
-      const B = L.board = { x0: f.x + 6, x1: f.r - 6, y0: r2 + pbH / 2 + 8, y1: r4 - pbH / 2 - 8 };
+      const rowY = f.y + ar + 6, SZ = 82; // SZ: yan oyuncu için kenar payı
+      const r2 = rowY + ar + 16 + ar, r4 = L.rackY - 8 - Math.max(pbH / 2, ar);
+      L.avatar = [{ x: L.cx - 6, y: r4 }, { x: f.r - SZ / 2, y: r2 - 12 }, { x: L.cx, y: rowY }, { x: f.x + SZ / 2, y: r2 - 12 }];
+      L.labelStyle = ['right', 'stack', 'right', 'stack'];
+      L.pile = [{ x: f.r - pbW / 2 - 6, y: r4 }, { x: f.r - SZ - pbW / 2, y: r2 }, { x: f.x + SZ + pbW / 2, y: r2 }, { x: f.x + pbW / 2 + 6, y: r4 }];
+      L.deck = { x: L.cx - L.tw * 0.75, y: r2 }; L.ind = { x: L.cx + L.tw * 0.75, y: r2 };
+      L.counter = { x: L.avatar[0].x - ar - 34, y: r4 - 4, w: 48 };
+      L.glass = { x: f.x + ar * 1.5, y: rowY, s: ar * 0.95 };
+      const row2B = Math.max(r2 + pbH / 2, r2 - 12 + blockH);
+      L.board = { x0: f.x + 6, x1: f.r - 6, y0: row2B + 8, y1: Math.max(r4 - Math.max(pbH / 2, ar) - 8, row2B + 60) };
       L.center = null; L.chips = []; L.diz = null;
     }
     this.computeGrid(L);
@@ -2265,11 +2273,15 @@ class Okey101Game extends OkeyGame {
   // Seri alanı 2 sütun × 13 satır = 26 per: üç oyuncu en fazla 6'şar (18), son oyuncu 7 per indirir (25); iki taraf eşit olsun diye 13'er.
   // Her per kendi satırında, bir satıra 13 taşlık en uzun seri sığar. Çift alanı aynı hücre boyuyla: bir çift 2 hücre, çift sütunları arasında 1 boş hücre.
   computeGrid(L) {
-    const ROWS = 13, K = 2, SPAN = 13, colGap = 10, CH = 1.55; // hücre yüksekliği = genişlik × 1,55 (taş 1,36 oranında + altta sahip çizgisi)
-    let cw, seriA, ciftA;
+    const SPAN = 13, colGap = 10, CH = 1.55; // hücre yüksekliği = genişlik × 1,55 (taş 1,36 oranında + altta sahip çizgisi)
+    let cw, seriA, ciftA, K = 2, ROWS = 13;
     if (L.center) {
       seriA = L.areas.seri; ciftA = L.areas.cift;
-      cw = Math.min((seriA.x1 - seriA.x0 - colGap) / (K * SPAN), (seriA.y1 - seriA.y0) / (ROWS * CH));
+      // Alçak yatay ekranda (telefon) 13 satır taşları okunmaz kılar: kapasite 26'nın altına düşmeden 3 × 9 ya da 4 × 7 denenir
+      const size = k => Math.min((seriA.x1 - seriA.x0 - colGap * (k - 1)) / (k * SPAN), (seriA.y1 - seriA.y0) / (Math.ceil(26 / k) * CH));
+      cw = size(2);
+      for (const k of [3, 4]) if (size(k) > cw * 1.25 && size(k) > (K === 2 ? 0 : size(K))) { K = k; }
+      ROWS = Math.ceil(26 / K); cw = size(K);
     } else {
       const B = L.board, x0 = B.x0 + 8, x1 = B.x1 - 8, top = B.y0 + 22;
       cw = Math.min((x1 - x0 - colGap) / (K * SPAN), (B.y1 - 8 - top - 26) / ((ROWS + 2) * CH)); // altta en az 2 satır çift
@@ -2278,7 +2290,8 @@ class Okey101Game extends OkeyGame {
       L.areas = { split, seri: seriA, cift: ciftA };
     }
     const ch = cw * CH, mw = cw * 0.9, mh = mw * 1.36;
-    const colCells = Math.max(SPAN, Math.floor((seriA.x1 - seriA.x0 - colGap) / K / cw)), sw = K * colCells * cw + colGap;
+    cw = Math.max(cw, 3);
+    const colCells = Math.max(SPAN, Math.floor((seriA.x1 - seriA.x0 - colGap * (K - 1)) / K / cw)), sw = K * colCells * cw + colGap * (K - 1);
     const seri = { x0: seriA.x0 + Math.max(0, (seriA.x1 - seriA.x0 - sw) / 2), y0: seriA.y0, K, rows: ROWS, colCells, colGap };
     const pairCols = Math.max(1, Math.floor((Math.floor((ciftA.x1 - ciftA.x0) / cw) + 1) / 3)), cRows = Math.max(1, Math.floor((ciftA.y1 - ciftA.y0) / ch));
     const pw = (pairCols * 3 - 1) * cw;
@@ -2289,12 +2302,13 @@ class Okey101Game extends OkeyGame {
     const r = this.rules;
     return [r.cezali ? 'Cezalı' : 'Normal', r.katlama ? 'Katlamalı' : 'Katlamasız', `Açılış ${this.seriNeed ? this.seriNeed() : 101}`];
   }
-  // Çift diz / Seri diz düğmeleri yatayda ıstakanın iki ucuna oturur
+  // Çift diz / Seri diz düğmeleri yatayda ıstakanın sağında üst üste durur
   placeDom() {
     const L = this.L; if (!L) return;
-    for (const [id, r] of [['btnCift', L.diz && L.diz.left], ['btnSeri', L.diz && L.diz.right]]) {
+    for (const [id, r] of [['btnCift', L.diz && L.diz.cift], ['btnSeri', L.diz && L.diz.seri]]) {
       const b = document.getElementById(id); if (!b) continue;
       Object.assign(b.style, r ? { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' } : { left: '', top: '', width: '', height: '' });
+      b.classList.toggle('compact', !!r && r.h < 72);
     }
   }
   oppSlot(s) { const av = this.L.avatar[s]; return { x: av.x, y: av.y }; }
@@ -3079,7 +3093,9 @@ cv.addEventListener('pointercancel', e => app.pointer('up', ptr(e)));
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  app.update(dt); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); app.draw(ctx);
+  // Bir karede hata olursa döngü durmasın (ekran donup boş kalmasın); hata konsola bir kez yazılır
+  try { app.update(dt); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); app.draw(ctx); }
+  catch (e) { if (!frame.failed) { frame.failed = true; console.error(e); } }
   requestAnimationFrame(frame);
 }
 applyBrand();
