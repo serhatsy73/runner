@@ -333,7 +333,7 @@
 <header id="hud" hidden>
   <button class="hud-btn" id="backBtn" aria-label="Lobiye dön">‹ Lobi</button>
   <div class="hud-title"><span data-logo="30"></span><div><b id="hudTitle"></b><span id="hudSub"></span></div></div>
-  <button class="hud-btn" id="logBtn" aria-expanded="false" aria-controls="logPanel">Olaylar</button>
+  <button class="hud-btn" id="logBtn" aria-expanded="false" aria-controls="logPanel" hidden>Olaylar</button>
 </header>
 <aside id="logPanel" hidden>
   <h3>Hamle akışı</h3>
@@ -597,15 +597,29 @@ function paintTile(g, t, w, h, faceUp) {
 
 // Kart/taş yüzleri bir kez yüksek çözünürlükte çizilip önbelleğe alınır → 60 FPS'te sadece drawImage
 const faceCache = new Map();
+// Yerdeki (açılmış) taşlar için sade yüz: küçük boyda okunsun diye yalnızca büyük, kalın rakam
+function paintMiniTile(g, t, w, h) {
+  rr(g, 2, 2, w - 4, h - 4, w * 0.12);
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#fffdf5'); gr.addColorStop(1, '#e9dfc6');
+  g.fillStyle = gr; g.fill(); g.strokeStyle = '#8f7d55'; g.lineWidth = 4; g.stroke();
+  if (t.fake) {
+    g.fillStyle = '#2f7d4f';
+    for (let k = 0; k < 4; k++) { const a = k * TAU / 4 + Math.PI / 4; g.beginPath(); g.arc(w / 2 + Math.cos(a) * w * 0.16, h * 0.46 + Math.sin(a) * w * 0.16, w * 0.15, 0, TAU); g.fill(); }
+    return;
+  }
+  g.fillStyle = TILE_COLORS[t.c]; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = `800 ${t.n > 9 ? w * 0.62 : w * 0.78}px ${F_NUM}`; g.fillText(String(t.n), w / 2, h * 0.54);
+}
 function faceImage(kind, data, faceUp) {
   const key = kind + ':' + (faceUp ? (kind === 'card' ? data.id : `${data.c}_${data.n}_${data.fake ? 'f' : ''}`) : 'back');
   let img = faceCache.get(key);
   if (!img) {
     img = document.createElement('canvas');
-    const [w, h] = kind === 'card' ? [150, 210] : [100, 136];
+    const [w, h] = kind === 'card' ? [150, 210] : kind === 'mtile' ? [100, 112] : [100, 136];
     img.width = w; img.height = h;
     const g = img.getContext('2d');
     if (kind === 'card') faceUp ? paintCardFace(g, data, w, h) : paintCardBack(g, w, h);
+    else if (kind === 'mtile' && faceUp) paintMiniTile(g, data, w, h);
     else paintTile(g, data, w, h, faceUp);
     faceCache.set(key, img);
   }
@@ -881,6 +895,7 @@ class Sprite {
     this.set(t);
   }
   set(t) {
+    if (t.kind) this.kind = t.kind;
     this.tx = t.x; this.ty = t.y; this.trot = t.rot || 0; this.tw = t.w; this.th = t.h;
     this.face = !!t.faceUp; this.z = t.z || 0; this.hl = t.hl; this.dim = t.dim; this.data = t.data;
     this.okey = t.okey; this.dragging = !!t.drag; this.alpha = t.alpha == null ? 1 : t.alpha;
@@ -1800,6 +1815,14 @@ class OkeyGame extends BaseGame {
       }
     }
   }
+  // Istaka sütun sayısını değiştirir (yatay 101'de ıstaka genişliğine göre); dizilim satır ve sütunuyla korunur, sığmayan taş en yakın boş yuvaya geçer
+  setCols(n) {
+    if (n === this.cols) return;
+    const old = this.cols, rack = new Array(n * 2).fill(null), rest = [];
+    this.rack.forEach((id, i) => { if (!id) return; const r = (i / old) | 0, c = i % old; if (c < n) rack[r * n + c] = id; else rest.push(id); });
+    this.cols = n; this.slots = n * 2; this.rack = rack;
+    for (const id of rest) this.rack[this.nearestEmpty(0)] = id;
+  }
   moveInRack(id, slot) {
     const from = this.rack.indexOf(id); if (from < 0 || slot == null || from === slot) return;
     this.rack[from] = this.rack[slot]; this.rack[slot] = id;
@@ -2233,7 +2256,9 @@ class Okey101Game extends OkeyGame {
   layoutGame(L) {
     // Oturma: sen altta, Rıza (1) sağda, Nuri (2) üstte, Sevim (3) solda. Sıra saat yönünün tersine: soldakinden alır, sağındakine atarsın.
     // Referans 101 masası: ahşap masa yok, tam ekran desenli zemin; yer üstte, altta ekran boyu ıstaka, uçlarında Çift diz / Seri diz.
-    const pad = 6, side = !L.portrait, cols = this.cols, short = L.H < 420;
+    const pad = 6, side = !L.portrait, short = L.H < 420;
+    if (!side) this.setCols(15);
+    let cols = this.cols;
     const f = L.felt = { x: pad, y: L.topH + pad, w: L.W - 2 * pad, h: L.H - L.topH - L.botH - 2 * pad };
     f.r = f.x + f.w; f.b = f.y + f.h; L.cx = f.x + f.w / 2; L.cy = f.y + f.h / 2;
     const ar = L.ar, blockH = ar * 2 + 33; // avatar + iki satırlık etiket
@@ -2250,7 +2275,10 @@ class Okey101Game extends OkeyGame {
       // Istaka: altta, iki uçta Çift diz / Seri diz; taşlar yan yana (aralık 3 birim), ıstaka yüksekliğine göre boyutlanır
       const rackTop = 452, rackBot = 634, woodX = m + dizW + 8, woodW = VW - 2 * woodX;
       const padD = 8, gapD = 3;
-      const twD = Math.min(((rackBot - rackTop - padD * 0.4) / 2 - padD * 1.1) / 1.36, (woodW - 2 * padD - 20) / cols - gapD);
+      // Yuva sayısı ıstakanın genişliğine göre (15–22): taşlar ıstakanın iki ucuna kadar dizilebilir
+      const twH = ((rackBot - rackTop - padD * 0.4) / 2 - padD * 1.1) / 1.36;
+      this.setCols(clamp(Math.ceil((woodW - 2 * padD + gapD) / (twH + gapD)), 15, 24)); cols = this.cols;
+      const twD = Math.min(twH, (woodW - 2 * padD + gapD) / cols - gapD); // ıstaka uçtan uca dolar
       L.tw = S(twD); L.th = L.tw * 1.36; L.gap = S(gapD); L.rackPad = S(padD);
       L.rowH = L.th + L.rackPad * 1.1; L.rackH = L.rowH * 2 + L.rackPad * 0.4;
       L.rackW = cols * (L.tw + L.gap) - L.gap + L.rackPad * 2;
@@ -2261,11 +2289,11 @@ class Okey101Game extends OkeyGame {
       // Orta kuşak: solda yığın – Sevim – yığın, sağda yığın – Rıza – yığın, onun içinde aç / işle düğmeleri, ortada yer
       const midTop = 60, midBot = rackTop - 10, midY = (midTop + midBot) / 2;
       let colW = 108, btnW = 128, ic = 124;
-      const seriRows = midBot - midTop - 34, cwD = seriRows / (13 * 1.55), seriW = 26 * cwD + 14 + 20;
+      const seriRows = midBot - midTop - 34, cwD = seriRows / (13 * 1.27), seriW = 26 * cwD + 14 + 20;
       let bw = VW - 2 * (m + colW + 8) - (btnW + 8);
       // Çift alanı: en az 2, en fazla 5 çift sütunu; artan yer önce bilgi sütununa, sonra kenar sütunlarına
       const pairW = n => (3 * n - 1) * cwD + 20;
-      let nP = clamp(Math.floor((bw - seriW - ic - 20 + cwD) / (3 * cwD)), 2, 5);
+      const nP = 3; // çift alanı: yan yana 3 çift (referans masa)
       let spare = bw - seriW - ic - pairW(nP);
       const icAdd = clamp(spare, 0, 46); ic += icAdd; spare -= icAdd;
       if (spare > 0) { colW += spare / 4; btnW += spare / 4; spare /= 2; }
@@ -2329,7 +2357,7 @@ class Okey101Game extends OkeyGame {
   // Seri alanı 2 sütun × 13 satır = 26 per: üç oyuncu en fazla 6'şar (18), son oyuncu 7 per indirir (25); iki taraf eşit olsun diye 13'er.
   // Her per kendi satırında, bir satıra 13 taşlık en uzun seri sığar. Çift alanı aynı hücre boyuyla: bir çift 2 hücre, çift sütunları arasında 1 boş hücre.
   computeGrid(L) {
-    const SPAN = 13, colGap = 10, CH = 1.55; // hücre yüksekliği = genişlik × 1,55 (taş 1,36 oranında + altta sahip çizgisi)
+    const SPAN = 13, colGap = 10, CH = 1.27; // hücre yüksekliği = genişlik × 1,27 (yer taşı 1,12 oranında + altta sahip çizgisi)
     let cw, seriA, ciftA, K = 2, ROWS = 13;
     if (L.center) {
       seriA = L.areas.seri; ciftA = L.areas.cift;
@@ -2341,7 +2369,7 @@ class Okey101Game extends OkeyGame {
       seriA = { x0, x1, y0: top, y1: split - 6 }; ciftA = { x0, x1, y0: split + 20, y1: B.y1 - 8 };
       L.areas = { split, seri: seriA, cift: ciftA };
     }
-    const ch = cw * CH, mw = cw * 0.9, mh = mw * 1.36;
+    const ch = cw * CH, mw = cw * 0.92, mh = mw * 1.12;
     cw = Math.max(cw, 3);
     const colCells = SPAN, sw = K * colCells * cw + colGap * (K - 1); // her tarafta tam 13 sütun: sütun numarası taşın sayısı
     const seri = { x0: seriA.x0 + Math.max(0, (seriA.x1 - seriA.x0 - sw) / 2), y0: seriA.y0, K, rows: ROWS, colCells, colGap };
@@ -2384,7 +2412,7 @@ class Okey101Game extends OkeyGame {
       g.strokeStyle = 'rgba(255,255,255,.2)'; g.strokeRect(Math.round(x0) + 0.5, Math.round(y0) + 0.5, Math.round(nx * cw), Math.round(ny * ch));
     };
     for (let k = 0; k < S.K; k++) cells(S.x0 + k * (S.colCells * cw + S.colGap), S.y0, S.colCells, S.rows);
-    for (let p = 0; p < C.cols; p++) cells(C.x0 + p * 3 * cw, C.y0, 2, C.rows);
+    cells(C.x0, C.y0, C.cols * 3 - 1, C.rows); // çift alanı tek ızgara
     // Bölümler: yatayda seri | bilgi | çift, dikeyde seri üstte, çift altta
     g.strokeStyle = 'rgba(255,255,255,.16)'; g.beginPath();
     if (L.center) {
@@ -2501,7 +2529,7 @@ class Okey101Game extends OkeyGame {
     for (const it of lay.out) {
       const m = this.melds[it.s][it.i], y = it.y + top + mh / 2;
       this.meldBoxes.push({ owner: it.s, meld: it.i, x0: it.x + pad, x1: it.x + m.length * cw - pad, y0: y - mh / 2, y1: y + mh / 2, pair: this.meldKinds[it.s][it.i] === 'pair', mw, gap: cw - mw, cx: it.x, cy: it.y, cells: m.length });
-      m.forEach((id, k) => out.push({ id, kind: 'tile', data: this.tileById[id], x: it.x + k * cw + cw / 2, y, w: mw, h: mh, faceUp: true, z: 60 + k, okey: this.isOkey(this.tileById[id]) }));
+      m.forEach((id, k) => out.push({ id, kind: 'mtile', data: this.tileById[id], x: it.x + k * cw + cw / 2, y, w: mw, h: mh, faceUp: true, z: 60 + k, okey: this.isOkey(this.tileById[id]) }));
     }
   }
   // Yerin değişen kısmı: perin oturduğu hücreler koyulaşır, altında sahibinin rengi; per sayacı
@@ -3219,7 +3247,7 @@ const TableState = {
     const bot = overlay ? 0 : bar.offsetHeight || 56;
     // Tam ekranda köşedeki Lobi / Olaylar düğmelerinin kapladığı yer oyuna bildirilir
     const bb = $('backBtn').getBoundingClientRect(), lb = $('logBtn').getBoundingClientRect();
-    this.game.hudInsets = overlay ? { l: bb.right + 8, r: W - lb.left + 8, b: Math.max(bb.bottom, lb.bottom) } : null;
+    this.game.hudInsets = overlay ? { l: bb.right + 8, r: $('logBtn').hidden ? 8 : W - lb.left + 8, b: Math.max(bb.bottom, lb.bottom) } : null;
     this.game.layout(W, H, overlay ? 0 : top, bot, 0); this.bg = null; this.barH = bar.offsetHeight;
   },
   buildBg() {
