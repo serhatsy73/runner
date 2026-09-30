@@ -209,10 +209,14 @@
   .per { font-family: var(--num); font-weight: 700; font-size: 15px; padding: 6px 10px; border-radius: 9px; background: rgba(0,0,0,.35); font-variant-numeric: tabular-nums; }
   .per.ok { color: #9be3a7; }
 
+  /* Tam ekran masa (yatay 101): üst çubuk kalkar, köşelerde yalnızca Lobi ve Olaylar düğmeleri kalır */
+  body.immersive #hud { background: none; border: 0; pointer-events: none; padding: calc(env(safe-area-inset-top, 0px) + 5px) 6px 0; }
+  body.immersive #hud .hud-title { visibility: hidden; }
+  body.immersive #hud .hud-btn { pointer-events: auto; padding: 4px 10px; font-size: 13px; background: rgba(10,6,3,.55); }
   /* Masaya yerleşik düğmeler (yatay 101): her düğmenin yerini oyun düzeni verir (placeDom) */
   #actionBar.overlay { inset: 0 auto auto 0; width: 0; height: 0; padding: 0; border: 0; background: none; overflow: visible; display: block; }
   #actionBar.overlay .act, #actionBar.overlay .hint { position: fixed; margin: 0; box-sizing: border-box; }
-  #actionBar.overlay .act { min-width: 0; padding: 4px 6px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; line-height: 1.1; box-shadow: 0 3px 8px rgba(0,0,0,.35); }
+  #actionBar.overlay .act { white-space: nowrap; min-width: 0; padding: 4px 6px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; line-height: 1.1; box-shadow: 0 3px 8px rgba(0,0,0,.35); }
   #actionBar.overlay .act.primary, #actionBar.overlay #btnLayAll {
     background: linear-gradient(180deg, #fbf6ea, #ddd0b2); color: #2a1a0c; border: 1px solid rgba(0,0,0,.25); box-shadow: 0 2px 0 #8a7a58, 0 4px 10px rgba(0,0,0,.35);
   }
@@ -1709,8 +1713,9 @@ class OkeyGame extends BaseGame {
       glow(L.pile[0].x, L.pile[0].y, (L.pw || L.tw) * 1.3, (L.ph || L.th) * 1.25, this.discardLabel(dragging ? this.drag.id : this.sel));
       if (this.finishAllowed()) glow(L.ind.x, L.ind.y, L.tw * 1.3, L.th * 1.25, 'Bitir');
     }
-    drawRackWood(g, L.rackX, L.rackY, L.rackW, L.rackH, L.rowH);
+    this.drawRack(g);
   }
+  drawRack(g) { const L = this.L; drawRackWood(g, L.rackX, L.rackY, L.rackW, L.rackH, L.rowH); }
   finishAllowed() { return true; }
   discardLabel() { return 'At'; }
   canTakeSide() { return true; }
@@ -2212,66 +2217,76 @@ class Okey101Game extends OkeyGame {
   overlayBar(W, H) { return W > H * 1.05; }
   layoutGame(L) {
     // Oturma: sen altta, Rıza (1) sağda, Nuri (2) üstte, Sevim (3) solda. Sıra saat yönünün tersine: soldakinden alır, sağındakine atarsın.
-    const f = L.felt, cols = this.cols, side = !L.portrait, gap = side ? 3 : 2, short = L.H < 420;
-    const leftW = side ? clamp(f.w * 0.09, 66, 100) : 0, rightW = side ? clamp(f.w * 0.075, 52, 90) : 0;
-    L.tw = Math.min((f.w - leftW - rightW - (side ? 24 : 14)) / cols - gap - 0.8, L.H * (side ? (short ? 0.07 : 0.078) : 0.068), 62);
-    L.th = L.tw * 1.36; L.gap = gap;
-    L.rackPad = Math.max(6, L.tw * 0.16); L.rowH = L.th + L.rackPad * 1.1;
-    L.rackW = cols * (L.tw + gap) - gap + L.rackPad * 2; L.rackH = L.rowH * 2 + L.rackPad * 0.4;
-    L.rackX = side ? f.x + leftW + (f.w - leftW - rightW - L.rackW) / 2 : L.cx - L.rackW / 2; L.rackY = f.b - L.rackH - 4;
-    L.sw = L.tw * 0.3; L.sh = L.sw * 1.36; // rakip taşları avatarın arkasında durur, görünmez
+    // Referans 101 masası: ahşap masa yok, tam ekran desenli zemin; yer üstte, altta ekran boyu ıstaka, uçlarında Çift diz / Seri diz.
+    const pad = 6, side = !L.portrait, cols = this.cols, short = L.H < 420;
+    const f = L.felt = { x: pad, y: L.topH + pad, w: L.W - 2 * pad, h: L.H - L.topH - L.botH - 2 * pad };
+    f.r = f.x + f.w; f.b = f.y + f.h; L.cx = f.x + f.w / 2; L.cy = f.y + f.h / 2;
     const ar = L.ar, blockH = ar * 2 + 33; // avatar + iki satırlık etiket
+    L.glass = null;
     if (side) {
-      const rowY = f.y + ar + 7, room = L.rackY - 8 - (rowY + ar + 9) - 12 - (blockH + 6);
-      L.ph = clamp(room / 2.48, 10, L.th); L.pw = L.ph / 1.36; // kenarda iki yığın ve arada yan oyuncu sığsın
-    } else { L.pw = L.tw; L.ph = L.th; }
-    const pbW = L.pw * 1.24, pbH = L.ph * 1.24;
-    if (side) {
-      // Referans masa: yer neredeyse tam genişlikte; solda iki yığın, sağda yığın – düğmeler – yığın. Sevim sol, Rıza sağ, Nuri üst kenarda.
-      const rowY = f.y + ar + 7, y0 = rowY + ar + 9, y1 = Math.max(L.rackY - 8, y0 + 60);
+      // Istaka: iki uçtaki dizme sütunları arasında ekran boyu; taşlar yükseklikten, aralık genişlikten
+      const endW = clamp(f.w * 0.075, 58, 100);
+      L.rackX = f.x + endW + 6; L.rackW = f.w - 2 * endW - 12;
+      L.rackPad = clamp(L.rackW * 0.012, 6, 14);
+      const pitch = (L.rackW - 2 * L.rackPad) / cols;
+      L.tw = Math.min(pitch * 0.9, L.H * (short ? 0.075 : 0.085), 64); L.th = L.tw * 1.36; L.gap = pitch - L.tw;
+      L.rowH = L.th + L.rackPad * 1.1; L.rackH = L.rowH * 2 + L.rackPad * 0.4; L.rackY = f.b - L.rackH;
+      L.sw = L.tw * 0.3; L.sh = L.sw * 1.36; // rakip taşları avatarın arkasında durur, görünmez
+      // Üst sıra: Sevim sol, Nuri orta, Rıza sağ (köşelerdeki Lobi / Olaylar düğmelerinin yanında)
+      const hi = this.hudInsets || { l: f.x, r: 0, b: f.y };
+      const rowY = Math.max(f.y + ar + 2, hi.b - 14);
+      const y0 = rowY + ar + 8, y1 = Math.max(L.rackY - 8, y0 + 60);
+      const room = y1 - y0 - 12;
+      L.ph = clamp(room / 3.2, 10, L.th); L.pw = L.ph / 1.36;
+      const pbW = L.pw * 1.24, pbH = L.ph * 1.24;
       const LW = pbW + 14, RW = Math.max(pbW + 14, clamp(f.w * 0.1, 92, 150));
       L.pile = [{ x: f.r - RW / 2, y: y1 - pbH / 2 }, { x: f.r - RW / 2, y: y0 + pbH / 2 + 4 }, { x: f.x + LW / 2, y: y0 + pbH / 2 + 4 }, { x: f.x + LW / 2, y: y1 - pbH / 2 }];
       L.avatar = [
-        { x: f.x + 4 + (L.rackX - f.x - 10) / 2, y: L.rackY + L.rackH / 2 - 16.5 }, // sen: altta, ıstakanın solunda
-        { x: f.r - ar - 8, y: rowY }, { x: L.cx, y: rowY }, { x: f.x + ar + 8, y: rowY },
+        { x: f.x + endW / 2, y: L.rackY + ar + 2 }, // sen: altta, ıstakanın sol ucunda (altında Çift diz)
+        { x: f.r - hi.r - ar - 4, y: rowY }, { x: L.cx, y: rowY }, { x: hi.l + ar + 4, y: rowY },
       ];
       L.labelStyle = ['stack', 'left', 'right', 'right'];
-      L.glass = { x: L.cx - ar - 34, y: rowY, s: ar * 0.95 };
       // Sağ sütun: iki yığının arasında Seri aç / Çift aç / Taşları işle, altında ipucu
       const gTop = L.pile[1].y + pbH / 2 + 8, gBot = L.pile[0].y - pbH / 2 - 8, bx = f.r - RW + 6, bw2 = RW - 12;
       const bh = clamp((gBot - gTop - 12) / 3.6, 24, 46), hintH = gBot - gTop - bh * 3 - 12 - 8;
       L.btns = [0, 1, 2].map(k => ({ x: bx, y: gTop + k * (bh + 6), w: bw2, h: bh }));
       L.hintBox = hintH >= 28 ? { x: bx - 4, y: gTop + 3 * (bh + 6) + 2, w: bw2 + 8, h: hintH } : null;
       const B = L.board = { x0: f.x + LW, x1: f.r - RW, y0, y1 };
-      // Seri alanı ızgaranın genişliği kadar (13 × 2 hücre); artan genişlik çift alanına kalır
+      // Yer: seri alanı ızgaranın genişliği kadar (13 × 2 hücre), yanında bilgi sütunu, kalan genişlik çift alanı
       const seriH = B.y1 - B.y0 - 34, cwH = seriH / (13 * 1.55), seriW = 26 * cwH + 10 + 20;
-      const stacked = B.y1 - B.y0 - 16 >= 16 + L.th * 2 + 14 + 16 + 40;
-      const cw = stacked ? Math.max(L.tw * 1.6, 62) : Math.max(L.tw * 2.6 + 12, 70);
+      const stacked = B.y1 - B.y0 - 16 >= 16 + L.th * 2 + 14 + 28 + 40;
+      const cw = stacked ? Math.max(L.tw * 1.6, 70) : Math.max(L.tw * 2.6 + 12, 74);
       const bw = B.x1 - B.x0, sW = Math.min(seriW, bw - cw - 96), c0 = B.x0 + sW, cX = c0 + cw / 2;
       L.center = { x0: c0, x1: c0 + cw };
-      const need = stacked ? 16 + L.th + 14 + L.th + 16 + 40 : 16 + L.th + 16 + 40, spare = B.y1 - B.y0 - 16 - need;
-      const chips = this.ruleChips().slice(0, clamp(Math.floor(spare / 24), 0, 3));
+      const need = stacked ? 16 + L.th + 14 + L.th + 28 + 40 : 16 + L.th + 26 + 40, spare = B.y1 - B.y0 - 16 - need;
+      const chips = this.ruleChips().slice(0, clamp(Math.floor(spare / 24), 0, 4));
       let y = B.y0 + 10;
       L.chips = chips.map(t => { const c = { x: cX, y: y + 10, w: cw - 12, text: t }; y += 24; return c; });
       y += 16;
       if (stacked) { L.ind = { x: cX, y: y + L.th / 2 }; y += L.th + 14; L.deck = { x: cX, y: y + L.th / 2 }; y += L.th + 28; }
       else { L.deck = { x: cX - L.tw * 0.65, y: y + L.th / 2 }; L.ind = { x: cX + L.tw * 0.65, y: y + L.th / 2 }; y += L.th + 26; }
-      L.counter = { x: cX, y: Math.min(y + 12, B.y1 - 30), w: Math.min(cw - 12, 70) }; // destenin "Çek" yazısının altında
+      L.counter = { x: cX, y: Math.min(y + 12, B.y1 - 30), w: Math.min(cw - 12, 76) }; // destenin "Çek" yazısının altında
       L.areas = { seri: { x0: B.x0 + 10, x1: c0 - 8, y0: B.y0 + 24, y1: B.y1 - 10 }, cift: { x0: c0 + cw + 8, x1: B.x1 - 10, y0: B.y0 + 24, y1: B.y1 - 10 } };
-      // Çift diz ve Seri diz ıstakanın sağında üst üste
-      const rx = L.rackX + L.rackW + 6, rw = f.r - rx - 4, dh = (L.rackH - 10) / 2;
-      L.diz = { cift: { x: rx, y: L.rackY + 2, w: rw, h: dh }, seri: { x: rx, y: L.rackY + 8 + dh, w: rw, h: dh } };
+      // Çift diz sol uçta (üstünde senin avatarın), Seri diz sağ uçta: ıstaka boyunca
+      const meTop = L.rackY + blockH + 6;
+      L.diz = { cift: { x: f.x, y: meTop, w: endW, h: L.rackY + L.rackH - meTop }, seri: { x: f.r - endW, y: L.rackY, w: endW, h: L.rackH } };
     } else {
+      const gap = 2;
+      L.tw = Math.min((f.w - 14) / cols - gap - 0.8, L.H * 0.068, 62); L.th = L.tw * 1.36; L.gap = gap;
+      L.rackPad = Math.max(6, L.tw * 0.16); L.rowH = L.th + L.rackPad * 1.1;
+      L.rackW = cols * (L.tw + gap) - gap + L.rackPad * 2; L.rackH = L.rowH * 2 + L.rackPad * 0.4;
+      L.rackX = L.cx - L.rackW / 2; L.rackY = f.b - L.rackH - 2;
+      L.sw = L.tw * 0.3; L.sh = L.sw * 1.36; L.pw = L.tw; L.ph = L.th;
+      const pbW = L.pw * 1.24, pbH = L.ph * 1.24;
       const rowY = f.y + ar + 6, SZ = 82; // SZ: yan oyuncu için kenar payı
       const r2 = rowY + ar + 16 + ar, r4 = L.rackY - 8 - Math.max(pbH / 2, ar);
       L.avatar = [{ x: L.cx - 6, y: r4 }, { x: f.r - SZ / 2, y: r2 - 12 }, { x: L.cx, y: rowY }, { x: f.x + SZ / 2, y: r2 - 12 }];
       L.labelStyle = ['right', 'stack', 'right', 'stack'];
       L.pile = [{ x: f.r - pbW / 2 - 6, y: r4 }, { x: f.r - SZ - pbW / 2, y: r2 }, { x: f.x + SZ + pbW / 2, y: r2 }, { x: f.x + pbW / 2 + 6, y: r4 }];
       L.deck = { x: L.cx - L.tw * 0.75, y: r2 }; L.ind = { x: L.cx + L.tw * 0.75, y: r2 };
-      L.counter = { x: L.avatar[0].x - ar - 34, y: r4 - 4, w: 48 };
-      L.glass = { x: f.x + ar * 1.5, y: rowY, s: ar * 0.95 };
+      L.counter = { x: L.avatar[0].x - ar - 40, y: r4 - 4, w: 60 };
       const row2B = Math.max(r2 + pbH / 2, r2 - 12 + blockH);
-      L.board = { x0: f.x + 6, x1: f.r - 6, y0: row2B + 8, y1: Math.max(r4 - Math.max(pbH / 2, ar) - 8, row2B + 60) };
+      L.board = { x0: f.x + 4, x1: f.r - 4, y0: row2B + 8, y1: Math.max(r4 - Math.max(pbH / 2, ar) - 8, row2B + 60) };
       L.center = null; L.chips = []; L.diz = null; L.btns = null; L.hintBox = null;
     }
     this.computeGrid(L);
@@ -2303,8 +2318,8 @@ class Okey101Game extends OkeyGame {
     L.grid = { cw, ch, mw, mh, seri, cift };
   }
   ruleChips() {
-    const r = this.rules;
-    return [r.cezali ? 'Cezalı' : 'Normal', r.katlama ? 'Katlamalı' : 'Katlamasız', `Açılış ${this.seriNeed ? this.seriNeed() : 101}`];
+    const r = this.rules, ok = this.okey;
+    return [r.cezali ? 'Cezalı' : 'Normal', r.katlama ? 'Katlamalı' : 'Katlamasız', `Açılış ${this.seriNeed()} / ${this.pairNeed()} çift`, ok ? `Okey ${ok.n} ${TILE_NAMES[ok.c]}` : 'Okey'];
   }
   // Yatayda düğmeler masanın üstüne oturur: aç / işle sağ sütunda, Çift diz / Seri diz ıstakanın sağında
   placeDom() {
@@ -2355,11 +2370,61 @@ class Okey101Game extends OkeyGame {
     g.font = `700 10px ${F_BODY}`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(245,236,215,.45)';
     g.fillText('SERİ', S.x0, S.y0 - 11); g.fillText('ÇİFT', C.x0, C.y0 - 11);
     g.restore();
-    for (const c of L.chips) {
-      g.font = `700 11px ${F_BODY}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-      rr(g, c.x - c.w / 2, c.y - 10, c.w, 20, 6);
-      g.fillStyle = c.text === 'Cezalı' ? '#7a1e18' : c.text.startsWith('Katlama') ? '#5a2436' : '#1d3346'; g.fill();
-      g.fillStyle = '#f5ecd7'; g.fillText(c.text, c.x, c.y + 0.5);
+    g.restore();
+  }
+  // Masa etiketleri (referanstaki Eşli / Katlamalı / 1/3 El gibi): açılış eşiği ve okey el içinde değişebilir, her karede çizilir
+  drawChips(g) {
+    const L = this.L; if (!L.chips || !L.chips.length) return;
+    const texts = this.ruleChips();
+    g.save(); g.font = `700 11px ${F_BODY}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    L.chips.forEach((c, k) => {
+      const t = texts[k]; if (!t) return;
+      let fs = 11; g.font = `700 ${fs}px ${F_BODY}`;
+      while (fs > 8 && g.measureText(t).width > c.w - 8) { fs -= 0.5; g.font = `700 ${fs}px ${F_BODY}`; } // etikete sığsın
+      rr(g, c.x - c.w / 2, c.y - 10, c.w, 20, 5);
+      g.fillStyle = t === 'Cezalı' ? '#7a1e18' : t.startsWith('Katlama') ? '#6a2230' : t.startsWith('Okey') ? '#2d4a24' : '#12263a'; g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1; g.stroke();
+      g.fillStyle = '#f5ecd7'; g.fillText(t, c.x, c.y + 0.5);
+    });
+    g.restore();
+  }
+  // Tam ekran zemin: masa temasının renginde, üstünde hafif pul (dalga) deseni
+  paintBackdrop(g, W, H, theme) {
+    const t = theme || THEMES.cuha;
+    const gr = g.createRadialGradient(W / 2, H * 0.4, 10, W / 2, H / 2, Math.max(W, H) * 0.75);
+    gr.addColorStop(0, t.felt[0]); gr.addColorStop(0.6, t.felt[1]); gr.addColorStop(1, t.felt[2]);
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    g.save(); g.strokeStyle = 'rgba(255,255,255,.055)'; g.lineWidth = 1.2;
+    const R = 24;
+    for (let row = 0, y = -R; y < H + R; row++, y += R * 0.62)
+      for (let x = row % 2 ? R : 0; x < W + R; x += R * 2)
+        for (const r of [R, R * 0.66, R * 0.32]) { g.beginPath(); g.arc(x, y, r, Math.PI, TAU); g.stroke(); }
+    const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.35)');
+    g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    g.restore();
+  }
+  // Istaka: referanstaki gibi açık turuncu ahşap, iki sıra arası oluk, üst sırada kabartma 101, iki uçta metal başlık
+  drawRack(g) {
+    const L = this.L, x = L.rackX, y = L.rackY, w = L.rackW, h = L.rackH;
+    g.save();
+    g.fillStyle = 'rgba(0,0,0,.35)'; rr(g, x + 2, y + 4, w, h, 6); g.fill();
+    const gr = g.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, '#f2ab52'); gr.addColorStop(0.5, '#e08b30'); gr.addColorStop(1, '#b9661d');
+    rr(g, x, y, w, h, 6); g.fillStyle = gr; g.fill();
+    g.save(); g.clip();
+    g.strokeStyle = 'rgba(120,52,6,.16)'; g.lineWidth = 1;
+    for (let i = 0; i < 14; i++) { const yy = y + h * (i + 0.5) / 14; g.beginPath(); g.moveTo(x, yy); g.bezierCurveTo(x + w * 0.3, yy - 3, x + w * 0.7, yy + 3, x + w, yy); g.stroke(); }
+    g.font = `${L.th * 0.78}px ${F_DISP}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(122,58,12,.22)';
+    g.fillText('101', x + w / 2, y + L.rackPad * 0.6 + L.th / 2);
+    for (let r = 1; r <= 2; r++) {
+      const ly = y + r * L.rowH - L.rowH * 0.11;
+      g.fillStyle = '#7a3a0e'; g.fillRect(x, ly, w, L.rowH * 0.11);
+      g.fillStyle = 'rgba(255,232,190,.45)'; g.fillRect(x, ly - 1, w, 1);
+    }
+    g.restore();
+    for (const ex of [x - 7, x + w - 1]) {
+      const mg = g.createLinearGradient(ex, 0, ex + 8, 0); mg.addColorStop(0, '#dfe5ea'); mg.addColorStop(1, '#8b969f');
+      rr(g, ex, y - 1, 8, h + 2, 3); g.fillStyle = mg; g.fill();
     }
     g.restore();
   }
@@ -2415,17 +2480,23 @@ class Okey101Game extends OkeyGame {
       g.fillStyle = this.seats[b.owner].color; g.fillRect(b.x0, b.cy + G.ch - 3, b.x1 - b.x0, 2);
     }
     g.restore();
-    this.drawCounter(g);
+    this.drawChips(g); this.drawCounter(g);
   }
   // Per sayacı: ıstakada dizili geçerli perlerin toplamı (referanstaki dijital sayaç); altında çift sayısı
   drawCounter(g) {
     const c = this.L.counter, rk = this.rackCache; if (!c || !rk) return;
     const o = this.opened[0], v = rk.rs.v, np = rk.rc.melds.length, ok = !!o || v >= this.seriNeed() || np >= this.pairNeed();
     g.save(); g.textAlign = 'center'; g.textBaseline = 'middle';
-    rr(g, c.x - c.w / 2, c.y - 12, c.w, 24, 8); g.fillStyle = '#0a0e13'; g.fill();
-    g.strokeStyle = ok ? 'rgba(155,227,167,.8)' : 'rgba(255,255,255,.25)'; g.lineWidth = 1.2; g.stroke();
-    g.font = `800 16px ${F_NUM}`; g.fillStyle = ok ? '#9be3a7' : '#f5ecd7';
-    g.fillText(String(Math.min(o === 'cift' ? np : v, 999)).padStart(3, '0'), c.x, c.y + 1);
+    // Referanstaki gibi üç ayrı rakam kutusu
+    rr(g, c.x - c.w / 2, c.y - 13, c.w, 26, 13); g.fillStyle = '#1a2129'; g.fill();
+    g.strokeStyle = ok ? 'rgba(155,227,167,.8)' : 'rgba(255,255,255,.3)'; g.lineWidth = 1.2; g.stroke();
+    const digits = String(Math.min(o === 'cift' ? np : v, 999)).padStart(3, '0'), dw = Math.min(18, (c.w - 16) / 3);
+    g.font = `800 15px ${F_NUM}`;
+    [...digits].forEach((d, k) => {
+      const dx = c.x + (k - 1) * (dw + 3);
+      rr(g, dx - dw / 2, c.y - 9.5, dw, 19, 4); g.fillStyle = '#0a0e13'; g.fill();
+      g.fillStyle = ok ? '#9be3a7' : '#f5ecd7'; g.fillText(d, dx, c.y + 1);
+    });
     g.font = `700 10px ${F_BODY}`; g.fillStyle = '#cbbf9f';
     g.fillText(o === 'seri' ? 'seriden açtın' : o === 'cift' ? 'çiftten açtın' : `/${this.seriNeed()} · ${np} çift`, c.x, c.y + 21);
     g.restore();
@@ -2858,7 +2929,7 @@ const TABLES = {
     { name: 'Çınaraltı', level: 'Acemi', seated: 3, theme: 'cuha' }, { name: 'Ocak Başı', level: 'Orta', seated: 2, theme: 'zeytin' },
     { name: 'Pencere Önü', level: 'Usta', seated: 3, theme: 'gece' }, { name: 'Tavla Köşesi', level: 'Orta', seated: 1, theme: 'kurum' }] },
   '101': { title: '101 Masaları', desc: '21 taşla başla, perlerin 101 sayıyı bulunca elini aç.', list: [
-    { name: 'Emekliler Masası', seated: 3, theme: 'cuha', rules: { cezali: false, katlama: true } }, { name: 'Bahçe', seated: 2, theme: 'zeytin', rules: { cezali: false, katlama: false } },
+    { name: 'Emekliler Masası', seated: 3, theme: 'gece', rules: { cezali: false, katlama: true } }, { name: 'Bahçe', seated: 2, theme: 'zeytin', rules: { cezali: false, katlama: false } },
     { name: 'Arka Oda', seated: 3, theme: 'kadife', rules: { cezali: true, katlama: true } }, { name: 'Kış Bahçesi', seated: 1, theme: 'gece', rules: { cezali: true, katlama: false } }] },
   batak: { title: 'Batak Masaları', desc: "52'lik deste. Tekli ya da eşli, koz maça ya da ihaleli.", list: [
     { name: 'Semaver Yanı', seated: 3, theme: 'cuha', rules: { teams: false, bidding: false, hands: 3 } }, { name: 'Radyo Altı', seated: 2, theme: 'kurum', rules: { teams: true, bidding: false, hands: 5 } },
@@ -3017,7 +3088,7 @@ const TableState = {
   exit() {
     this.subs.forEach(u => u()); net.server.attach(null);
     $('hud').hidden = true; $('actionBar').hidden = true; $('modal').hidden = true; $('logPanel').hidden = true; $('backToGame').hidden = true;
-    $('logBtn').setAttribute('aria-expanded', 'false'); $('actionBar').innerHTML = ''; $('actionBar').classList.remove('overlay');
+    $('logBtn').setAttribute('aria-expanded', 'false'); $('actionBar').innerHTML = ''; $('actionBar').classList.remove('overlay'); document.body.classList.remove('immersive');
   },
   log(a, err) {
     const li = document.createElement('li');
@@ -3045,15 +3116,20 @@ const TableState = {
   resize() {
     // Oyun isterse (yatay 101) hamle düğmeleri masanın üstüne yerleşir (overlay); yoksa altta yatay çubuk
     const bar = $('actionBar'), overlay = !!(this.game.overlayBar && this.game.overlayBar(W, H)), top = $('hud').offsetHeight || 52;
-    bar.classList.toggle('overlay', overlay);
+    bar.classList.toggle('overlay', overlay); document.body.classList.toggle('immersive', overlay);
     const bot = overlay ? 0 : bar.offsetHeight || 56;
-    this.game.layout(W, H, top, bot, 0); this.bg = null; this.barH = bar.offsetHeight;
+    // Tam ekranda köşedeki Lobi / Olaylar düğmelerinin kapladığı yer oyuna bildirilir
+    const bb = $('backBtn').getBoundingClientRect(), lb = $('logBtn').getBoundingClientRect();
+    this.game.hudInsets = overlay ? { l: bb.right + 8, r: W - lb.left + 8, b: Math.max(bb.bottom, lb.bottom) } : null;
+    this.game.layout(W, H, overlay ? 0 : top, bot, 0); this.bg = null; this.barH = bar.offsetHeight;
   },
   buildBg() {
     const c = document.createElement('canvas'); c.width = W * DPR; c.height = H * DPR; const g = c.getContext('2d'); g.scale(DPR, DPR);
-    const L = this.game.L; paintRoom(g, W, H); paintTable(g, L.table, L.rim, this.game.wordmark ? BRAND.name : '', this.theme);
+    const L = this.game.L;
+    if (this.game.paintBackdrop) this.game.paintBackdrop(g, W, H, this.theme); // oyunun kendi zemini (101: desenli tam ekran)
+    else { paintRoom(g, W, H); paintTable(g, L.table, L.rim, this.game.wordmark ? BRAND.name : '', this.theme); }
     if (this.game.paintStatic) this.game.paintStatic(g);
-    drawSugar(g, L.glass.x - L.glass.s * 0.9, L.glass.y - L.glass.s * 0.25, L.glass.s * 0.22);
+    if (L.glass) drawSugar(g, L.glass.x - L.glass.s * 0.9, L.glass.y - L.glass.s * 0.25, L.glass.s * 0.22);
     this.bg = c;
   },
   update(dt) {
@@ -3075,7 +3151,7 @@ const TableState = {
     if (!this.bg) this.buildBg();
     gx.drawImage(this.bg, 0, 0, W, H);
     const g = this.game, L = g.L;
-    drawTeaGlass(gx, L.glass.x, L.glass.y, L.glass.s, g.time, true);
+    if (L.glass) drawTeaGlass(gx, L.glass.x, L.glass.y, L.glass.s, g.time, true);
     g.drawBoard(gx);
     const sorted = [...this.sprites.values()].sort((a, b) => a.z - b.z);
     sorted.forEach(s => { if (!s.dragging) s.draw(gx); });
