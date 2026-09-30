@@ -30,9 +30,9 @@ Oyun motorunun uyguladığı kuralların yazılı hali. Bir kural değişirse ö
 - Seriden açma: perlerin toplamı en az 101. Çiftten açma: en az 5 çift, okey tek bir taşla çift yapabilir.
 - Çiftten açan seri açamaz, seriden açan çift açamaz.
 - Açılış sayısı: açıldığı turda açılan her şey sayılır, sonraki turlarda açılan perler sayılmaz.
-- **İşleme:** Sadece açmış oyuncu, açtığı turdan sonraki turlarda kendi ve rakip perlerine taş işleyebilir. Çiftlere işlenmez. Elde atacak en az bir taş kalmalıdır. (Varsayılan: açtığı turda işleyemez, çiftten açan da serilere işleyebilir.)
+- **İşleme:** Sadece açmış oyuncu kendi ve rakip perlerine taş işleyebilir; elini açtığı turda da işleyebilir. Çiftlere işlenmez. Elde atacak en az bir taş kalmalıdır. (Varsayılan: çiftten açan da serilere işleyebilir.)
 - **Okeyi yerden alma:** Seride okeyin tuttuğu taş işlenince okey işleyene geçer (7-okey-9 + 8). Kütte okey, eksik renklerin hepsi gerçek taşla tamamlanınca alınır (8 sarı, 8 kırmızı, okey → 8 mavi + 8 siyah).
-- **Yandan alınan taş o tur kullanılmak zorundadır** (el açarak ya da işleyerek). Bu tur kullanılamayacak taş yandan alınamaz, alınan taş kullanılmadan taş atılamaz, açılış onu içermiyorsa açılamaz.
+- **Yandan alınan taş o tur kullanılmak zorundadır** (el açarak ya da işleyerek). Bu tur kullanılamayacak taş yandan alınamaz, alınan taş kullanılmadan taş atılamaz. Açılış o taşı içermiyorsa, taş açılıştan sonra aynı turda bir pere işlenebilmelidir.
 - Bitiş: açmış oyuncu son taşını attığında el biter.
 
 **Puanlama**

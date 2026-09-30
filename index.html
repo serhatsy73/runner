@@ -1660,7 +1660,8 @@ class Okey101Game extends OkeyGame {
     if (!melds.length) return kind === 'cift' ? 'Açılacak çift yok' : 'Açılacak per yok';
     if (kind === 'cift') { if (!was && melds.length < this.pairNeed()) return `Çiftten açmak için en az ${this.pairNeed()} çift gerek, ${melds.length} çiftin var`; }
     else if (!was && value < this.seriNeed()) return `Açmak için en az ${this.seriNeed()} gerek, perlerin ${value}`;
-    if (!was && this.sidePending(a.seat) && !melds.some(m => m.includes(this.sideTake.tileId))) return 'Yandan aldığın taş bu açılışta kullanılmalı';
+    if (!was && this.sidePending(a.seat) && !melds.some(m => m.includes(this.sideTake.tileId)) && !this.layableAfter(a.seat, this.sideTake.tileId, melds, kinds))
+      return 'Yandan aldığın taş bu açılışta kullanılmalı ya da açtıktan sonra bir pere işlenebilmeli';
     const h = this.hands[a.seat];
     melds.forEach((m, k) => { for (const id of m) h.splice(h.indexOf(id), 1); this.melds[a.seat].push(m); this.meldKinds[a.seat].push(kinds[k]); });
     // Açılış sayısı: açıldığı turda açılan her şey (elden) sayılır, sonraki turlar sayılmaz
@@ -1751,13 +1752,12 @@ class Okey101Game extends OkeyGame {
   sidePending(s) { const st = this.sideTake; return !!(st && st.seat === s && this.hands[s].includes(st.tileId)); }
   sideUsable(s, id) {
     const o = this.opened[s];
-    if (!o) {
+    if (!o) { // açılışta kullanılabilir ya da açtıktan sonra aynı turda işlenebilir
       const plan = this.openPlan(s);
-      if (plan.v >= this.seriNeed() && plan.melds.some(m => m.includes(id))) return true;
+      if (plan.v >= this.seriNeed() && (plan.melds.some(m => m.includes(id)) || this.layableAfter(s, id, plan.melds, plan.kinds))) return true;
       const pairs = this.pairPlan(s);
-      return pairs.length >= this.pairNeed() && pairs.some(m => m.includes(id));
+      return pairs.length >= this.pairNeed() && (pairs.some(m => m.includes(id)) || this.layableAfter(s, id, pairs, pairs.map(() => 'pair')));
     }
-    if (this.openTurn[s] === this.turnNo) return false; // açtığı turda işleyemez
     if (this.hands[s].length >= 2)
       for (let w = 0; w < 4; w++) for (let i = 0; i < this.melds[w].length; i++)
         if (this.meldKinds[w][i] !== 'pair' && !this.layCheck(id, w, i).error) return true;
@@ -1810,8 +1810,18 @@ class Okey101Game extends OkeyGame {
   }
   layBlock(s) {
     if (!this.opened[s]) return 'Taş işlemek için önce elini açmalısın';
-    if (this.openTurn[s] === this.turnNo) return 'Elini açtığın turda taş işleyemezsin';
-    return null;
+    return null; // elini açtığı turda da işleyebilir
+  }
+  // Yeni açılacak perler yere konmuş gibi düşünüp taşın bir yere işlenip işlenemeyeceğine bakar
+  layableAfter(s, id, melds, kinds) {
+    if (this.hands[s].length - melds.reduce((n, m) => n + m.length, 0) < 2) return false; // işledikten sonra atacak taş kalmalı
+    const m = this.melds[s], k = this.meldKinds[s], n0 = m.length;
+    melds.forEach((x, i) => { m.push(x); k.push(kinds[i]); });
+    let ok = false;
+    for (let w = 0; w < 4 && !ok; w++) for (let i = 0; i < this.melds[w].length; i++)
+      if (this.meldKinds[w][i] !== 'pair' && !this.layCheck(id, w, i).error) { ok = true; break; }
+    m.length = n0; k.length = n0;
+    return ok;
   }
   onLay(a) {
     const e = this.turnCheck(a); if (e) return e;
@@ -1982,9 +1992,9 @@ class Okey101Game extends OkeyGame {
       const id = this.sideTake.tileId, seri = { type: 'OPEN_HAND', payload: { kind: 'seri' } }, cift = { type: 'OPEN_HAND', payload: { kind: 'cift' } };
       if (!was) {
         const plan = this.openPlan(s);
-        if (plan.v >= this.seriNeed() && plan.melds.some(m => m.includes(id))) return seri;
-        const pp = this.pairPlan(s); if (pp.length >= this.pairNeed() && pp.some(m => m.includes(id))) return cift;
-      } else if (this.openTurn[s] !== this.turnNo) {
+        if (plan.v >= this.seriNeed() && (plan.melds.some(m => m.includes(id)) || this.layableAfter(s, id, plan.melds, plan.kinds))) return seri;
+        const pp = this.pairPlan(s); if (pp.length >= this.pairNeed() && (pp.some(m => m.includes(id)) || this.layableAfter(s, id, pp, pp.map(() => 'pair')))) return cift;
+      } else {
         for (let w = 0; w < 4; w++) for (let i = 0; i < this.melds[w].length; i++)
           if (this.meldKinds[w][i] !== 'pair' && !this.layCheck(id, w, i).error && this.hands[s].length >= 2) return { type: 'LAY_TILE', payload: { tileId: id, owner: w, meld: i } };
         if (was === 'seri' && this.openPlan(s).melds.some(m => m.includes(id))) return seri;
@@ -2552,7 +2562,9 @@ const TableState = {
     const seen = new Set();
     for (const t of g.targets()) {
       let s = this.sprites.get(t.id);
-      if (!s) { s = new Sprite(t, g.spawnPoint(t)); this.sprites.set(t.id, s); } else s.set(t);
+      if (!s) { // dağıtım gecikmesi sadece dağıtım sırasında; sonradan gelen taş/kart hemen görünür ve tutulabilir
+        s = new Sprite(g.phase === 'deal' ? t : { ...t, deal: null }, g.spawnPoint(t)); this.sprites.set(t.id, s);
+      } else s.set(t);
       s.update(dt); seen.add(t.id);
     }
     for (const id of [...this.sprites.keys()]) if (!seen.has(id)) this.sprites.delete(id);
