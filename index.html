@@ -214,6 +214,7 @@
   body.immersive #hud .hud-title { visibility: hidden; }
   body.immersive #hud .hud-btn { pointer-events: auto; padding: 4px 10px; font-size: 13px; background: rgba(10,6,3,.55); }
   /* Masaya yerleşik düğmeler (yatay 101): her düğmenin yerini oyun düzeni verir (placeDom) */
+  #actionBar.overlay { display: none !important; }
   #actionBar.overlay { inset: 0 auto auto 0; width: 0; height: 0; padding: 0; border: 0; background: none; overflow: visible; display: block; }
   #actionBar.overlay .act, #actionBar.overlay .hint { position: fixed; margin: 0; box-sizing: border-box; }
   #actionBar.overlay .act { white-space: nowrap; min-width: 0; padding: 4px 6px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; line-height: 1.1; box-shadow: 0 3px 8px rgba(0,0,0,.35); }
@@ -404,6 +405,20 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const F_NUM = "'Fira Sans Condensed', 'Arial Narrow', sans-serif";
 const F_BODY = "'Fira Sans', 'Segoe UI', sans-serif";
 const F_DISP = "'Yeseva One', Georgia, serif";
+
+// iPhone gibi çentikli ekranlarda yatayda kenar güvenli alanı (CSS env değerleri bir ölçüm kutusundan okunur)
+let safeProbe = null;
+function safeInsets() {
+  try {
+    if (!safeProbe) {
+      safeProbe = document.createElement('div');
+      safeProbe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+      document.body.appendChild(safeProbe);
+    }
+    const cs = getComputedStyle(safeProbe);
+    return { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 };
+  } catch (e) { return { t: 0, r: 0, b: 0, l: 0 }; }
+}
 
 /* ---------- Marka: ad, slogan ve logo tek yerde ---------- */
 const BRAND = { name: 'Masa', tagline: 'Okey · 101 · Batak · Poker', key: 'masa' };
@@ -2224,52 +2239,70 @@ class Okey101Game extends OkeyGame {
     const ar = L.ar, blockH = ar * 2 + 33; // avatar + iki satırlık etiket
     L.glass = null;
     if (side) {
-      // Istaka: iki uçtaki dizme sütunları arasında ekran boyu; taşlar yükseklikten, aralık genişlikten
-      const endW = clamp(f.w * 0.075, 58, 100);
-      L.rackX = f.x + endW + 6; L.rackW = f.w - 2 * endW - 12;
-      L.rackPad = clamp(L.rackW * 0.012, 6, 14);
-      const pitch = (L.rackW - 2 * L.rackPad) / cols;
-      L.tw = Math.min(pitch * 0.9, L.H * (short ? 0.075 : 0.085), 64); L.th = L.tw * 1.36; L.gap = pitch - L.tw;
-      L.rowH = L.th + L.rackPad * 1.1; L.rackH = L.rowH * 2 + L.rackPad * 0.4; L.rackY = f.b - L.rackH;
+      // Yatay masa 640 birim yükseklikte sabit bir tasarıma göre çizilir ve ekrana orantılı ölçeklenir (telefonda da masaüstünde de aynı oranlar).
+      // Genişlik ekran oranına göre 1100–1500 birim; iPhone gibi geniş ekranlarda artan yer bilgi sütununa, çift alanına ve kenarlara dağılır.
+      const sa = safeInsets(), aw = L.W - sa.l - sa.r, ah = L.H - sa.t - sa.b;
+      const VH = 640, sc = Math.min(ah / VH, aw / 1100), VW = Math.min(aw / sc, 1500);
+      const ox = sa.l + (aw - VW * sc) / 2, oy = sa.t + (ah - VH * sc) / 2;
+      const X = v => ox + v * sc, Y = v => oy + v * sc, S = v => v * sc;
+      L.sc = sc; L.ar = S(22);
+      const m = 8, dizW = 112, pw = 50, ph = 68, pbW = pw * 1.24, pbH = ph * 1.24;
+      // Istaka: altta, iki uçta Çift diz / Seri diz; taşlar yan yana (aralık 3 birim), ıstaka yüksekliğine göre boyutlanır
+      const rackTop = 452, rackBot = 634, woodX = m + dizW + 8, woodW = VW - 2 * woodX;
+      const padD = 8, gapD = 3;
+      const twD = Math.min(((rackBot - rackTop - padD * 0.4) / 2 - padD * 1.1) / 1.36, (woodW - 2 * padD - 20) / cols - gapD);
+      L.tw = S(twD); L.th = L.tw * 1.36; L.gap = S(gapD); L.rackPad = S(padD);
+      L.rowH = L.th + L.rackPad * 1.1; L.rackH = L.rowH * 2 + L.rackPad * 0.4;
+      L.rackW = cols * (L.tw + L.gap) - L.gap + L.rackPad * 2;
+      L.rackX = X(VW / 2) - L.rackW / 2; L.rackY = Y(rackBot) - L.rackH;
+      L.rackWood = { x: X(woodX), w: S(woodW) };
       L.sw = L.tw * 0.3; L.sh = L.sw * 1.36; // rakip taşları avatarın arkasında durur, görünmez
-      // Üst sıra: Sevim sol, Nuri orta, Rıza sağ (köşelerdeki Lobi / Olaylar düğmelerinin yanında)
-      const hi = this.hudInsets || { l: f.x, r: 0, b: f.y };
-      const rowY = Math.max(f.y + ar + 2, hi.b - 14);
-      const y0 = rowY + ar + 8, y1 = Math.max(L.rackY - 8, y0 + 60);
-      const room = y1 - y0 - 12;
-      L.ph = clamp(room / 3.2, 10, L.th); L.pw = L.ph / 1.36;
-      const pbW = L.pw * 1.24, pbH = L.ph * 1.24;
-      const LW = pbW + 14, RW = Math.max(pbW + 14, clamp(f.w * 0.1, 92, 150));
-      L.pile = [{ x: f.r - RW / 2, y: y1 - pbH / 2 }, { x: f.r - RW / 2, y: y0 + pbH / 2 + 4 }, { x: f.x + LW / 2, y: y0 + pbH / 2 + 4 }, { x: f.x + LW / 2, y: y1 - pbH / 2 }];
+      L.pw = S(pw); L.ph = S(ph);
+      // Orta kuşak: solda yığın – Sevim – yığın, sağda yığın – Rıza – yığın, onun içinde aç / işle düğmeleri, ortada yer
+      const midTop = 60, midBot = rackTop - 10, midY = (midTop + midBot) / 2;
+      let colW = 108, btnW = 128, ic = 124;
+      const seriRows = midBot - midTop - 34, cwD = seriRows / (13 * 1.55), seriW = 26 * cwD + 14 + 20;
+      let bw = VW - 2 * (m + colW + 8) - (btnW + 8);
+      // Çift alanı: en az 2, en fazla 5 çift sütunu; artan yer önce bilgi sütununa, sonra kenar sütunlarına
+      const pairW = n => (3 * n - 1) * cwD + 20;
+      let nP = clamp(Math.floor((bw - seriW - ic - 20 + cwD) / (3 * cwD)), 2, 5);
+      let spare = bw - seriW - ic - pairW(nP);
+      const icAdd = clamp(spare, 0, 46); ic += icAdd; spare -= icAdd;
+      if (spare > 0) { colW += spare / 4; btnW += spare / 4; spare /= 2; }
+      bw = VW - 2 * (m + colW + 8) - (btnW + 8);
+      const lx = m + colW / 2, rx = VW - m - colW / 2;
+      L.pile = [{ x: X(rx), y: Y(midBot - pbH / 2) }, { x: X(rx), y: Y(midTop + pbH / 2) }, { x: X(lx), y: Y(midTop + pbH / 2) }, { x: X(lx), y: Y(midBot - pbH / 2) }];
       L.avatar = [
-        { x: f.x + endW / 2, y: L.rackY + ar + 2 }, // sen: altta, ıstakanın sol ucunda (altında Çift diz)
-        { x: f.r - hi.r - ar - 4, y: rowY }, { x: L.cx, y: rowY }, { x: hi.l + ar + 4, y: rowY },
+        { x: X(m + dizW / 2), y: Y(rackTop + 24) }, // sen: altta, ıstakanın solunda (altında Çift diz)
+        { x: X(rx), y: Y(midY - 22) }, { x: X(VW / 2), y: Y(28) }, { x: X(lx), y: Y(midY - 22) },
       ];
-      L.labelStyle = ['stack', 'left', 'right', 'right'];
-      // Sağ sütun: iki yığının arasında Seri aç / Çift aç / Taşları işle, altında ipucu
-      const gTop = L.pile[1].y + pbH / 2 + 8, gBot = L.pile[0].y - pbH / 2 - 8, bx = f.r - RW + 6, bw2 = RW - 12;
-      const bh = clamp((gBot - gTop - 12) / 3.6, 24, 46), hintH = gBot - gTop - bh * 3 - 12 - 8;
-      L.btns = [0, 1, 2].map(k => ({ x: bx, y: gTop + k * (bh + 6), w: bw2, h: bh }));
-      L.hintBox = hintH >= 28 ? { x: bx - 4, y: gTop + 3 * (bh + 6) + 2, w: bw2 + 8, h: hintH } : null;
-      const B = L.board = { x0: f.x + LW, x1: f.r - RW, y0, y1 };
-      // Yer: seri alanı ızgaranın genişliği kadar (13 × 2 hücre), yanında bilgi sütunu, kalan genişlik çift alanı
-      const seriH = B.y1 - B.y0 - 34, cwH = seriH / (13 * 1.55), seriW = 26 * cwH + 10 + 20;
-      const stacked = B.y1 - B.y0 - 16 >= 16 + L.th * 2 + 14 + 28 + 40;
-      const cw = stacked ? Math.max(L.tw * 1.6, 70) : Math.max(L.tw * 2.6 + 12, 74);
-      const bw = B.x1 - B.x0, sW = Math.min(seriW, bw - cw - 96), c0 = B.x0 + sW, cX = c0 + cw / 2;
-      L.center = { x0: c0, x1: c0 + cw };
-      const need = stacked ? 16 + L.th + 14 + L.th + 28 + 40 : 16 + L.th + 26 + 40, spare = B.y1 - B.y0 - 16 - need;
-      const chips = this.ruleChips().slice(0, clamp(Math.floor(spare / 24), 0, 4));
-      let y = B.y0 + 10;
-      L.chips = chips.map(t => { const c = { x: cX, y: y + 10, w: cw - 12, text: t }; y += 24; return c; });
-      y += 16;
-      if (stacked) { L.ind = { x: cX, y: y + L.th / 2 }; y += L.th + 14; L.deck = { x: cX, y: y + L.th / 2 }; y += L.th + 28; }
-      else { L.deck = { x: cX - L.tw * 0.65, y: y + L.th / 2 }; L.ind = { x: cX + L.tw * 0.65, y: y + L.th / 2 }; y += L.th + 26; }
-      L.counter = { x: cX, y: Math.min(y + 12, B.y1 - 30), w: Math.min(cw - 12, 76) }; // destenin "Çek" yazısının altında
-      L.areas = { seri: { x0: B.x0 + 10, x1: c0 - 8, y0: B.y0 + 24, y1: B.y1 - 10 }, cift: { x0: c0 + cw + 8, x1: B.x1 - 10, y0: B.y0 + 24, y1: B.y1 - 10 } };
-      // Çift diz sol uçta (üstünde senin avatarın), Seri diz sağ uçta: ıstaka boyunca
-      const meTop = L.rackY + blockH + 6;
-      L.diz = { cift: { x: f.x, y: meTop, w: endW, h: L.rackY + L.rackH - meTop }, seri: { x: f.r - endW, y: L.rackY, w: endW, h: L.rackH } };
+      L.labelStyle = ['stack', 'stack', 'right', 'stack'];
+      const B = L.board = { x0: X(m + colW + 8), x1: X(m + colW + 8 + bw), y0: Y(midTop), y1: Y(midBot) };
+      const bx0 = m + colW + 8, sX = bx0 + Math.max(0, (bw - seriW - ic - pairW(nP)) / 2);
+      const c0 = sX + seriW, cX = c0 + ic / 2;
+      L.center = { x0: X(c0), x1: X(c0 + ic) };
+      L.areas = {
+        seri: { x0: X(sX + 10), x1: X(c0 - 8), y0: Y(midTop + 24), y1: Y(midBot - 10) },
+        cift: { x0: X(c0 + ic + 8), x1: X(c0 + ic + pairW(nP)), y0: Y(midTop + 24), y1: Y(midBot - 10) },
+      };
+      // Bilgi sütunu: masa etiketleri, gösterge, deste, per sayacı
+      const thD = twD * 1.36, needD = 24 + thD + 14 + thD + 30 + 44, chipN = clamp(Math.floor((midBot - midTop - 16 - needD) / 26), 0, 4);
+      let y = midTop + 10;
+      L.chips = this.ruleChips().slice(0, chipN).map(t => { const c = { x: X(cX), y: Y(y + 11), w: S(ic - 14), h: S(22), text: t }; y += 26; return c; });
+      y += 24; L.ind = { x: X(cX), y: Y(y + thD / 2) }; y += thD + 14;
+      L.deck = { x: X(cX), y: Y(y + thD / 2) }; y += thD + 30 + 16 / sc; // Çek yazısı ekranda sabit boyutlu
+      L.counter = { x: X(cX), y: Y(Math.min(y + 12, midBot - 28)), w: S(Math.min(ic - 14, 100)) };
+      // Canvas düğmeleri: aç / işle sağ kenarın içindeki sütunda, dizme düğmeleri ıstakanın iki ucunda
+      const bX = VW - m - colW - 8 - btnW, bh = 52, bTop = midY - (bh * 3 + 20) / 2;
+      L.cbtns = [
+        { id: 'open', label: 'Seri aç', icon: [[1, 0], [2, 0], [3, 0]], style: 'ivory', x: X(bX), y: Y(bTop), w: S(btnW), h: S(bh) },
+        { id: 'pairs', label: 'Çift aç', icon: [[8, 1], [8, 1]], style: 'ivory', x: X(bX), y: Y(bTop + bh + 10), w: S(btnW), h: S(bh) },
+        { id: 'layAll', label: 'Taşları işle', style: 'steel', x: X(bX), y: Y(bTop + 2 * (bh + 10)), w: S(btnW), h: S(bh) },
+        { id: 'cift', label: 'Çift diz', icon: [[5, 2], [5, 2]], style: 'dark', x: X(m), y: Y(rackTop + 88), w: S(dizW), h: S(rackBot - rackTop - 88) },
+        { id: 'seri', label: 'Seri diz', icon: [[1, 0], [2, 0], [3, 0]], style: 'dark', x: X(VW - m - dizW), y: Y(rackTop), w: S(dizW), h: S(rackBot - rackTop) },
+      ];
+      L.hintBox = { x: X(bX - 4), y: Y(bTop + 3 * (bh + 10) + 4), w: S(btnW + 8), h: S(midBot - (bTop + 3 * (bh + 10) + 4)) };
+      L.diz = null; L.btns = null;
     } else {
       const gap = 2;
       L.tw = Math.min((f.w - 14) / cols - gap - 0.8, L.H * 0.068, 62); L.th = L.tw * 1.36; L.gap = gap;
@@ -2287,7 +2320,7 @@ class Okey101Game extends OkeyGame {
       L.counter = { x: L.avatar[0].x - ar - 40, y: r4 - 4, w: 60 };
       const row2B = Math.max(r2 + pbH / 2, r2 - 12 + blockH);
       L.board = { x0: f.x + 4, x1: f.r - 4, y0: row2B + 8, y1: Math.max(r4 - Math.max(pbH / 2, ar) - 8, row2B + 60) };
-      L.center = null; L.chips = []; L.diz = null; L.btns = null; L.hintBox = null;
+      L.center = null; L.chips = []; L.diz = null; L.btns = null; L.hintBox = null; L.cbtns = null; L.rackWood = null;
     }
     this.computeGrid(L);
     this.groundCache = null; this.placeDom();
@@ -2379,9 +2412,9 @@ class Okey101Game extends OkeyGame {
     g.save(); g.font = `700 11px ${F_BODY}`; g.textAlign = 'center'; g.textBaseline = 'middle';
     L.chips.forEach((c, k) => {
       const t = texts[k]; if (!t) return;
-      let fs = 11; g.font = `700 ${fs}px ${F_BODY}`;
-      while (fs > 8 && g.measureText(t).width > c.w - 8) { fs -= 0.5; g.font = `700 ${fs}px ${F_BODY}`; } // etikete sığsın
-      rr(g, c.x - c.w / 2, c.y - 10, c.w, 20, 5);
+      const ch = c.h || 20; let fs = Math.min(11, ch * 0.62); g.font = `700 ${fs}px ${F_BODY}`;
+      while (fs > 7 && g.measureText(t).width > c.w - 8) { fs -= 0.5; g.font = `700 ${fs}px ${F_BODY}`; } // etikete sığsın
+      rr(g, c.x - c.w / 2, c.y - ch / 2, c.w, ch, 5);
       g.fillStyle = t === 'Cezalı' ? '#7a1e18' : t.startsWith('Katlama') ? '#6a2230' : t.startsWith('Okey') ? '#2d4a24' : '#12263a'; g.fill();
       g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1; g.stroke();
       g.fillStyle = '#f5ecd7'; g.fillText(t, c.x, c.y + 0.5);
@@ -2406,7 +2439,7 @@ class Okey101Game extends OkeyGame {
   }
   // Istaka: referanstaki gibi açık turuncu ahşap, iki sıra arası oluk, üst sırada kabartma 101, iki uçta metal başlık
   drawRack(g) {
-    const L = this.L, x = L.rackX, y = L.rackY, w = L.rackW, h = L.rackH;
+    const L = this.L, x = L.rackWood ? L.rackWood.x : L.rackX, y = L.rackY, w = L.rackWood ? L.rackWood.w : L.rackW, h = L.rackH;
     g.save();
     g.fillStyle = 'rgba(0,0,0,.35)'; rr(g, x + 2, y + 4, w, h, 6); g.fill();
     const gr = g.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, '#f2ab52'); gr.addColorStop(0.5, '#e08b30'); gr.addColorStop(1, '#b9661d');
@@ -2415,7 +2448,7 @@ class Okey101Game extends OkeyGame {
     g.strokeStyle = 'rgba(120,52,6,.16)'; g.lineWidth = 1;
     for (let i = 0; i < 14; i++) { const yy = y + h * (i + 0.5) / 14; g.beginPath(); g.moveTo(x, yy); g.bezierCurveTo(x + w * 0.3, yy - 3, x + w * 0.7, yy + 3, x + w, yy); g.stroke(); }
     g.font = `${L.th * 0.78}px ${F_DISP}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(122,58,12,.22)';
-    g.fillText('101', x + w / 2, y + L.rackPad * 0.6 + L.th / 2);
+    g.fillText('101', L.rackX + L.rackW / 2, y + L.rackPad * 0.6 + L.th / 2);
     for (let r = 1; r <= 2; r++) {
       const ly = y + r * L.rowH - L.rowH * 0.11;
       g.fillStyle = '#7a3a0e'; g.fillRect(x, ly, w, L.rowH * 0.11);
@@ -2480,7 +2513,73 @@ class Okey101Game extends OkeyGame {
       g.fillStyle = this.seats[b.owner].color; g.fillRect(b.x0, b.cy + G.ch - 3, b.x1 - b.x0, 2);
     }
     g.restore();
-    this.drawChips(g); this.drawCounter(g);
+    this.drawChips(g); this.drawCounter(g); this.drawCanvasButtons(g); this.drawHint(g);
+  }
+  // ---- Canvas düğmeleri (yatay masa): Seri aç, Çift aç, Taşları işle, Çift diz, Seri diz ----
+  cbtnEnabled(id) {
+    if (id === 'open') return !!this.openBtn && !this.openBtn.disabled;
+    if (id === 'pairs') return !!this.pairBtn && !this.pairBtn.disabled;
+    if (id === 'layAll') return !!this.layAllBtn && !this.layAllBtn.disabled;
+    return this.phase !== 'deal';
+  }
+  cbtnRun(id) {
+    if (id === 'open') this.openFromRack('seri'); else if (id === 'pairs') this.openFromRack('cift');
+    else if (id === 'layAll') this.layAll(); else if (id === 'cift') this.arrange('cift'); else if (id === 'seri') this.arrange('seri');
+  }
+  drawCanvasButtons(g) {
+    const L = this.L; if (!L.cbtns) return;
+    const ST = { ivory: ['#fbf6ea', '#dccfae', '#2a1a0c', 'rgba(0,0,0,.25)'], steel: ['#eef2f5', '#a9b7c2', '#1c2a36', 'rgba(0,0,0,.25)'], dark: ['#33200f', '#150d07', '#f5ecd7', 'rgba(217,165,75,.55)'] };
+    const TC = ['#c3342b', '#1f1b17', '#1d5fb3'];
+    for (const b of L.cbtns) {
+      const en = this.cbtnEnabled(b.id), pr = this.pressBtn === b.id, [c0, c1, tc, bc] = ST[b.style], r = Math.min(10, b.h / 4), y = b.y + (pr ? 2 : 0);
+      g.save(); g.globalAlpha = en ? 1 : 0.45;
+      rr(g, b.x, b.y + 3, b.w, b.h, r); g.fillStyle = 'rgba(0,0,0,.35)'; g.fill();
+      const gr = g.createLinearGradient(0, y, 0, y + b.h); gr.addColorStop(0, c0); gr.addColorStop(1, c1);
+      rr(g, b.x, y, b.w, b.h, r); g.fillStyle = gr; g.fill(); g.strokeStyle = bc; g.lineWidth = 1.2; g.stroke();
+      const vertical = b.h > b.w * 0.8, fs = clamp(vertical ? b.w * 0.17 : b.h * 0.34, 11, 19);
+      const ih = clamp(vertical ? b.w * 0.2 : b.h * 0.42, 10, 24), iw = ih * 0.74, icon = b.icon || [], icW = icon.length ? icon.length * (iw + 2) - 2 : 0;
+      const tile = (x, ty, [n, c]) => {
+        rr(g, x, ty, iw, ih, 2.5); g.fillStyle = '#f7f0df'; g.fill(); g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 1; g.stroke();
+        g.fillStyle = TC[c]; g.font = `800 ${ih * 0.62}px ${F_NUM}`; g.fillText(String(n), x + iw / 2, ty + ih * 0.52);
+      };
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      if (vertical) {
+        const words = b.label.split(' '), top = y + b.h / 2 - (ih + 8 + words.length * fs * 1.1) / 2;
+        icon.forEach((t, k) => tile(b.x + b.w / 2 - icW / 2 + k * (iw + 2), top, t));
+        g.fillStyle = tc; g.font = `800 ${fs}px ${F_BODY}`;
+        words.forEach((w, k) => g.fillText(w, b.x + b.w / 2, top + ih + 8 + fs * 0.55 + k * fs * 1.1));
+      } else {
+        g.font = `800 ${fs}px ${F_BODY}`;
+        const tw = g.measureText(b.label).width, total = icW + (icW ? 6 : 0) + tw, x0 = b.x + (b.w - total) / 2;
+        icon.forEach((t, k) => tile(x0 + k * (iw + 2), y + (b.h - ih) / 2, t));
+        g.fillStyle = tc; g.font = `800 ${fs}px ${F_BODY}`; g.textAlign = 'left'; g.fillText(b.label, x0 + icW + (icW ? 6 : 0), y + b.h / 2 + 1);
+      }
+      g.restore();
+    }
+  }
+  // İpucu yazısı canvas'ta, düğmelerin altında (satırlara bölünür)
+  drawHint(g) {
+    const L = this.L, box = L.hintBox; if (!L.cbtns || !box || !this.lastHint) return;
+    const text = this.lastHint.replace(/<[^>]+>/g, ''), fs = clamp(box.w * 0.1, 10.5, 13);
+    g.save(); g.font = `600 ${fs}px ${F_BODY}`; g.fillStyle = 'rgba(245,236,215,.85)'; g.textAlign = 'center'; g.textBaseline = 'top';
+    const lines = []; let cur = '';
+    for (const w of text.split(' ')) { const t = cur ? cur + ' ' + w : w; if (g.measureText(t).width > box.w - 4 && cur) { lines.push(cur); cur = w; } else cur = t; }
+    if (cur) lines.push(cur);
+    const max = Math.max(0, Math.floor(box.h / (fs * 1.3)));
+    lines.slice(0, max).forEach((l, k) => g.fillText(l, box.x + box.w / 2, box.y + k * fs * 1.3));
+    g.restore();
+  }
+  pointer(type, p) {
+    const bs = this.L.cbtns;
+    if (bs) {
+      const hit = bs.find(b => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h);
+      if (type === 'down' && hit && !this.drag) { this.pressBtn = hit.id; return; }
+      if (this.pressBtn) {
+        if (type === 'up') { const id = this.pressBtn; this.pressBtn = null; if (hit && hit.id === id && this.cbtnEnabled(id)) this.cbtnRun(id); }
+        return;
+      }
+    }
+    super.pointer(type, p);
   }
   // Per sayacı: ıstakada dizili geçerli perlerin toplamı (referanstaki dijital sayaç); altında çift sayısı
   drawCounter(g) {
