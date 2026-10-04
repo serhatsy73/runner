@@ -29,9 +29,9 @@ window.KS = window.KS || {};
   KS.OVERPROD = 60;               // bu sayının üstünde üretim yavaşlar (önde olanın kaçmasını frenler)
   KS.OVERPROD_RATE = .35;
   KS.SURGE_AT = 180;              // bu saniyeden sonra "Son Hücum": askerler daha sık akar, kuşatmalar biter
-  KS.SURGE_SEND = .6;
+  KS.SURGE_SEND = .6;             // Son Hücum'da gönderme aralığı çarpanı
   KS.FINAL_AT = 240;              // süre dolar: en güçlü taraf kazanır (seviye hiçbir zaman 4 dakikayı geçmez)
-  KS.SIEGE = 1.2;                 // son bu kadar saniyede düşman vurduysa kule kuşatmadadır: takviye giremez             // Son Hücum'da gönderme aralığı çarpanı
+  KS.SIEGE = 1.2;                 // son bu kadar saniyede düşman vurduysa kule kuşatmadadır: takviye giremez
   KS.RANGE_PER_LVL = .12;         // kule seviyesi başına menzil artışı
 
   // Tasarım birimi: x ekseni bu oranla küçültülür, böylece menzil ve engeller her ekranda aynı çalışır.
