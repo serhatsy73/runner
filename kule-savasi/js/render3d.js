@@ -596,7 +596,7 @@
     drawBanner(c, pxR);
   }
 
-  const TOP_Y = [0, 1.4, 2.3, 2.7];     // rozetin durduğu yükseklik (bayrakların üstünde kalır)
+  const TOP_Y = [0, 1.4, 2.6, 3.0];     // rozetin durduğu yükseklik (bayrakların üstünde kalır)
 
   function drawBadge(c, t, pxR) {
     const col = TEAMS[t.team];

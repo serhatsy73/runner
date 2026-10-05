@@ -5,7 +5,10 @@
   const KEY = 'kuleSavasi.save.v1';
   const OLD_KEY = 'kuleSavasi.level';
 
+  const LAYOUT = 2;   // seviye numaralandırması: 2 = her dünya 25 seviye
+
   const fresh = () => ({
+    layout: LAYOUT,
     unlocked: 1,
     stars: {},                                // { "3": 2, ... }
     settings: { sound: true, haptics: true, view3d: true },
@@ -23,12 +26,25 @@
         Object.assign(data, saved);
         data.settings = Object.assign(fresh().settings, saved.settings);
         data.stats = Object.assign(fresh().stats, saved.stats);
+        migrate(data, saved.layout || 1);
       } else {
         const old = parseInt(localStorage.getItem(OLD_KEY), 10);
         if (old > 1) data.unlocked = old;
       }
     } catch (e) { /* bozuk ya da erişilemeyen kayıt: sıfırdan başla */ }
     return data;
+  }
+
+  // Eski numaralandırmadan (10'luk dünyalar: 1-10 çayır, 11-20 göl) 25'lik dünyalara taşır
+  function migrate(data, layout) {
+    if (layout >= LAYOUT) return;
+    const level = n => n <= 9 ? n : n === 10 ? 25 : n <= 19 ? n + 15 : n === 20 ? 50 : 51;
+    const next = n => n <= 10 ? n : n <= 20 ? n + 15 : 51;   // "sıradaki oynanabilir seviye"
+    const stars = {};
+    for (const k in data.stars) stars[level(+k)] = data.stars[k];
+    data.stars = stars;
+    data.unlocked = next(data.unlocked);
+    data.layout = LAYOUT;
   }
 
   const Save = KS.Save = {

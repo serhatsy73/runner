@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Seviye Editörü</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<style>
+  :root { color-scheme: light; --ink: #4b4560; --muted: #7d768e; --card: #fffdf7; --line: #e7e1d3; --blue: #4d8fd6; --gold: #f6c34a; --bad: #d9534f; --ok: #3f9a5e; --font: "Fredoka", system-ui, sans-serif; }
+  html, body { height: 100%; margin: 0; background: #c4ebaa; font-family: var(--font); color: var(--ink); }
+  body { display: grid; grid-template-columns: 1fr 340px; height: 100vh; overflow: hidden; }
+  .stage { position: relative; overflow: hidden; touch-action: none; user-select: none; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #ov { pointer-events: none; }
+  .panel { background: var(--card); border-left: 1px solid var(--line); overflow-y: auto; padding: 12px 14px 24px; display: grid; gap: 12px; align-content: start; font-size: 14px; }
+  h1 { margin: 0; font-size: 20px; }
+  h2 { margin: 6px 0 0; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .tools button, .btn { font: 600 13px/1 var(--font); color: var(--ink); background: #f4f0e6; border: 2px solid var(--line); border-radius: 10px; padding: 9px 8px; cursor: pointer; }
+  .tools button.on { border-color: var(--blue); background: #e3f0fc; color: var(--blue); }
+  .btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.gold { background: var(--gold); border-color: var(--gold); color: #5a3d00; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .row > * { flex: 1; }
+  label.f { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+  input[type=number], input[type=text], select, textarea { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; width: 100%; box-sizing: border-box; background: #fff; }
+  textarea { height: 120px; font-family: ui-monospace, monospace; font-size: 11px; }
+  .teams { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .teams button { border: 2px solid transparent; border-radius: 10px; padding: 8px 4px; font: 700 12px var(--font); cursor: pointer; }
+  .teams button.on { border-color: var(--ink); }
+  .issues { margin: 0; padding: 0 0 0 18px; color: var(--bad); font-size: 13px; }
+  .issues.ok { color: var(--ok); list-style: none; padding: 0; }
+  .sel { background: #f4f0e6; border-radius: 10px; padding: 8px 10px; display: grid; gap: 6px; }
+  .result { font-weight: 700; }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .tag { display: inline-block; background: #fff1c4; color: #8a6100; border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+  @media (max-width: 760px) { body { grid-template-columns: 1fr; grid-template-rows: 55vh 45vh; } .panel { border-left: 0; border-top: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <canvas id="game"></canvas>
+  <canvas id="ov"></canvas>
+</div>
+<aside class="panel">
+  <h1>Seviye Editörü <span class="tag" id="modeTag">düzenleme</span></h1>
+
+  <h2>Araç</h2>
+  <div class="tools" id="tools">
+    <button data-tool="select" class="on">Seç / Taşı</button>
+    <button data-tool="tower">Kule</button>
+    <button data-tool="rock">Kaya</button>
+    <button data-tool="tree">Ağaç</button>
+    <button data-tool="lake">Göl</button>
+    <button data-tool="river">Nehir</button>
+    <button data-tool="bridge">Köprü</button>
+    <button data-tool="erase">Sil</button>
+  </div>
+  <div class="hint" id="toolHint">Tıkla: seç. Sürükle: taşı. Seçili kuleyi ↑↓ ile büyüt/küçült, Delete ile sil.</div>
+
+  <div class="sel" id="selBox" hidden>
+    <div class="teams" id="teams"></div>
+    <label class="f">Asker <input id="selCount" type="number" min="0" max="99"></label>
+    <div class="row" id="selExtra"></div>
+  </div>
+
+  <h2>Seviye</h2>
+  <div class="row">
+    <label class="f">Menzil (0 = yok) <input id="range" type="number" step=".01" min="0" max="1"></label>
+    <label class="f">Par (sn) <input id="par" type="number" min="10" max="240"></label>
+  </div>
+  <div class="row">
+    <label class="f">Tanıtım <select id="intro"><option value="">yok</option></select></label>
+    <label class="f">Boss <select id="boss"><option value="">hayır</option><option value="1">evet</option></select></label>
+  </div>
+  <label class="f">İpucu (seviye başı duyuru) <input id="tip" type="text"></label>
+  <ul class="issues" id="issues"></ul>
+
+  <h2>Dene</h2>
+  <div class="row">
+    <button class="btn primary" id="play">▶ Oyna</button>
+    <button class="btn" id="edit">✎ Düzenle</button>
+  </div>
+  <div class="result" id="result"></div>
+  <div class="row">
+    <label class="f">Deneme <input id="runs" type="number" min="1" max="30" value="8"></label>
+    <button class="btn gold" id="measure">Botlarla ölç</button>
+  </div>
+  <div class="hint" id="measureOut"></div>
+
+  <h2>Yükle / kaydet</h2>
+  <div class="row">
+    <label class="f">Seviye no <input id="lvlNo" type="number" min="1" max="125" value="1"></label>
+    <button class="btn" id="load">Yükle</button>
+    <button class="btn" id="fresh">Yeni</button>
+  </div>
+  <textarea id="json" spellcheck="false"></textarea>
+  <div class="row">
+    <button class="btn" id="copy">JSON kopyala</button>
+    <button class="btn" id="apply">JSON'u uygula</button>
+  </div>
+  <div class="hint">Çıkan JSON'u <code>js/levels.js</code> içinde ilgili dünyanın <code>hand</code> listesine yuva numarasıyla ekle. Doğrulama hataları varken seviye oynanamaz.</div>
+</aside>
+
+<script src="../js/config.js"></script>
+<script src="../js/storage.js"></script>
+<script src="../js/terrain.js"></script>
+<script src="../js/levels.js"></script>
+<script src="../js/game.js"></script>
+<script src="../js/ai.js"></script>
+<script src="../js/audio.js"></script>
+<script src="../js/render.js"></script>
+<script src="../js/input.js"></script>
+<script>
+(() => {
+  'use strict';
+  const { NEUTRAL, PLAYER, RED, YELLOW, TEAMS } = KS;
+  const G = KS.G, V = KS.V, Levels = KS.Levels, A = KS.ASPECT;
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), cv = $('game'), ov = $('ov'), octx = ov.getContext('2d');
+
+  // ---------- durum ----------
+  let cfg = blank();
+  let tool = 'select', sel = null;          // sel: { kind: 'tower'|'obs', i }
+  let drag = null, riverDraft = null;
+  let mode = 'edit';                         // edit | play | measure
+
+  function blank() {
+    return { par: 60, ai: [RED], towers: [{ x: .5, y: .88, team: PLAYER, count: 20 }, { x: .5, y: .12, team: RED, count: 15 }], obstacles: [] };
+  }
+
+  // ---------- oyun motoru bağlantısı ----------
+  KS.Render.init(cv);
+  KS.Input.init(cv);
+  function resize() {
+    V.DPR = Math.min(2, window.devicePixelRatio || 1);
+    const r = stage.getBoundingClientRect();
+    V.W = r.width; V.H = r.height;
+    cv.width = ov.width = Math.round(V.W * V.DPR); cv.height = ov.height = Math.round(V.H * V.DPR);
+    const a = V.area;
+    a.h = Math.max(200, V.H - 40);
+    a.w = Math.min(V.W - 32, a.h * .68);
+    a.x = (V.W - a.w) / 2; a.y = 20;
+    V.baseR = Math.max(15, Math.min(42, a.w * .068, a.h * .046));
+    V.speed = a.h * .15;
+    G.layout();
+    KS.Render.buildBackground();
+  }
+  window.addEventListener('resize', resize);
+
+  // cfg'yi oyuna yükle (kopyasıyla: oyun kuleleri değiştirir)
+  function apply() {
+    syncAi();
+    Levels.custom = JSON.parse(JSON.stringify(cfg));
+    G.loadLevel(0);
+    G.state = mode === 'play' ? 'play' : 'edit';
+    resize();
+    refreshPanel();
+  }
+  function syncAi() {
+    cfg.ai = [RED, YELLOW].filter(team => cfg.towers.some(t => t.team === team));
+  }
+
+  G.on('win', r => { $('result').textContent = `Kazandın · ${KS.fmtTime(r.time)} · ${r.stars} yıldız`; });
+  G.on('lose', () => { $('result').textContent = 'Kaybettin'; });
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    if (G.state === 'play' || G.state === 'won' || G.state === 'lost') G.update(dt); else G.time += dt;
+    KS.Render.draw();
+    drawOverlay();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- koordinatlar ----------
+  const toDesign = (px, py) => ({ x: (px - V.area.x) / V.area.w, y: (py - V.area.y) / V.area.h });
+  const toPx = (x, y) => ({ x: V.area.x + x * V.area.w, y: V.area.y + y * V.area.h });
+  const dd = (a, b) => Math.hypot((a.x - b.x) * A, a.y - b.y);   // tasarım birimi
+  const snap = v => Math.round(v * 100) / 100;
+
+  function hitTower(p) {
+    let best = -1, bd = .07;
+    cfg.towers.forEach((t, i) => { const d = dd(t, p); if (d < bd) { bd = d; best = i; } });
+    return best;
+  }
+  function hitObstacle(p) {
+    for (let i = cfg.obstacles.length - 1; i >= 0; i--) {
+      const o = cfg.obstacles[i];
+      if (o.type === 'river') {
+        const near = (o.bridges || []).some(b => dd({ x: b[0], y: b[1] }, p) < .05);
+        if (near) return i;
+        if (KS.Terrain.pointBlocked([Object.assign({}, o, { bridges: [] })], p.x * A, p.y, 0)) return i;
+      } else if (KS.Terrain.pointBlocked([o], p.x * A, p.y, 0)) return i;
+    }
+    return -1;
+  }
+
+  // ---------- düzenleme girdisi ----------
+  stage.addEventListener('pointerdown', e => {
+    if (mode !== 'edit') return;
+    e.preventDefault();
+    stage.setPointerCapture(e.pointerId);
+    const rect = stage.getBoundingClientRect();
+    const p = toDesign(e.clientX - rect.left, e.clientY - rect.top);
+    const ti = hitTower(p);
+    if (tool === 'select') {
+      if (ti >= 0) { sel = { kind: 'tower', i: ti }; drag = { kind: 'tower', i: ti, ox: cfg.towers[ti].x - p.x, oy: cfg.towers[ti].y - p.y }; }
+      else { const oi = hitObstacle(p); sel = oi >= 0 ? { kind: 'obs', i: oi } : null; if (oi >= 0 && cfg.obstacles[oi].type !== 'river') drag = { kind: 'obs', i: oi, ox: cfg.obstacles[oi].x - p.x, oy: cfg.obstacles[oi].y - p.y }; }
+    } else if (tool === 'tower') {
+      cfg.towers.push({ x: snap(p.x), y: snap(p.y), team: NEUTRAL, count: 8 });
+      sel = { kind: 'tower', i: cfg.towers.length - 1 };
+      drag = { kind: 'tower', i: sel.i, ox: 0, oy: 0 };
+    } else if (tool === 'rock' || tool === 'tree') {
+      cfg.obstacles.push({ type: tool, x: snap(p.x), y: snap(p.y), r: tool === 'rock' ? .036 : .04 });
+      sel = { kind: 'obs', i: cfg.obstacles.length - 1 };
+    } else if (tool === 'lake') {
+      cfg.obstacles.push({ type: 'lake', x: snap(p.x), y: snap(p.y), rx: .1, ry: .1 });
+      sel = { kind: 'obs', i: cfg.obstacles.length - 1 };
+    } else if (tool === 'river') {
+      if (!riverDraft) riverDraft = { type: 'river', pts: [], w: .07, bridges: [] };
+      riverDraft.pts.push([snap(p.x), snap(p.y)]);
+    } else if (tool === 'bridge') {
+      const oi = hitObstacle(p);
+      if (oi >= 0 && cfg.obstacles[oi].type === 'river') { (cfg.obstacles[oi].bridges = cfg.obstacles[oi].bridges || []).push([snap(p.x), snap(p.y)]); sel = { kind: 'obs', i: oi }; }
+    } else if (tool === 'erase') {
+      if (ti >= 0) cfg.towers.splice(ti, 1);
+      else { const oi = hitObstacle(p); if (oi >= 0) cfg.obstacles.splice(oi, 1); }
+      sel = null;
+    }
+    apply();
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!drag || mode !== 'edit') return;
+    const rect = stage.getBoundingClientRect();
+    const p = toDesign(e.clientX - rect.left, e.clientY - rect.top);
+    const o = drag.kind === 'tower' ? cfg.towers[drag.i] : cfg.obstacles[drag.i];
+    o.x = snap(Math.max(.03, Math.min(.97, p.x + drag.ox))); o.y = snap(Math.max(.03, Math.min(.97, p.y + drag.oy)));
+    apply();
+  });
+  const endDrag = () => { drag = null; };
+  stage.addEventListener('pointerup', endDrag);
+  stage.addEventListener('pointercancel', endDrag);
+  stage.addEventListener('dblclick', () => { if (tool === 'river' && riverDraft && riverDraft.pts.length >= 2) { cfg.obstacles.push(riverDraft); sel = { kind: 'obs', i: cfg.obstacles.length - 1 }; riverDraft = null; apply(); } });
+  window.addEventListener('keydown', e => {
+    if (mode !== 'edit' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'Escape') { riverDraft = null; sel = null; apply(); }
+    if (!sel) return;
+    if (e.key === 'Delete' || e.key === 'Backspace') { (sel.kind === 'tower' ? cfg.towers : cfg.obstacles).splice(sel.i, 1); sel = null; apply(); }
+    if (sel.kind === 'tower' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { const t = cfg.towers[sel.i]; t.count = Math.max(0, Math.min(99, t.count + (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 5 : 1))); apply(); }
+  });
+
+  // ---------- üst katman: seçim, menzil, nehir taslağı ----------
+  function drawOverlay() {
+    const c = octx;
+    c.setTransform(V.DPR, 0, 0, V.DPR, 0, 0);
+    c.clearRect(0, 0, V.W, V.H);
+    if (mode !== 'edit') return;
+    if (sel && sel.kind === 'tower' && cfg.towers[sel.i]) {
+      const t = cfg.towers[sel.i], p = toPx(t.x, t.y);
+      c.strokeStyle = '#fff'; c.lineWidth = 3; c.setLineDash([6, 5]);
+      c.beginPath(); c.arc(p.x, p.y, V.baseR * 1.6, 0, Math.PI * 2); c.stroke();
+      if (cfg.range) {
+        const r = cfg.range * (1 + KS.RANGE_PER_LVL * (KS.lvlOf(t.count) - 1));
+        c.strokeStyle = TEAMS[PLAYER].dark; c.lineWidth = 2;
+        c.beginPath(); c.ellipse(p.x, p.y, r / A * V.area.w, r * V.area.h, 0, 0, Math.PI * 2); c.stroke();
+      }
+      c.setLineDash([]);
+      // görüş hattı: bu kule hangi kulelere yol açabilir?
+      const T = cfg.towers;
+      for (const o of T) {
+        if (o === t) continue;
+        const q = toPx(o.x, o.y);
+        const ok = canLink(t, o);
+        c.strokeStyle = ok ? 'rgba(77,143,214,.55)' : 'rgba(217,83,79,.35)'; c.lineWidth = ok ? 3 : 1.5;
+        c.setLineDash(ok ? [] : [4, 6]);
+        c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(q.x, q.y); c.stroke();
+      }
+      c.setLineDash([]);
+    }
+    if (sel && sel.kind === 'obs' && cfg.obstacles[sel.i]) {
+      const o = cfg.obstacles[sel.i];
+      c.strokeStyle = '#fff'; c.lineWidth = 3; c.setLineDash([6, 5]);
+      if (o.type === 'river') { c.beginPath(); o.pts.forEach(([x, y], i) => { const q = toPx(x, y); i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y); }); c.stroke(); }
+      else { const p = toPx(o.x, o.y); c.beginPath(); c.ellipse(p.x, p.y, (o.rx || o.r) / A * V.area.w + 6, (o.ry || o.r) * V.area.h + 6, 0, 0, Math.PI * 2); c.stroke(); }
+      c.setLineDash([]);
+    }
+    if (riverDraft) {
+      c.strokeStyle = '#4d8fd6'; c.lineWidth = 4; c.setLineDash([8, 6]);
+      c.beginPath(); riverDraft.pts.forEach(([x, y], i) => { const q = toPx(x, y); i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y); }); c.stroke();
+      c.setLineDash([]);
+      c.fillStyle = '#4d8fd6'; c.font = '600 13px ' + KS.FONT; c.fillText('Nehir: tıklayarak nokta ekle, çift tıkla bitir, Esc iptal', V.area.x + 8, V.area.y + V.area.h - 10);
+    }
+  }
+  function canLink(a, b) {
+    const T = cfg.towers.map(o => ({ nx: o.x, ny: o.y })), na = T[cfg.towers.indexOf(a)], nb = T[cfg.towers.indexOf(b)];
+    const range = cfg.range ? cfg.range * (1 + KS.RANGE_PER_LVL * (KS.lvlOf(a.count) - 1)) : Infinity;
+    if (dd(a, b) > range) return false;
+    if (KS.Terrain.towerBlocks(T, na, nb, KS.TOWER_BLOCK)) return false;
+    return !KS.Terrain.blocks(cfg.obstacles, na, nb);
+  }
+
+  // ---------- panel ----------
+  document.querySelectorAll('#tools button').forEach(b => b.addEventListener('click', () => {
+    tool = b.dataset.tool; riverDraft = null;
+    document.querySelectorAll('#tools button').forEach(x => x.classList.toggle('on', x === b));
+    $('toolHint').textContent = {
+      select: 'Tıkla: seç. Sürükle: taşı. Seçili kuleyi ↑↓ ile büyüt/küçült (Shift: 5), Delete ile sil.',
+      tower: 'Tıkladığın yere gri kule koyar; sonra takımını ve askerini seç.',
+      rock: 'Tıkladığın yere kaya koyar.', tree: 'Tıkladığın yere ağaç koyar.', lake: 'Tıkladığın yere göl koyar; seçip boyutunu değiştir.',
+      river: 'Tıklayarak nokta ekle, çift tıklayarak bitir. Kenarların dışına taşır (−0.05 / 1.05).',
+      bridge: 'Nehrin üstüne tıkla: köprü ekler.', erase: 'Tıkladığın kuleyi ya da engeli siler.',
+    }[tool];
+  }));
+
+  const teamsEl = $('teams');
+  [NEUTRAL, PLAYER, RED, YELLOW].forEach(team => {
+    const b = document.createElement('button');
+    b.textContent = TEAMS[team].name; b.style.background = TEAMS[team].fill; b.dataset.team = team;
+    b.addEventListener('click', () => { if (sel && sel.kind === 'tower') { cfg.towers[sel.i].team = team; apply(); } });
+    teamsEl.appendChild(b);
+  });
+  $('selCount').addEventListener('input', () => { if (sel && sel.kind === 'tower') { cfg.towers[sel.i].count = +$('selCount').value || 0; apply(); } });
+  for (const k in Levels.intros) { const o = document.createElement('option'); o.value = k; o.textContent = k + ' — ' + Levels.intros[k].title; $('intro').appendChild(o); }
+  ['range', 'par', 'intro', 'boss', 'tip'].forEach(id => $(id).addEventListener('input', () => {
+    cfg.range = +$('range').value || undefined; if (!cfg.range) delete cfg.range;
+    cfg.par = +$('par').value || 60;
+    if ($('intro').value) cfg.intro = $('intro').value; else delete cfg.intro;
+    if ($('boss').value) cfg.boss = true; else delete cfg.boss;
+    if ($('tip').value.trim()) cfg.tip = $('tip').value.trim(); else delete cfg.tip;
+    apply();
+  }));
+
+  function refreshPanel() {
+    $('range').value = cfg.range || 0; $('par').value = cfg.par; $('intro').value = cfg.intro || ''; $('boss').value = cfg.boss ? '1' : ''; $('tip').value = cfg.tip || '';
+    const box = $('selBox');
+    box.hidden = !(sel && sel.kind === 'tower' && cfg.towers[sel.i]) && !(sel && sel.kind === 'obs' && cfg.obstacles[sel.i]);
+    $('teams').hidden = $('selCount').parentElement.hidden = !(sel && sel.kind === 'tower');
+    const extra = $('selExtra'); extra.innerHTML = '';
+    if (sel && sel.kind === 'tower' && cfg.towers[sel.i]) {
+      const t = cfg.towers[sel.i];
+      teamsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.team === t.team));
+      $('selCount').value = t.count;
+    } else if (sel && sel.kind === 'obs' && cfg.obstacles[sel.i]) {
+      const o = cfg.obstacles[sel.i];
+      const num = (label, key, step, min, max) => {
+        const l = document.createElement('label'); l.className = 'f'; l.textContent = label;
+        const i = document.createElement('input'); i.type = 'number'; i.step = step; i.min = min; i.max = max; i.value = o[key];
+        i.addEventListener('input', () => { o[key] = +i.value; apply(); }); l.appendChild(i); extra.appendChild(l);
+      };
+      if (o.type === 'lake') { num('Genişlik', 'rx', .01, .03, .3); num('Yükseklik', 'ry', .01, .03, .3); }
+      else if (o.type === 'river') { num('Nehir genişliği', 'w', .005, .03, .15); }
+      else num('Yarıçap', 'r', .005, .02, .1);
+    }
+    const issues = Levels.validate(cfg);
+    const ul = $('issues'); ul.innerHTML = ''; ul.className = 'issues' + (issues.length ? '' : ' ok');
+    (issues.length ? issues : ['✓ Seviye geçerli']).forEach(s => { const li = document.createElement('li'); li.textContent = s; ul.appendChild(li); });
+    $('play').disabled = issues.length > 0;
+    $('json').value = toJSON();
+    $('modeTag').textContent = mode === 'edit' ? 'düzenleme' : mode === 'play' ? 'oynanıyor' : 'ölçülüyor';
+  }
+
+  function toJSON() {
+    const r = v => Math.round(v * 1000) / 1000;
+    const out = { par: cfg.par, ai: cfg.ai };
+    if (cfg.range) out.range = r(cfg.range);
+    if (cfg.boss) out.boss = true;
+    if (cfg.intro) out.intro = cfg.intro;
+    if (cfg.tip) out.tip = cfg.tip;
+    if (cfg.persona) out.persona = cfg.persona;
+    out.towers = cfg.towers.map(t => ({ x: r(t.x), y: r(t.y), team: t.team, count: t.count }));
+    if (cfg.obstacles.length) out.obstacles = cfg.obstacles.map(o => {
+      const c = Object.assign({}, o);
+      for (const k of ['x', 'y', 'r', 'rx', 'ry', 'w']) if (k in c) c[k] = r(c[k]);
+      if (c.pts) c.pts = c.pts.map(p => [r(p[0]), r(p[1])]);
+      if (c.bridges) c.bridges = c.bridges.map(p => [r(p[0]), r(p[1])]);
+      return c;
+    });
+    return JSON.stringify(out, null, 1).replace(/\n\s*(?=[\d\-"\]}])/g, ' ').replace(/\[\s+/g, '[').replace(/\s+\]/g, ']');
+  }
+
+  // ---------- oyna / düzenle / ölç ----------
+  $('play').addEventListener('click', () => { mode = 'play'; sel = null; $('result').textContent = ''; apply(); });
+  $('edit').addEventListener('click', () => { mode = 'edit'; apply(); });
+
+  const PROFILES = {
+    'saldırgan': { interval: 1.2, aggro: 8, patience: 40, maxLanes: 3, moves: 3, focus: 8, grace: 0, firstMove: .3 },
+    'sabırlı':   { interval: 1.2, aggro: 2, patience: 25, maxLanes: 3, moves: 2, focus: 6, grace: 0, firstMove: .3 },
+  };
+  $('measure').addEventListener('click', () => {
+    if (Levels.validate(cfg).length) return;
+    mode = 'measure'; refreshPanel();
+    const runs = Math.max(1, +$('runs').value || 8);
+    const lines = [];
+    let result = null;
+    const onWin = r => { result = result || { win: true, t: r.time }; }, onLose = () => { result = result || { win: false }; };
+    G.on('win', onWin); G.on('lose', onLose);
+    Levels.custom = JSON.parse(JSON.stringify(cfg));
+    setTimeout(() => {
+      for (const name in PROFILES) {
+        const bot = PROFILES[name], times = []; let wins = 0;
+        for (let k = 0; k < runs; k++) {
+          G.loadLevel(0); G.state = 'play'; result = null;
+          let botT = bot.firstMove;
+          for (let i = 0; i < 400 * 30 && !result; i++) {
+            G.update(1 / 30); botT -= 1 / 30;
+            if (botT <= 0 && G.state === 'play') { botT = bot.interval; const keep = G.aiParams; G.aiParams = bot; KS.AI.think(PLAYER); G.aiParams = keep; }
+          }
+          if (result && result.win) { wins++; times.push(result.t); }
+        }
+        times.sort((a, b) => a - b);
+        const med = times[times.length >> 1];
+        lines.push(`${name}: kazanma %${Math.round(wins / runs * 100)}, medyan ${med ? KS.fmtTime(med) : '–'}, en hızlı ${times.length ? KS.fmtTime(times[0]) : '–'} (par ${KS.fmtTime(cfg.par)})`);
+      }
+      // olay dinleyicilerini bırakamıyoruz (G.on'un off'u yok); result'ı artık kimse okumuyor
+      $('measureOut').innerHTML = lines.join('<br>');
+      mode = 'edit'; apply();
+    }, 30);
+  });
+
+  // ---------- yükle / kaydet ----------
+  $('load').addEventListener('click', () => {
+    const n = +$('lvlNo').value;
+    const src = Levels.get(n);
+    if (!src) return;
+    cfg = JSON.parse(JSON.stringify(src));
+    cfg.obstacles = cfg.obstacles || [];
+    sel = null; mode = 'edit'; $('result').textContent = ''; $('measureOut').textContent = Levels.isHandmade(n) ? 'Elle yapılmış seviye' : 'Üreteçten gelen seviye (düzenleyip hand listesine ekleyebilirsin)';
+    apply();
+  });
+  $('fresh').addEventListener('click', () => { cfg = blank(); sel = null; mode = 'edit'; apply(); });
+  $('copy').addEventListener('click', () => { navigator.clipboard.writeText($('json').value).then(() => { $('copy').textContent = 'Kopyalandı ✓'; setTimeout(() => { $('copy').textContent = 'JSON kopyala'; }, 1200); }); });
+  $('apply').addEventListener('click', () => {
+    try { const o = JSON.parse($('json').value); o.obstacles = o.obstacles || []; o.towers = o.towers || []; cfg = o; sel = null; mode = 'edit'; apply(); }
+    catch (e) { alert('JSON okunamadı: ' + e.message); }
+  });
+
+  // ---------- başlat ----------
+  const q = new URLSearchParams(location.search);
+  if (q.get('n')) { $('lvlNo').value = q.get('n'); $('load').click(); } else apply();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

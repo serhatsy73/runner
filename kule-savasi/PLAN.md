@@ -21,19 +21,29 @@
 
 ## Seviye kurgusu
 
-| Dünya | Tema | Yeni mekanik | Seviyeler | Tempo |
-|---|---|---|---|---|
-| 1 | Çayır | Temel oynanış, çoklu sürükleme | 1–10 | Hızlı |
-| 2 | Göl Kıyısı | Yol uzunluğu sınırı, su engelleri, köprü | 11–20 | Hızlı |
-| 3 | Karlı Dağ | Kale kulesi, buz (askerler yavaş yürür) | 21–30 | Orta |
-| 4 | Şeker Diyarı | Hız kulesi + Ambar, Mor rakip | 31–40 | Yavaş, stratejik |
-| 5 | Volkan | Hepsi bir arada, büyük haritalar | 41–50 | Yavaş, stratejik |
-| ∞ | Günlük Harita | Her gün herkese aynı harita, skor tablosu | — | Karışık |
+Her dünya **25 seviye**. Dünya 1–2'nin ilk 9 seviyesi ve 25. (boss) seviyesi elle tasarlandı; aradaki yuvalar şimdilik üreteçten geliyor ve editörle teker teker elle tasarlanmış seviyelere dönüştürülecek.
 
-- Zorluk düz artmaz, testere dişi gibi artar: zor bir seviyeden sonra bir "nefes" seviyesi gelir.
+| Dünya | Tema | Yeni mekanik / binalar | Seviyeler | Tempo |
+|---|---|---|---|---|
+| 1 | 🌱 Çayır | Temel oynanış, çoklu sürükleme, görüş hattı | 1–25 | Hızlı |
+| 2 | 🏝️ Göl Kıyısı | Menzil, kaya/ağaç, göl, nehir ve köprü | 26–50 | Hızlı |
+| 3 | ❄️ Karlı Dağ | Buz (askerler yavaşlar), tepeler (menzil +%50), **Okçu Kulesi**, **Kale** | 51–75 | Orta |
+| 4 | 🍭 Şeker Diyarı | Portal çifti, **Hız Kulesi**, **Ambar**, Mor rakip, yetenekler | 76–100 | Yavaş, stratejik |
+| 5 | 🌋 Volkan | Lav çatlağı, kapı/anahtar kule, **Gözcü Kulesi**, **Mancınık**, hedef çeşitleri, 3 rakip | 101–125 | Yavaş, stratejik |
+| ∞ | 🎲 Sonsuz / Günlük | Üreteçle sonsuz harita, her 5 seviyede zorlaşır; herkese aynı günlük tohum | 126+ | Karışık |
+
+**25 seviyelik dünyanın iç ritmi** (5'erli bloklar):
+- 1–5 **Öğret:** dünyanın yeni mekaniği güvenli haritalarda, tek tek
+- 6–10 **Sına:** normal haritalar, önceki dünyaların mekanikleriyle karışık; 10 = ara boss
+- 11–15 **Nefes + büküm:** kolay bir seviye, sonra mekaniği ters yüz eden bir harita
+- 16–20 **Birleştir:** iki rakip, tam haritalar, farklı kazanma koşulları
+- 21–25 **Zirve:** en zor haritalar, 25 = boss (özel davranışlı)
+
+Zorluk testere dişi: her zor seviyeden sonra bir nefes seviyesi.
+
 - **Yıldızlar:** ⭐ Kazan · ⭐⭐ Hiç kule kaybetme · ⭐⭐⭐ Hedef süreden (par) hızlı bitir.
-- Sonraki dünyanın kilidi yıldızla açılır.
-- Otomatik üretilen haritalar simetriktir, yani adil başlar. Elle yapılan seviyeler `tools/denge.html` ile kontrol edilir.
+- Sonraki dünyanın kilidi yıldızla açılır (Dünya 2: 30 yıldız).
+- Otomatik üretilen haritalar simetriktir ve `Levels.validate` ile doğrulanır. Elle yapılan seviyeler `tools/editor.html` ile tasarlanıp `tools/denge.html` ile ölçülür.
 
 ### Rakip kişilikleri
 
@@ -43,24 +53,51 @@
 | Sarı | Açgözlü | Önce gri kuleleri toplar, sonra büyük saldırı yapar |
 | Mor | Temkinli | Savunur, sadece kesin kazanacağı saldırıyı yapar |
 
-## Kule türleri ve yetenekler
+## Binalar, yetenekler ve hedefler
 
-**Kule türleri** (Faz 3):
-- **Kışla:** Standart kule.
-- **Kale:** Gelen askerlerin bir kısmını vurur, yavaş üretir.
-- **Hız kulesi:** Buradan çıkan askerler 2 kat hızlı yürür.
-- **Ambar:** Asker üretmez, bağlı dost kulelerin üretimini %25 artırır.
+### Binalar
+Binalar haritaya yerleştirilir, oyuncu inşa etmez (seviye tasarımı kontrolde kalır). Hepsi ele geçirilebilir; ele geçiren takım etkisini alır. Etki binanın seviyesiyle (asker sayısı eşikleri) büyür.
 
-**Yetenekler** (Faz 3): Altta, başparmağın ulaşacağı yerde 1–2 buton. Bekleme süreleriyle çalışır.
-- **Hücum:** Askerler 5 saniye hızlı yürür.
-- **Kalkan:** Bir kule 5 saniye hasar almaz.
-- **Dondur:** Bir düşman kulesi 4 saniye asker gönderemez.
+| Bina | Ne yapar | Stratejik etkisi | Dünya |
+|---|---|---|---|
+| 🏰 Kışla | Standart kule | — | 1 |
+| 🏹 **Okçu Kulesi** | Menzilindeki düşman askerlerine ok atar: sv1 her 1,2 sn, sv2 0,8 sn, sv3 0,5 sn'de bir asker düşürür | Koridor hâkimiyeti: okçunun yanından geçen yol sahibine pahalıya mal olur; okçuyu almak öncelik olur | 3 |
+| 🛡️ Kale | Gelen her 3 düşman askerinden 1'ini duvarda düşürür; yavaş üretir (×0,6) | Savunma noktası; tek kuleyle alınamaz, birlikte yüklenmeyi zorunlu kılar | 3 |
+| ⚡ Hız Kulesi | Buradan çıkan askerler 2× hızlı yürür | Uzak hedeflere baskın; kuşatma kırma | 4 |
+| 🌾 Ambar | Asker üretmez; ona bağlı (yol açılmış) dost kuleler %50 hızlı üretir | Arka hat ekonomisi; kaybedilince cephe zayıflar | 4 |
+| 🗼 Gözcü Kulesi | Menzili 2×, görüş engellerini (kule, kaya, ağaç) aşar | Menzil dünyalarında köprü görevi | 5 |
+| 🪨 Mancınık | Her 15 sn'de en yakın düşman kulesine taş atar: −5 asker (sv3: −10) | Kuşatmasız baskı; bulunduğu yer savaşın merkezi olur | 5 |
 
-Her seviyede her yetenekten 1 kullanım ücretsiz. Ek kullanım ödüllü reklamla ya da altınla alınır, seviye başına en fazla 1.
+Görsel: her binanın kendi Blender modeli (okçu: mazgalda ok atan küçük figür; kale: kalın duvar; hız: kanatlı çatı; ambar: samanlık; gözcü: uzun ince kule; mancınık: tekerlekli). 2B'de aynı silüetler ikon olarak.
 
-**Denge önlemleri** (Faz 2–3):
-- 60 askerin üstünde üretim yavaşlar. Önde olanın hep kazanmasını engeller.
-- 3 dakikadan sonra "Son Hücum" modu başlar: herkes 2 kat üretir, kilitlenmiş oyunlar biter.
+Yapay zekâ için her bina bir puan düzeltmesi: okçu/mancınık koridorunu puanlarken düşer, okçu/ambar ele geçirmeyi yüksek puanlar.
+
+### Arazi mekanikleri
+- **Buz** (D3): üstünden geçen askerler %40 yavaşlar. Kuşatma kurmak zorlaşır.
+- **Tepe** (D3): tepedeki kulenin menzili %50 fazla; 3B'de yükselti olarak görünür.
+- **Portal çifti** (D4): iki portal arasında görüş hattı aranmadan yol açılır.
+- **Lav çatlağı** (D5): her 20 sn'de 3 sn püskürür, üstünden geçen askerleri yok eder.
+- **Kapı / anahtar kule** (D5): anahtar kule ele geçirilince kapı açılır, haritanın öbür yarısı erişilir olur.
+
+### Yetenekler (D4'te açılır)
+Ekranın altında 2 buton, bekleme süreli. Seviye başına 1'er ücretsiz; ek kullanım ödüllü reklam ya da altın.
+- **Hücum:** 6 sn bütün askerlerin 2× hızlı.
+- **Kalkan:** seçtiğin kule 6 sn hasar almaz (kuşatmayı kırar).
+- **Dondur:** seçtiğin düşman kulesi 5 sn asker gönderemez.
+- **Takviye:** seçtiğin kuleye anında +15 asker.
+Yapay zekâ da kullanır: tehdit altındayken Kalkan, hedef 10'un altındayken Hücum.
+
+### Hedef çeşitleri (D5'ten itibaren, seçilen üçü)
+- **Kral kuleyi al:** sadece işaretli kuleyi almak yeter.
+- **Hayatta kal:** 90 sn boyunca hiçbir kuleni kaybetme; rakip baştan güçlü.
+- **Merkezi tut:** ortadaki kuleyi toplam 45 sn elinde tut.
+
+### Boss davranışları
+- **Dalga:** her 30 sn'de komşu kulelere 20 asker püskürtür.
+- **Aşama:** 60 askerin altına inince 10 sn kalkan açar, yan kuleleri güçlenir.
+- Boss seviyesinde ekranın üstünde boss can çubuğu.
+
+**Denge önlemleri (hazır):** 60 askerin üstünde üretim yavaşlar; 3. dakikada Son Hücum, 4. dakikada süre dolar.
 
 ## Gelir modeli
 
@@ -120,19 +157,26 @@ Seviye ortasında hiçbir zaman reklam çıkmaz.
 - [x] Yeni mekanikler için tanıtım kartları (ilk karşılaşmada bir kez)
 - [x] Seviye doğrulama (çakışma, engel üstünde kule, ulaşılabilirlik) ve botlarla denge ölçümü
 
-### Faz 3 — Derinlik
-- [ ] Kule türleri: Kale, Hız kulesi, Ambar
-- [ ] Yetenekler: Hücum, Kalkan, Dondur
-- [ ] Dünya 3–5 (yavaş ve stratejik tempo)
-- [ ] Mor rakip
+### Faz 3 — İçerik ve derinlik (adımlar)
+
+| Adım | İçerik | Durum |
+|---|---|---|
+| **A** | Seviye editörü (`tools/editor.html`), doğrulayıcı (`Levels.validate`), engel/menzil üreten üreteç, 25'lik dünyalar, kayıt taşıma | ✅ |
+| **B** | Binalar: Okçu, Kale, Hız, Ambar (oyun kuralı + yapay zekâ + 3B/2B görseller) | |
+| **C** | Dünya 3: Karlı Dağ — buz, tepeler, Okçu, Kale; 25 seviye + kar teması | |
+| **D** | Yetenekler (2 buton) + gelir bağlantısı | |
+| **E** | Dünya 4: Şeker Diyarı — portal, Hız, Ambar, Mor rakip; 25 seviye | |
+| **F** | Hedef çeşitleri + boss davranışları; Dünya 1–2'deki üreteç yuvalarının elle tasarlanması | |
+| **G** | Dünya 5: Volkan — lav, kapılar, Gözcü, Mancınık, 3 rakip; Sonsuz mod + günlük harita | |
+
+Her adım kendi başına yayınlanabilir. A+B+C bittiğinde oyun "3 dünya, 75 seviye, binalar" haline gelir: ilk gerçek oyuncu testi için hedef.
 
 ### Faz 4 — Gelir ve uzun ömür
 - [ ] Altın ve elmas, görünüm mağazası
 - [ ] Capacitor paketi + AdMob + RevenueCat
 - [ ] Ana ekrana eklenebilir web uygulaması (PWA) ve internetsiz oynama
-- [ ] Günlük harita + günlük ödül
 - [ ] Analitik
-- [ ] Seviye editörü (telefonda kule yerleştirip hemen deneme)
+- [ ] Sis (yalnızca menzildeki kuleler görünür) — oyuncu testine göre karar
 
 ## Temel kurallar (akış modeli)
 
@@ -177,7 +221,8 @@ Seviye ortasında hiçbir zaman reklam çıkmaz.
 - **Test modu:** `js/config.js` içindeki `KS.TEST_UNLOCK_ALL = true` bütün seviyeleri açar (haritada sarı uyarı görünür). **Yayından önce `false` yapılmalı.**
 
 - Oyunu açmak için `index.html` yeterli, dosyadan açınca da çalışır. Bu yüzden ES modülleri yerine sırayla yüklenen, `window.KS` paylaşan dosyalar kullanılıyor.
-- Yeni bir seviye eklerken önce `tools/denge.html` ile ölçün (engeller, menzil ve kişilikler dahil):
+- **Seviye yapmak:** `tools/editor.html` (ya da `tools/editor.html?n=12` ile var olan seviyeyi aç). Kule/engel koy, sürükle, seçili kuleyi ↑↓ ile büyüt; sağda doğrulama sorunları ve seçili kulenin görüş hattı görünür. "Oyna" ile dene, "Botlarla ölç" ile kazanma oranını gör, JSON'u kopyalayıp `js/levels.js` içindeki dünyanın `hand` listesine yuva numarasıyla ekle.
+- Yeni bir seviye eklerken `tools/denge.html` ile de ölçün (engeller, menzil ve kişilikler dahil):
   - İki botun kazanma oranı **%40'ın altındaysa** seviye fazla zor.
   - Medyan süre **par'ın üstündeyse** 3. yıldız fazla zor.
 - Oyun olayları (`G.on('capture' | 'win' | 'lose' | 'lane' | 'hit' | ...)`) ses, arayüz ve ileride analitik için tek bağlantı noktasıdır.

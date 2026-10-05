@@ -7,7 +7,7 @@
 
   const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.6l1.3-6.6L2.5 9.4l6.6-.8z"/></svg>';
   const LOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V8a5 5 0 0110 0v2h.5A1.5 1.5 0 0119 11.5v8a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 015 19.5v-8A1.5 1.5 0 016.5 10H7zm2 0h6V8a3 3 0 00-6 0v2z"/></svg>';
-  const STEP = 92;   // haritada iki seviye arası dikey mesafe (px)
+  const STEP = 84;   // haritada iki seviye arası dikey mesafe (px)
   let el = null;
 
   const UI = KS.UI = {};
