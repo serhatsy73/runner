@@ -187,8 +187,19 @@ Her adım kendi başına yayınlanabilir. A+B+C bittiğinde oyun "3 dünya, 75 s
 - **Görüş hattı:** arada kaya, ağaç, su ya da **başka bir kule** varsa yol açılamaz ("Arada kule var"). Ortadaki kuleyi almadan arkasındakine saldıramazsın.
 - **Son Hücum** (3. dakika): askerler 1,67 kat hızlı akar, geri sayım başlar. **4. dakikada süre dolar**, en güçlü taraf (üst çubuktaki güç) kazanır. Seviye hiçbir zaman 4 dakikayı geçmez.
 
+### Asker rütbeleri (uygulanan kural)
+- Rütbe = güç. Kule seviyesine göre gönderim deseni: sv1 hep 1. rütbe; sv2 her 5. asker 2. rütbe; sv3 `4×R1, R2, 4×R1, R3` döngüsü (`KS.RANKS`).
+- Yolda çarpışan askerlerin güçleri birbirinden düşer (R2 iki R1'i, R3 üç R1'i ya da R1+R2'yi götürür; kalan güçle yürümeye devam eder).
+- Kuleye varan asker gücü kadar vurur ya da takviye eder; ok bir güç düşürür (R2'ye iki ok gerekir).
+- Güç çubuğu ve yapay zekânın akış hesabı güçle ağırlıklı (`KS.RANK_AVG`).
+- Görsel: R2 daha büyük + koyu kuşak, R3 en büyük + yıldız.
+
+### Çit ve fıçı
+- `fence(x1, y1, x2, y2)`: ince duvar, görüşü keser; 3B'de ahşap çit modeli döşenir. `barrel(x, y)`: küçük yuvarlak engel.
+- Çayır 10–15 ve Karlı Dağ 4–6: simetrik, çitlerle bölünmüş elle yapılmış haritalar (renk avantajı yok). Üreteç bütün dünyalarda simetrik çit çiftleri ekler.
+
 ### Okçu kulesi (uygulanan kural)
-- Veri: `{ ..., kind: 'archer' }`. Sahibi tarafsız değilse menzilinden (`KS.ARCHER.range` = 0,17) **geçen** en yakın düşman askerine ok atar; doğrudan okçuya saldıranları vurmaz (yoksa tek yolla alınamaz bir kale oluyordu): sv1 1,2 sn, sv2 0,8 sn, sv3 0,5 sn'de bir. Vurulan asker yok olur.
+- Veri: `{ ..., kind: 'archer' }`. Sahibi tarafsız değilse menzilinden (seviyeye göre 0,15 / 0,19 / 0,23) **geçen** en yakın düşman askerine ok atar; doğrudan okçuya saldıranları vurmaz (yoksa tek yolla alınamaz bir kale oluyordu): sv1 1,2 sn, sv2 0,8 sn, sv3 0,5 sn'de bir. Vurulan asker yok olur.
 - Okçu %70 hızla üretir; görüş hattında diğer kuleler gibi engeldir.
 - Yapay zekâ: düşman okçusunun menzilinden geçen yollarda akış kaybını (atış hızı) hesaba katar; okçuyu ele geçirmeye +6 puan.
 - Görsel: kapsama alanı sahibinin renginde zemin diski; oklar üst katmanda kısa çizgi.

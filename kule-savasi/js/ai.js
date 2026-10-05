@@ -72,7 +72,7 @@
       const dx = (to.nx - f.nx) * KS.ASPECT, dy = to.ny - f.ny;
       const px = (k.nx - f.nx) * KS.ASPECT, py = k.ny - f.ny;
       const u = Math.max(0, Math.min(1, (px * dx + py * dy) / (dx * dx + dy * dy || 1)));
-      if (Math.hypot(px - dx * u, py - dy * u) < KS.ARCHER.range) loss += 1 / KS.ARCHER.interval[k.lvl];
+      if (Math.hypot(px - dx * u, py - dy * u) < KS.ARCHER.range[k.lvl]) loss += 1 / KS.ARCHER.interval[k.lvl];
     }
     return loss;
   }

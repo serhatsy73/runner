@@ -360,7 +360,7 @@
   function drawSoldier(s, lod) {
     const c = TEAMS[s.team];
     const pos = G.soldierPos(s);
-    const sr = Math.max(3.5, V.baseR * .2);
+    const sr = Math.max(3.5, V.baseR * .2) * (s.rank === 3 ? 1.5 : s.rank === 2 ? 1.25 : 1);
     if (lod) {
       ctx.fillStyle = c.dark;
       ctx.beginPath(); ctx.arc(pos.x, pos.y, sr, 0, Math.PI * 2); ctx.fill();
@@ -381,6 +381,12 @@
       ctx.arc(pos.x - sr * .35 + dx, y - sr * .1, sr * .16, 0, Math.PI * 2);
       ctx.arc(pos.x + sr * .35 + dx, y - sr * .1, sr * .16, 0, Math.PI * 2);
       ctx.fill();
+    }
+    if (s.rank >= 2) {
+      // rütbe işareti: 2 = koyu kuşak, 3 = yıldız
+      ctx.strokeStyle = c.dark; ctx.lineWidth = Math.max(1.5, sr * .22);
+      ctx.beginPath(); ctx.arc(pos.x, y, sr * .72, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+      if (s.rank === 3) { ctx.fillStyle = '#fff3a0'; ctx.strokeStyle = '#e8b93a'; ctx.lineWidth = 1; star(pos.x, y - sr * 1.35, sr * .45); ctx.fill(); ctx.stroke(); }
     }
   }
 
@@ -542,7 +548,7 @@
 
   // Okçunun kapsama alanı: sahibinin düşmanlarına ok atar
   function drawArcherRange(t) {
-    const r = KS.ARCHER.range, a = V.area, c = TEAMS[t.team];
+    const r = KS.ARCHER.range[t.lvl], a = V.area, c = TEAMS[t.team];
     ctx.save();
     ctx.globalAlpha = .55;
     ctx.fillStyle = c.light; ctx.strokeStyle = c.dark; ctx.lineWidth = 1.5; ctx.setLineDash([5, 6]);

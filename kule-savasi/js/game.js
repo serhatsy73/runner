@@ -47,7 +47,7 @@
 
   G.besieged = t => t.hitAt !== undefined && G.time - t.hitAt < KS.SIEGE;
   G.sendInterval = t => SEND[t.lvl] * (G.surge ? KS.SURGE_SEND : 1);
-  G.flowOf = t => 1 / G.sendInterval(t);   // kulenin saniyede akıttığı toplam asker
+  G.flowOf = t => KS.RANK_AVG[t.lvl] / G.sendInterval(t);   // kulenin saniyede akıttığı toplam güç (rütbe ortalamalı)
   G.laneFlow = l => G.flowOf(l.from) / Math.max(1, G.lanes.filter(o => o.from === l.from).length);
 
   G.showBanner = (text, sub, dur) => { G.banner = { text, sub: sub || '', t0: G.time, dur: dur || 2.6 }; };
@@ -162,8 +162,11 @@
       t.sendT = Math.min(t.sendT - iv, iv);
       t.rr = ((t.rr || 0) + 1) % outs.length;
       const l = outs[t.rr];
+      const pat = KS.RANKS[t.lvl];
+      t.sent = (t.sent || 0) + 1;
+      const rank = pat[(t.sent - 1) % pat.length];
       G.soldiers.push({
-        from: t, to: l.to, team: l.team,
+        from: t, to: l.to, team: l.team, rank, hp: rank,
         p: Math.min(.45, G.towerR(t) * .8 / G.dist(t, l.to)),
         off: (Math.random() * 2 - 1) * .55, age: Math.random() * 3, dead: false,
       });
@@ -216,14 +219,19 @@
       if (!g.fwd.length || !g.back.length) continue;
       g.fwd.sort((a, b) => b.p - a.p);
       g.back.sort((a, b) => b.p - a.p);
+      // güçler birbirinden düşer: 2. rütbe iki 1. rütbeyi, 3. rütbe üçünü (ya da bir 1. + bir 2.) götürür
       for (const A of g.fwd) {
-        const B = g.back.find(s => !s.dead && s.team !== A.team);
-        if (!B) break;
-        if (A.p + B.p < 1) continue;
-        A.dead = B.dead = true;
-        const pos = G.soldierPos(A);
-        fx.burst(pos.x, pos.y, '#ffffff', 5, .6);
-        if (A.team === PLAYER || B.team === PLAYER) G.emit('clash');
+        while (!A.dead) {
+          const B = g.back.find(s => !s.dead && s.team !== A.team && A.p + s.p >= 1);
+          if (!B) break;
+          const d = Math.min(A.hp, B.hp);
+          A.hp -= d; B.hp -= d;
+          if (A.hp <= 0) A.dead = true;
+          if (B.hp <= 0) B.dead = true;
+          const pos = G.soldierPos(A);
+          fx.burst(pos.x, pos.y, '#ffffff', 4 + d * 2, .6);
+          if (A.team === PLAYER || B.team === PLAYER) G.emit('clash');
+        }
       }
     }
   }
@@ -239,7 +247,7 @@
       t.shotT += dt;
       const iv = KS.ARCHER.interval[t.lvl];
       if (t.shotT < iv) continue;
-      let best = null, bd = KS.ARCHER.range, bpos = null;
+      let best = null, bd = KS.ARCHER.range[t.lvl], bpos = null;
       for (const s of G.soldiers) {
         if (s.dead || s.team === t.team || s.to === t) continue;
         const pos = G.soldierPos(s);
@@ -248,15 +256,16 @@
       }
       if (!best) { t.shotT = iv; continue; }
       t.shotT = 0;
-      best.dead = true;
+      best.hp -= 1;
+      if (best.hp <= 0) best.dead = true;
       G.particles.push({ type: 'arrow', x: t.x, y: t.y, tx: bpos.x, ty: bpos.y, vx: 0, vy: 0, life: .22, max: .22, color: KS.INK });
-      fx.burst(bpos.x, bpos.y, KS.TEAMS[best.team].fill, 3, .4);
+      fx.burst(bpos.x, bpos.y, KS.TEAMS[best.team].fill, best.dead ? 3 : 1, .4);
       G.emit('shot', { tower: t, team: best.team });
     }
   }
 
   function arrive(s) {
-    const t = s.to;
+    const t = s.to, hp = s.hp || 1;
     if (t.team === s.team) {
       // kuşatma altındaki kuleye takviye giremez; yoksa arkadan beslenen kule hiç düşmez
       if (G.besieged(t)) {
@@ -264,11 +273,11 @@
         fx.burst(pos.x, pos.y, '#b9bdc6', 2, .35);
         return;
       }
-      t.count = Math.min(CAP, t.count + 1);
+      t.count = Math.min(CAP, t.count + hp);
       t.squish = 1;
       return;
     }
-    t.count -= 1;
+    t.count -= hp;
     t.shake = 1;
     t.hitAt = G.time;
     const pos = G.soldierPos(s);
@@ -291,7 +300,7 @@
   G.power = () => {
     const sum = [0, 0, 0, 0];
     for (const t of G.towers) sum[t.team] += t.count;
-    for (const s of G.soldiers) sum[s.team] += 1;
+    for (const s of G.soldiers) sum[s.team] += s.hp || 1;
     return sum;
   };
   G.timeLeft = () => Math.max(0, KS.FINAL_AT - G.playTime);

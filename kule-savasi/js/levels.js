@@ -19,11 +19,17 @@
   const tree = (x, y, r) => ({ type: 'tree', x, y, r: r || .04 });
   const lake = (x, y, rx, ry) => ({ type: 'lake', x, y, rx, ry });
   const river = (pts, w, bridges) => ({ type: 'river', pts, w, bridges });
+  const fence = (x1, y1, x2, y2) => ({ type: 'fence', x1, y1, x2, y2, w: .02 });
+  const barrel = (x, y) => ({ type: 'barrel', x, y, r: .028 });
 
   const INTRO = {
     multi: {
       title: 'Birlikte saldır',
       text: 'Sürüklerken diğer mavi kulelerinin <strong>üstünden geç</strong>. Bıraktığında hepsi aynı hedefe akar. Ortadaki büyük kuleyi birlikte çok daha hızlı alırsın!',
+    },
+    ranks: {
+      title: 'Rütbeli askerler',
+      text: 'Büyük kuleler <strong>rütbeli</strong> asker çıkarır: 2. seviye kule her 5. askerini 2. rütbe, 3. seviye kule her 10. askerini 3. rütbe gönderir. Rütbe = güç: 2. rütbe yolda iki askere bedeldir, kuleye de 2 vurur. Büyümek artık sadece hız değil, kalite de demek.',
     },
     yellow: {
       title: 'Yeni rakip: Sarı',
@@ -61,7 +67,7 @@
       t(.28, .86, P, 12), t(.72, .86, P, 12), t(.5, .12, R, 15),
       t(.5, .64, N, 22), t(.18, .5, N, 5), t(.82, .5, N, 5), t(.5, .36, N, 10), t(.25, .24, N, 6), t(.75, .24, N, 6),
     ]},
-    4: { par: 75, ai: [R], towers: [   // güçlü kırmızı
+    4: { par: 75, ai: [R], intro: 'ranks', towers: [   // güçlü kırmızı: 3. seviye, rütbeli asker
       t(.2, .86, P, 18), t(.8, .86, P, 12), t(.5, .12, R, 40),
       t(.5, .72, N, 15), t(.18, .58, N, 10), t(.82, .58, N, 10), t(.3, .36, N, 12), t(.7, .36, N, 12), t(.5, .46, N, 30),
     ]},
@@ -85,6 +91,31 @@
       t(.3, .9, P, 20), t(.7, .9, P, 20), t(.15, .1, R, 20), t(.15, .35, N, 8), t(.85, .1, Y, 20), t(.85, .35, N, 8),
       t(.5, .12, N, 25), t(.5, .4, N, 15), t(.3, .6, N, 8), t(.7, .6, N, 8), t(.5, .72, N, 12),
     ]},
+    10: { par: 150, ai: [R], tip: 'Çitler yolu keser: yandan dolaş', towers: [   // çitli avlu
+      t(.5, .9, P, 22), t(.5, .1, R, 18), t(.5, .5, N, 16),
+      t(.18, .7, N, 8), t(.82, .7, N, 8), t(.18, .3, N, 8), t(.82, .3, N, 8),
+    ], obstacles: [fence(.34, .62, .66, .62), fence(.34, .38, .66, .38)] },
+    11: { par: 100, ai: [R], towers: [   // dört köşe: çitli merkez kutusu
+      t(.2, .88, P, 16), t(.8, .88, P, 16), t(.2, .12, R, 16), t(.8, .12, R, 16),
+      t(.5, .5, N, 15), t(.5, .78, N, 8), t(.5, .22, N, 8), t(.12, .5, N, 8), t(.88, .5, N, 8),
+    ], obstacles: [fence(.35, .4, .35, .6), fence(.65, .4, .65, .6)] },
+    12: { par: 60, ai: [R], towers: [   // koridor: ortadaki duvar
+      t(.5, .9, P, 24), t(.5, .1, R, 24), t(.5, .5, N, 18),
+      t(.3, .7, N, 6), t(.7, .7, N, 6), t(.3, .3, N, 6), t(.7, .3, N, 6),
+    ], obstacles: [fence(.5, .25, .5, .42), fence(.5, .58, .5, .75)] },
+    13: { par: 110, ai: [R], towers: [   // fıçı deposu
+      t(.5, .88, P, 20), t(.5, .12, R, 20), t(.5, .5, N, 12),
+      t(.25, .65, N, 8), t(.75, .65, N, 8), t(.25, .35, N, 8), t(.75, .35, N, 8),
+    ], obstacles: [barrel(.38, .76), barrel(.62, .76), barrel(.38, .24), barrel(.62, .24), barrel(.5, .68), barrel(.5, .32)] },
+    14: { par: 90, ai: [R], tip: 'Merkez çitle çevrili: köşelerden gir', towers: [   // ring
+      t(.5, .9, P, 24), t(.5, .1, R, 16), t(.5, .5, N, 18),
+      t(.2, .75, N, 8), t(.8, .75, N, 8), t(.12, .5, N, 10), t(.88, .5, N, 10), t(.2, .25, N, 8), t(.8, .25, N, 8),
+    ], obstacles: [fence(.4, .38, .6, .38), fence(.4, .62, .6, .62), fence(.38, .44, .38, .56), fence(.62, .44, .62, .56)] },
+    15: { par: 150, ai: [R], towers: [   // çift geçit: uzun çit, iki kapı
+      t(.5, .9, P, 24), t(.5, .1, R, 20),
+      t(.36, .62, N, 8), t(.64, .62, N, 8), t(.36, .38, N, 8), t(.64, .38, N, 8),
+      t(.15, .72, N, 6), t(.85, .72, N, 6), t(.15, .28, N, 6), t(.85, .28, N, 6),
+    ], obstacles: [fence(0, .5, .28, .5), fence(.44, .5, .56, .5), fence(.72, .5, 1, .5)] },
     25: { boss: true, par: 115, ai: [R], tip: 'Boss: Kırmızı Kale!', towers: [
       t(.2, .88, P, 18), t(.5, .9, P, 18), t(.8, .88, P, 18), t(.5, .1, R, 30), t(.25, .22, R, 10), t(.75, .22, R, 10),
       t(.5, .42, N, 20), t(.2, .55, N, 10), t(.8, .55, N, 10), t(.5, .66, N, 8),
@@ -151,11 +182,26 @@
     ], obstacles: [tree(.35, .5), tree(.65, .5)] },
   };
 
+  Object.assign(SNOW, {
+    4: { par: 150, ai: [R], range: .5, tip: 'Okçular çitlerin arkasında', towers: [
+      t(.5, .9, P, 26), t(.5, .1, R, 14), t(.3, .5, N, 10, 'archer'), t(.7, .5, N, 10, 'archer'),
+      t(.5, .7, N, 10), t(.5, .3, N, 10), t(.15, .78, N, 6), t(.85, .78, N, 6), t(.15, .22, N, 6), t(.85, .22, N, 6),
+    ], obstacles: [fence(.2, .6, .37, .6), fence(.63, .6, .8, .6), fence(.2, .4, .37, .4), fence(.63, .4, .8, .4)] },
+    5: { par: 150, ai: [R], range: .45, tip: 'Okçu geçidi', towers: [
+      t(.5, .9, P, 26), t(.5, .1, R, 18), t(.5, .3, R, 8, 'archer'), t(.5, .7, N, 8, 'archer'), t(.5, .5, N, 14),
+      t(.15, .6, N, 8), t(.85, .6, N, 8), t(.15, .4, N, 8), t(.85, .4, N, 8),
+    ], obstacles: [fence(.38, .3, .38, .7), fence(.62, .3, .62, .7)] },
+    6: { par: 80, ai: [R], range: .5, tip: 'İki okçu seni bekliyor', towers: [
+      t(.3, .9, P, 20), t(.7, .9, P, 20), t(.5, .1, R, 24), t(.25, .35, R, 8, 'archer'), t(.75, .35, R, 8, 'archer'),
+      t(.5, .58, N, 16), t(.15, .65, N, 8), t(.85, .65, N, 8), t(.5, .76, N, 8),
+    ], obstacles: [fence(.3, .5, .45, .5), fence(.55, .5, .7, .5)] },
+  });
+
   // gen: üretecin bu dünyada kullandığı özellikler
   const WORLDS = [
-    { id: 1, name: 'Çayır', theme: 'meadow', stars: 0, hand: MEADOW, gen: { range: 0, obstacles: false, baseRed: 12 } },
-    { id: 2, name: 'Göl Kıyısı', theme: 'lake', stars: 30, hand: LAKE, gen: { range: .5, obstacles: true, baseRed: 9 } },
-    { id: 3, name: 'Karlı Dağ', theme: 'snow', stars: 70, hand: SNOW, gen: { range: .5, obstacles: true, lakes: false, archers: true, baseRed: 9 } },
+    { id: 1, name: 'Çayır', theme: 'meadow', stars: 0, hand: MEADOW, gen: { range: 0, obstacles: false, fences: true, baseRed: 12 } },
+    { id: 2, name: 'Göl Kıyısı', theme: 'lake', stars: 30, hand: LAKE, gen: { range: .5, obstacles: true, fences: true, baseRed: 9 } },
+    { id: 3, name: 'Karlı Dağ', theme: 'snow', stars: 70, hand: SNOW, gen: { range: .5, obstacles: true, lakes: false, archers: true, fences: true, baseRed: 9 } },
     { id: 4, name: 'Şeker Diyarı', soon: true },
     { id: 5, name: 'Volkan', soon: true },
   ];
@@ -246,7 +292,7 @@
     const slow = g.range || g.obstacles ? 1.6 : 1;
     const cfg = { par: Math.round((45 + T.length * 5 + (two ? 15 : 0)) * slow), ai: two ? [R, Y] : [R], towers: T };
     if (g.range) cfg.range = g.range - d * .05;
-    if (g.obstacles) cfg.obstacles = genObstacles(rnd, T, d, two, g.lakes !== false);
+    if (g.obstacles || g.fences) cfg.obstacles = genObstacles(rnd, T, d, two, g.lakes !== false, !!g.obstacles, !!g.fences);
     return cfg;
   }
 
@@ -263,11 +309,30 @@
     }
   }
 
-  function genObstacles(rnd, T, d, two, lakes) {
+  function genObstacles(rnd, T, d, two, lakes, solid, fences) {
     const obs = [];
     const clear = (x, y, r) => T.every(o => ndist(o, { x, y }) >= r + .075);
+    // simetrik çit çiftleri: kısa duvarlar, kulelerden uzak
+    if (fences) {
+      const segClear = (x1, y1, x2, y2) => T.every(o => {
+        const ax = x1 * A, ay = y1, bx = x2 * A, by = y2, px = o.x * A, py = o.y;
+        const dx = bx - ax, dy = by - ay, k = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1)));
+        return Math.hypot(px - ax - dx * k, py - ay - dy * k) >= .09;
+      });
+      const wantF = 1 + Math.floor(d * 1.5);
+      for (let made = 0, tries = 0; made < wantF && tries < 300; tries++) {
+        const horiz = rnd() < .6, len = .1 + rnd() * .12;
+        const x = .1 + rnd() * .35, y = .2 + rnd() * .6;
+        const x2 = horiz ? Math.min(.48, x + len) : x, y2 = horiz ? y : Math.min(.85, y + len * 1.6);
+        const mx = 1 - x, mx2 = 1 - x2, my = two ? y : 1 - y, my2 = two ? y2 : 1 - y2;
+        if (!segClear(x, y, x2, y2) || !segClear(mx, my, mx2, my2)) continue;
+        obs.push(fence(x, y, x2, y2), fence(mx, my, mx2, my2));
+        made++;
+      }
+    }
+    if (!solid) return obs;
     const want = 1 + Math.floor(d * 1.6);
-    for (let tries = 0; obs.length < want && tries < 300; tries++) {
+    for (let tries = 0; obs.length < want + (fences ? 2 : 0) && tries < 300; tries++) {
       const kind = rnd();
       if (kind < .3 && lakes) {
         const rx = .07 + rnd() * .05, ry = .07 + rnd() * .05, x = .5, y = .3 + rnd() * .4;

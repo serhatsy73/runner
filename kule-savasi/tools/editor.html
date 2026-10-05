@@ -54,6 +54,8 @@
     <button data-tool="lake">Göl</button>
     <button data-tool="river">Nehir</button>
     <button data-tool="bridge">Köprü</button>
+    <button data-tool="fence">Çit</button>
+    <button data-tool="barrel">Fıçı</button>
     <button data-tool="erase">Sil</button>
   </div>
   <div class="hint" id="toolHint">Tıkla: seç. Sürükle: taşı. Seçili kuleyi ↑↓ ile büyüt/küçült, Delete ile sil.</div>
@@ -122,7 +124,7 @@
   // ---------- durum ----------
   let cfg = blank();
   let tool = 'select', sel = null;          // sel: { kind: 'tower'|'obs', i }
-  let drag = null, riverDraft = null;
+  let drag = null, riverDraft = null, fenceDraft = null;
   let mode = 'edit';                         // edit | play | measure
 
   function blank() {
@@ -191,7 +193,7 @@
         const near = (o.bridges || []).some(b => dd({ x: b[0], y: b[1] }, p) < .05);
         if (near) return i;
         if (KS.Terrain.pointBlocked([Object.assign({}, o, { bridges: [] })], p.x * A, p.y, 0)) return i;
-      } else if (KS.Terrain.pointBlocked([o], p.x * A, p.y, 0)) return i;
+      } else if (KS.Terrain.pointBlocked([o], p.x * A, p.y, o.type === 'fence' ? .015 : 0)) return i;
     }
     return -1;
   }
@@ -206,11 +208,17 @@
     const ti = hitTower(p);
     if (tool === 'select') {
       if (ti >= 0) { sel = { kind: 'tower', i: ti }; drag = { kind: 'tower', i: ti, ox: cfg.towers[ti].x - p.x, oy: cfg.towers[ti].y - p.y }; }
-      else { const oi = hitObstacle(p); sel = oi >= 0 ? { kind: 'obs', i: oi } : null; if (oi >= 0 && cfg.obstacles[oi].type !== 'river') drag = { kind: 'obs', i: oi, ox: cfg.obstacles[oi].x - p.x, oy: cfg.obstacles[oi].y - p.y }; }
+      else { const oi = hitObstacle(p); sel = oi >= 0 ? { kind: 'obs', i: oi } : null; if (oi >= 0 && cfg.obstacles[oi].type !== 'river' && cfg.obstacles[oi].type !== 'fence') drag = { kind: 'obs', i: oi, ox: cfg.obstacles[oi].x - p.x, oy: cfg.obstacles[oi].y - p.y }; }
     } else if (tool === 'tower') {
       cfg.towers.push({ x: snap(p.x), y: snap(p.y), team: NEUTRAL, count: 8 });
       sel = { kind: 'tower', i: cfg.towers.length - 1 };
       drag = { kind: 'tower', i: sel.i, ox: 0, oy: 0 };
+    } else if (tool === 'barrel') {
+      cfg.obstacles.push({ type: 'barrel', x: snap(p.x), y: snap(p.y), r: .028 });
+      sel = { kind: 'obs', i: cfg.obstacles.length - 1 };
+    } else if (tool === 'fence') {
+      if (!fenceDraft) fenceDraft = { x1: snap(p.x), y1: snap(p.y) };
+      else { cfg.obstacles.push({ type: 'fence', x1: fenceDraft.x1, y1: fenceDraft.y1, x2: snap(p.x), y2: snap(p.y), w: .02 }); fenceDraft = null; sel = { kind: 'obs', i: cfg.obstacles.length - 1 }; }
     } else if (tool === 'rock' || tool === 'tree') {
       cfg.obstacles.push({ type: tool, x: snap(p.x), y: snap(p.y), r: tool === 'rock' ? .036 : .04 });
       sel = { kind: 'obs', i: cfg.obstacles.length - 1 };
@@ -244,7 +252,7 @@
   stage.addEventListener('dblclick', () => { if (tool === 'river' && riverDraft && riverDraft.pts.length >= 2) { cfg.obstacles.push(riverDraft); sel = { kind: 'obs', i: cfg.obstacles.length - 1 }; riverDraft = null; apply(); } });
   window.addEventListener('keydown', e => {
     if (mode !== 'edit' || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    if (e.key === 'Escape') { riverDraft = null; sel = null; apply(); }
+    if (e.key === 'Escape') { riverDraft = null; fenceDraft = null; sel = null; apply(); }
     if (!sel) return;
     if (e.key === 'Delete' || e.key === 'Backspace') { (sel.kind === 'tower' ? cfg.towers : cfg.obstacles).splice(sel.i, 1); sel = null; apply(); }
     if (sel.kind === 'tower' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { const t = cfg.towers[sel.i]; t.count = Math.max(0, Math.min(99, t.count + (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 5 : 1))); apply(); }
@@ -282,8 +290,14 @@
       const o = cfg.obstacles[sel.i];
       c.strokeStyle = '#fff'; c.lineWidth = 3; c.setLineDash([6, 5]);
       if (o.type === 'river') { c.beginPath(); o.pts.forEach(([x, y], i) => { const q = toPx(x, y); i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y); }); c.stroke(); }
+      else if (o.type === 'fence') { const a = toPx(o.x1, o.y1), b = toPx(o.x2, o.y2); c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); }
       else { const p = toPx(o.x, o.y); c.beginPath(); c.ellipse(p.x, p.y, (o.rx || o.r) / A * V.area.w + 6, (o.ry || o.r) * V.area.h + 6, 0, 0, Math.PI * 2); c.stroke(); }
       c.setLineDash([]);
+    }
+    if (fenceDraft) {
+      const a = toPx(fenceDraft.x1, fenceDraft.y1);
+      c.fillStyle = '#4d8fd6'; c.beginPath(); c.arc(a.x, a.y, 6, 0, Math.PI * 2); c.fill();
+      c.font = '600 13px ' + KS.FONT; c.fillText('Çit: ikinci ucu tıkla, Esc iptal', V.area.x + 8, V.area.y + V.area.h - 10);
     }
     if (riverDraft) {
       c.strokeStyle = '#4d8fd6'; c.lineWidth = 4; c.setLineDash([8, 6]);
@@ -302,7 +316,7 @@
 
   // ---------- panel ----------
   document.querySelectorAll('#tools button').forEach(b => b.addEventListener('click', () => {
-    tool = b.dataset.tool; riverDraft = null;
+    tool = b.dataset.tool; riverDraft = null; fenceDraft = null;
     document.querySelectorAll('#tools button').forEach(x => x.classList.toggle('on', x === b));
     $('toolHint').textContent = {
       select: 'Tıkla: seç. Sürükle: taşı. Seçili kuleyi ↑↓ ile büyüt/küçült (Shift: 5), Delete ile sil.',
@@ -310,6 +324,7 @@
       rock: 'Tıkladığın yere kaya koyar.', tree: 'Tıkladığın yere ağaç koyar.', lake: 'Tıkladığın yere göl koyar; seçip boyutunu değiştir.',
       river: 'Tıklayarak nokta ekle, çift tıklayarak bitir. Kenarların dışına taşır (−0.05 / 1.05).',
       bridge: 'Nehrin üstüne tıkla: köprü ekler.', erase: 'Tıkladığın kuleyi ya da engeli siler.',
+      fence: 'İki kez tıkla: çitin başı ve sonu. Çit görüşü keser.', barrel: 'Tıkladığın yere fıçı koyar (küçük engel).',
     }[tool];
   }));
 
@@ -358,6 +373,7 @@
       };
       if (o.type === 'lake') { num('Genişlik', 'rx', .01, .03, .3); num('Yükseklik', 'ry', .01, .03, .3); }
       else if (o.type === 'river') { num('Nehir genişliği', 'w', .005, .03, .15); }
+      else if (o.type === 'fence') { num('x1', 'x1', .01, 0, 1); num('y1', 'y1', .01, 0, 1); num('x2', 'x2', .01, 0, 1); num('y2', 'y2', .01, 0, 1); }
       else num('Yarıçap', 'r', .005, .02, .1);
     }
     const issues = Levels.validate(cfg);
@@ -379,7 +395,7 @@
     out.towers = cfg.towers.map(t => { const o = { x: r(t.x), y: r(t.y), team: t.team, count: t.count }; if (t.kind && t.kind !== 'barracks') o.kind = t.kind; return o; });
     if (cfg.obstacles.length) out.obstacles = cfg.obstacles.map(o => {
       const c = Object.assign({}, o);
-      for (const k of ['x', 'y', 'r', 'rx', 'ry', 'w']) if (k in c) c[k] = r(c[k]);
+      for (const k of ['x', 'y', 'r', 'rx', 'ry', 'w', 'x1', 'y1', 'x2', 'y2']) if (k in c) c[k] = r(c[k]);
       if (c.pts) c.pts = c.pts.map(p => [r(p[0]), r(p[1])]);
       if (c.bridges) c.bridges = c.bridges.map(p => [r(p[0]), r(p[1])]);
       return c;

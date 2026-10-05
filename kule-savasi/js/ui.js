@@ -163,7 +163,7 @@
     <ul class="steps">
       <li><b>1</b><span>Mavi kulenden bir kuleye <strong>sürükle</strong>. Yol boyunca sürekli asker akar; kulen askerini harcamaz, <strong>büyümeye devam eder</strong>. Arada başka bir kule varsa yol açılamaz.</span></li>
       <li><b>2</b><span>Sürüklerken diğer mavi kulelerinin <strong>üstünden geç</strong>: hepsi birden saldırır.</span></li>
-      <li><b>3</b><span>Düşman askeri vurdukça kulenin sayısı azalır, 0'a inince kule <strong>senin</strong> olur. 20 ve 40 askerde kule büyür: daha hızlı akıtır, daha çok yol açar.</span></li>
+      <li><b>3</b><span>Düşman askeri vurdukça kulenin sayısı azalır, 0'a inince kule <strong>senin</strong> olur. 20 ve 40 askerde kule büyür: daha hızlı akıtır, daha çok yol açar ve <strong>rütbeli asker</strong> çıkarır (2. rütbe 2 asker gücünde, 3. rütbe 3).</span></li>
       <li><b>4</b><span>Kendi kulene <strong>dokun</strong>: ondan çıkan yollar durur. Tek bir yolu kesmek için çizginin üstünden <strong>kaydır</strong>.</span></li>
       <li><b>5</b><span>Saldırı altındaki kuleye <strong>takviye giremez</strong>. 3. dakikada <strong>Son Hücum</strong> başlar; 4. dakikada süre dolar ve en güçlü taraf kazanır.</span></li>
     </ul>`;

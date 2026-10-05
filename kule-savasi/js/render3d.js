@@ -241,9 +241,9 @@
     if (t.kind === 'archer') {
       const m = instance('archer', t.team); m.scale.setScalar(ARCHER_SCALE[t.lvl]); n.group.add(m);
       const ring = new T.Mesh(new T.RingGeometry(.97, 1, 64), new T.MeshBasicMaterial({ color: TEAMS[t.team].dark, transparent: true, opacity: .5, depthWrite: false }));
-      ring.rotation.x = -Math.PI / 2; ring.position.y = .03; ring.scale.setScalar(KS.ARCHER.range * V.area.h); ring.renderOrder = 1; ring.visible = t.team !== NEUTRAL;
+      ring.rotation.x = -Math.PI / 2; ring.position.y = .03; ring.scale.setScalar(KS.ARCHER.range[t.lvl] * V.area.h); ring.renderOrder = 1; ring.visible = t.team !== NEUTRAL;
       const disc = new T.Mesh(new T.CircleGeometry(1, 48), new T.MeshBasicMaterial({ color: TEAMS[t.team].fill, transparent: true, opacity: .12, depthWrite: false }));
-      disc.rotation.x = -Math.PI / 2; disc.position.y = .025; disc.scale.setScalar(KS.ARCHER.range * V.area.h); disc.visible = ring.visible;
+      disc.rotation.x = -Math.PI / 2; disc.position.y = .025; disc.scale.setScalar(KS.ARCHER.range[t.lvl] * V.area.h); disc.visible = ring.visible;
       n.group.add(ring, disc);
       n.ringed = true;
     } else n.group.add(instance('castle_l' + t.lvl, t.team));
@@ -296,6 +296,21 @@
         const [x, z] = px(o.x, o.y);
         const m = instance('rock', NEUTRAL); m.scale.setScalar(o.r * S / .42); m.rotation.y = x * 3.1; m.position.set(x, 0, z);
         terrainGroup.add(m);
+      } else if (o.type === 'barrel') {
+        const [x, z] = px(o.x, o.y);
+        const m = instance('barrel', NEUTRAL); m.scale.setScalar(o.r * S / .27); m.rotation.y = z * 2.7; m.position.set(x, 0, z);
+        terrainGroup.add(m);
+      } else if (o.type === 'fence') {
+        const [x0, z0] = px(o.x1, o.y1), [x1, z1] = px(o.x2, o.y2);
+        const len = Math.hypot(x1 - x0, z1 - z0), ang = Math.atan2(z1 - z0, x1 - x0);
+        const n = Math.max(1, Math.round(len / 1.1)), seg = len / n;
+        for (let i = 0; i < n; i++) {
+          const m = instance('fence', NEUTRAL);
+          m.scale.set(seg / 1.0, .9, 1);
+          m.rotation.y = -ang;
+          m.position.set(x0 + (x1 - x0) * (i + .5) / n, 0, z0 + (z1 - z0) * (i + .5) / n);
+          terrainGroup.add(m);
+        }
       } else if (o.type === 'tree') {
         const [x, z] = px(o.x, o.y);
         const m = instance('tree', NEUTRAL); m.scale.setScalar(o.r * S / .36); m.rotation.y = z * 2.3; m.position.set(x, 0, z);
@@ -452,7 +467,7 @@
       const sq = t.squish * .08;
       g.position.x = t.x + Math.sin(G.time * 70) * t.shake * .06;
       g.scale.set(pop * (1 + sq), pop * (1 - sq), pop * (1 + sq));
-      if (n.ringed) for (let i = 1; i < g.children.length; i++) g.children[i].scale.setScalar(KS.ARCHER.range * V.area.h / (pop * (1 + sq)));
+      if (n.ringed) for (let i = 1; i < g.children.length; i++) g.children[i].scale.setScalar(KS.ARCHER.range[t.lvl] * V.area.h / (pop * (1 + sq)));
     }
   }
 
@@ -484,7 +499,7 @@
       const s = G.soldiers[i];
       const pos = G.soldierPos(s);
       const hop = Math.abs(Math.sin(s.age * 12)) * .07;
-      tmpM.compose(tmpV.set(pos.x, hop, pos.y), tmpQ.identity(), tmpS.setScalar(.95));
+      tmpM.compose(tmpV.set(pos.x, hop, pos.y), tmpQ.identity(), tmpS.setScalar(s.rank === 3 ? 1.5 : s.rank === 2 ? 1.22 : .95));
       for (const k in soldierMeshes) soldierMeshes[k].setMatrixAt(i, tmpM);
       soldierMeshes.soldier_body.setColorAt(i, tmpC.set(TEAMS[s.team].fill));
       soldierMeshes.soldier_helmet.setColorAt(i, tmpC.set(TEAMS[s.team].dark));
@@ -651,7 +666,26 @@
     }
   }
 
+  function drawRankMarks(c, pxR) {
+    for (const s of G.soldiers) {
+      if (s.rank < 2) continue;
+      const pos = G.soldierPos(s);
+      const q = project(pos.x, s.rank === 3 ? .95 : .78, pos.y);
+      if (s.rank === 3) {
+        c.fillStyle = '#fff3a0'; c.strokeStyle = '#e8b93a'; c.lineWidth = 1;
+        const sz = pxR * .22;
+        c.beginPath();
+        for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? sz * .45 : sz; c.lineTo(q.x + Math.cos(a) * rr, q.y + Math.sin(a) * rr); }
+        c.closePath(); c.fill(); c.stroke();
+      } else {
+        c.fillStyle = TEAMS[s.team].dark;
+        c.beginPath(); c.arc(q.x, q.y, pxR * .09, 0, Math.PI * 2); c.fill();
+      }
+    }
+  }
+
   function drawTextParticles(c, pxR) {
+    drawRankMarks(c, pxR);
     for (const p of G.particles) {
       if (p.type === 'arrow') {
         const k = p.life / p.max, u = 1 - k;

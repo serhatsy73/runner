@@ -305,6 +305,26 @@ def archer():
     return join(parts, 'archer')
 
 
+def fence():
+    """Çit: X ekseni boyunca 1 birim; iki direk ve iki kiriş. Oyun uzunluğa göre ölçekler/döşer."""
+    parts = []
+    for sx in (-1, 1):
+        parts.append(box('fence_post', (0.07, 0.07, 0.46), (sx * 0.47, 0, 0.23), 'wood', bevel=0.01))
+        parts.append(cone('fence_cap', 0.06, 0.0, 0.07, (sx * 0.47, 0, 0.46), 'wood', verts=8))
+    for z in (0.18, 0.36):
+        parts.append(box('fence_rail', (1.0, 0.035, 0.055), (0, 0, z), 'wood_light', bevel=0.008))
+    return join(parts, 'fence')
+
+
+def barrel():
+    parts = [cylinder('barrel_body', 0.26, 0.5, (0, 0, 0), 'wood_light', verts=16)]
+    for z in (0.12, 0.38):
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.265, minor_radius=0.02, major_segments=20, minor_segments=6, location=(0, 0, z))
+        parts.append(finish(active(), 'barrel_band', 'wood', smooth=True))
+    parts.append(cylinder('barrel_lid', 0.22, 0.02, (0, 0, 0.5), 'wood', verts=16, smooth=False))
+    return join(parts, 'barrel')
+
+
 def soldier():
     """Asker üç parça: gövde (takım rengi), miğfer (koyu takım rengi), gözler. Oyunda toplu (instanced) çizilir."""
     body = sphere('soldier_body', 0.17, (0, 0, 0.2), 'team', scale=(1, 0.92, 1.15))
@@ -389,7 +409,7 @@ def flower():
 
 def main():
     reset_scene()
-    objs = [castle(1), castle(2), castle(3), archer()] + soldier() + [tree(), rock(), bridge(), grass(), flower()]
+    objs = [castle(1), castle(2), castle(3), archer()] + soldier() + [tree(), rock(), bridge(), grass(), flower(), fence(), barrel()]
     # nesneleri yan yana diz (Blender'da bakarken karışmasınlar); oyun her birini orijine göre kullanır
     for i, o in enumerate(objs):
         o.location = (0, 0, 0)

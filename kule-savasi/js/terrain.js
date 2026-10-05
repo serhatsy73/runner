@@ -20,8 +20,10 @@
   function pointBlocked(obs, X, Y, pad) {
     pad = pad || 0;
     for (const o of obs) {
-      if (o.type === 'rock' || o.type === 'tree') {
+      if (o.type === 'rock' || o.type === 'tree' || o.type === 'barrel') {
         if (Math.hypot(X - o.x * A, Y - o.y) < o.r + pad) return true;
+      } else if (o.type === 'fence') {
+        if (segDist(X, Y, o.x1 * A, o.y1, o.x2 * A, o.y2) < (o.w || .02) / 2 + pad) return true;
       } else if (o.type === 'lake') {
         const dx = (X - o.x * A) / (o.rx + pad), dy = (Y - o.y) / (o.ry + pad);
         if (dx * dx + dy * dy < 1) return true;
@@ -69,7 +71,8 @@
       const sx = area.w / A, sy = area.h;
       const px = (x, y) => [area.x + x * area.w, area.y + y * area.h];
       const water = obs.filter(o => o.type === 'lake' || o.type === 'river');
-      const solid = obs.filter(o => o.type === 'rock' || o.type === 'tree').sort((p, q) => p.y - q.y);
+      const solid = obs.filter(o => o.type === 'rock' || o.type === 'tree' || o.type === 'barrel' || o.type === 'fence')
+        .sort((p, q) => (p.type === 'fence' ? Math.max(p.y1, p.y2) : p.y) - (q.type === 'fence' ? Math.max(q.y1, q.y2) : q.y));
       b.save();
       b.lineCap = 'round'; b.lineJoin = 'round';
 
@@ -80,7 +83,9 @@
       for (const o of water) if (o.type === 'river') for (const br of o.bridges || []) paintBridge(b, o, br, px, sy);
       for (const o of solid) {
         if (o.type === 'rock') paintRock(b, o, px, sx, sy);
-        else paintTree(b, o, px, sx, sy);
+        else if (o.type === 'tree') paintTree(b, o, px, sx, sy);
+        else if (o.type === 'barrel') paintBarrel(b, o, px, sx, sy);
+        else paintFence(b, o, px, sy);
       }
       b.restore();
     },
@@ -161,6 +166,45 @@
     b.fillRect(-Wd / 2 - 3, -L / 2 - 2, 4, L + 4);
     b.fillRect(Wd / 2 - 1, -L / 2 - 2, 4, L + 4);
     b.restore();
+  }
+
+  function paintBarrel(b, o, px, sx, sy) {
+    const [x, y] = px(o.x, o.y), rx = o.r * sx, h = o.r * sy * 1.7;
+    b.fillStyle = 'rgba(60,90,40,.2)';
+    b.beginPath(); b.ellipse(x + 2, y + h * .25, rx * 1.1, rx * .5, 0, 0, Math.PI * 2); b.fill();
+    b.fillStyle = '#d9a66b'; b.strokeStyle = '#9c6a3c'; b.lineWidth = 1.5;
+    b.beginPath();
+    b.moveTo(x - rx, y - h * .5); b.quadraticCurveTo(x - rx * 1.25, y, x - rx, y + h * .5);
+    b.ellipse(x, y + h * .5, rx, rx * .45, 0, Math.PI, 0, true);
+    b.quadraticCurveTo(x + rx * 1.25, y, x + rx, y - h * .5);
+    b.ellipse(x, y - h * .5, rx, rx * .45, 0, 0, Math.PI, true);
+    b.closePath(); b.fill(); b.stroke();
+    b.fillStyle = '#c48a52';
+    b.beginPath(); b.ellipse(x, y - h * .5, rx, rx * .45, 0, 0, Math.PI * 2); b.fill(); b.stroke();
+    b.strokeStyle = '#7a4f2a'; b.lineWidth = 2;
+    for (const k of [-.18, .22]) { b.beginPath(); b.ellipse(x, y + h * k, rx * (1.1 - Math.abs(k) * .4), rx * .45, 0, 0, Math.PI); b.stroke(); }
+  }
+
+  function paintFence(b, o, px, sy) {
+    const [x0, y0] = px(o.x1, o.y1), [x1, y1] = px(o.x2, o.y2);
+    const len = Math.hypot(x1 - x0, y1 - y0), ux = (x1 - x0) / len, uy = (y1 - y0) / len;
+    const h = sy * .045, post = Math.max(3, sy * .007);
+    const n = Math.max(1, Math.round(len / (sy * .06)));
+    b.fillStyle = 'rgba(60,90,40,.18)';
+    b.lineWidth = h * .4; b.strokeStyle = 'rgba(60,90,40,.18)'; b.lineCap = 'round';
+    b.beginPath(); b.moveTo(x0 + 3, y0 + h * .3); b.lineTo(x1 + 3, y1 + h * .3); b.stroke();
+    // kirişler
+    b.strokeStyle = '#e2b07a'; b.lineWidth = Math.max(2, h * .22); b.lineCap = 'butt';
+    for (const k of [.45, .8]) { b.beginPath(); b.moveTo(x0, y0 - h * k); b.lineTo(x1, y1 - h * k); b.stroke(); }
+    b.strokeStyle = '#b07a45'; b.lineWidth = 1;
+    for (const k of [.45, .8]) { b.beginPath(); b.moveTo(x0, y0 - h * k + 1); b.lineTo(x1, y1 - h * k + 1); b.stroke(); }
+    // direkler
+    b.fillStyle = '#b98352'; b.strokeStyle = '#8a5a2e'; b.lineWidth = 1;
+    for (let i = 0; i <= n; i++) {
+      const x = x0 + ux * len * i / n, y = y0 + uy * len * i / n;
+      b.beginPath(); b.rect(x - post / 2, y - h, post, h); b.fill(); b.stroke();
+      b.beginPath(); b.moveTo(x - post / 2, y - h); b.lineTo(x, y - h - post * .9); b.lineTo(x + post / 2, y - h); b.closePath(); b.fill();
+    }
   }
 
   function paintRock(b, o, px, sx, sy) {

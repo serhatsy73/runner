@@ -33,11 +33,18 @@ window.KS = window.KS || {};
   KS.FINAL_AT = 240;              // süre dolar: en güçlü taraf kazanır (seviye hiçbir zaman 4 dakikayı geçmez)
   KS.SIEGE = 1.2;                 // son bu kadar saniyede düşman vurduysa kule kuşatmadadır: takviye giremez
   KS.RANGE_PER_LVL = .12;         // kule seviyesi başına menzil artışı
-  KS.TOWER_BLOCK = .042;
+  KS.TOWER_BLOCK = .042;          // aradaki kulenin görüşü kestiği yarıçap (tasarım birimi)
 
   // Binalar. kind: 'barracks' (kışla, varsayılan) | 'archer' (okçu kulesi)
   // Okçu: sahibinin düşmanı olan askerlere menzilinde ok atar; hız seviyesiyle artar. Daha yavaş üretir.
-  KS.ARCHER = { range: .17, interval: [0, 1.2, .8, .5], prod: .7 };          // aradaki kulenin görüşü kestiği yarıçap (tasarım birimi; kulenin görünen boyutundan biraz küçük)
+  // Okçu menzili ve atış aralığı kule seviyesine göre (tasarım birimi / sn). Bir ok 1 güç düşürür.
+  KS.ARCHER = { range: [0, .15, .19, .23], interval: [0, 1.2, .8, .5], prod: .7 };
+
+  // Asker rütbeleri: rütbe = güç. Kule seviyesine göre gönderim deseni:
+  // sv1 hep 1. rütbe; sv2 her 5. asker 2. rütbe; sv3 her 5. asker 2., her 10. asker 3. rütbe.
+  // Yolda çarpışan askerlerin güçleri birbirinden düşer; kuleye varan asker gücü kadar vurur ya da takviye eder.
+  KS.RANKS = [null, [1], [1, 1, 1, 1, 2], [1, 1, 1, 1, 2, 1, 1, 1, 1, 3]];
+  KS.RANK_AVG = [0, 1, 1.2, 1.3];   // saniyedeki ortalama güç için
 
   // TEST: bütün seviyeler ve dünyalar açık. Yayından önce false yapılmalı.
   KS.TEST_UNLOCK_ALL = true;
