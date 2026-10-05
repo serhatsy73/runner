@@ -231,7 +231,8 @@
   // tasarım birimi (0..1 alan koordinatı) — menzil hesapları için
   G.designOf = (x, y) => ({ nx: (x - V.area.x) / V.area.w, ny: (y - V.area.y) / V.area.h });
 
-  // Okçu kuleleri: menzildeki en yakın düşman askerine ok atar
+  // Okçu kuleleri: menzilden GEÇEN düşman askerlerine ok atar. Doğrudan okçuya saldıranları vurmaz;
+  // böylece okçu bir koridor silahıdır, ele geçirilemez bir kale değil.
   function archers(dt) {
     for (const t of G.towers) {
       if (t.kind !== 'archer' || t.team === NEUTRAL) continue;
@@ -240,7 +241,7 @@
       if (t.shotT < iv) continue;
       let best = null, bd = KS.ARCHER.range, bpos = null;
       for (const s of G.soldiers) {
-        if (s.dead || s.team === t.team) continue;
+        if (s.dead || s.team === t.team || s.to === t) continue;
         const pos = G.soldierPos(s);
         const d = G.ndist(t, G.designOf(pos.x, pos.y));
         if (d < bd) { bd = d; best = s; bpos = pos; }

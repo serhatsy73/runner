@@ -39,7 +39,7 @@
     },
     archer: {
       title: 'Okçu Kulesi',
-      text: 'Okçu kulesi, <strong>menzilindeki</strong> düşman askerlerine ok atar; büyüdükçe daha hızlı atar. Yanından geçen her yol sahibine pahalıya mal olur. <strong>Okçuyu ele geçir</strong>, koridor senin olsun!',
+      text: 'Okçu kulesi, menzilinden <strong>geçen</strong> düşman askerlerine ok atar; büyüdükçe daha hızlı atar. Yanından geçen her yol sahibine pahalıya mal olur. Doğrudan üstüne yürüyenleri vuramaz: <strong>okçuyu ele geçir</strong>, koridor senin olsun!'
     },
     river: {
       title: 'Nehir ve köprü',
@@ -142,20 +142,20 @@
       t(.22, .68, N, 6), t(.78, .68, N, 6), t(.22, .32, N, 6), t(.78, .32, N, 6),
     ]},
     2: { par: 110, ai: [R], range: .45, tip: 'İki okçu, iki koridor', towers: [
-      t(.5, .9, P, 22), t(.5, .1, R, 20), t(.3, .5, N, 8, 'archer'), t(.7, .5, N, 8, 'archer'),
+      t(.5, .9, P, 26), t(.5, .1, R, 14), t(.3, .5, N, 10, 'archer'), t(.7, .5, N, 10, 'archer'),
       t(.5, .68, N, 10), t(.5, .32, N, 10), t(.15, .75, N, 6), t(.85, .75, N, 6), t(.15, .25, N, 6), t(.85, .25, N, 6),
     ], obstacles: [rock(.5, .5, .036)] },
-    3: { par: 130, ai: [R], range: .48, tip: 'Kırmızının okçusu yolu tutuyor: yandan dolaş', towers: [
-      t(.5, .88, P, 25), t(.5, .12, R, 22), t(.5, .36, R, 12, 'archer'),
-      t(.2, .6, N, 8), t(.8, .6, N, 8), t(.5, .62, N, 14), t(.2, .3, N, 8), t(.8, .3, N, 8),
-    ], obstacles: [tree(.35, .48), tree(.65, .48)] },
+    3: { par: 130, ai: [R], range: .55, tip: 'Kırmızının okçusu yolu tutuyor: yandan dolaş', towers: [
+      t(.5, .88, P, 30), t(.5, .68, P, 18), t(.5, .12, R, 10), t(.5, .36, R, 6, 'archer'),
+      t(.2, .6, N, 6), t(.8, .6, N, 6), t(.2, .3, N, 6), t(.8, .3, N, 6),
+    ], obstacles: [tree(.35, .5), tree(.65, .5)] },
   };
 
   // gen: üretecin bu dünyada kullandığı özellikler
   const WORLDS = [
     { id: 1, name: 'Çayır', theme: 'meadow', stars: 0, hand: MEADOW, gen: { range: 0, obstacles: false, baseRed: 12 } },
     { id: 2, name: 'Göl Kıyısı', theme: 'lake', stars: 30, hand: LAKE, gen: { range: .5, obstacles: true, baseRed: 9 } },
-    { id: 3, name: 'Karlı Dağ', theme: 'snow', stars: 70, hand: SNOW, gen: { range: .5, obstacles: true, lakes: false, archers: true, baseRed: 12 } },
+    { id: 3, name: 'Karlı Dağ', theme: 'snow', stars: 70, hand: SNOW, gen: { range: .5, obstacles: true, lakes: false, archers: true, baseRed: 9 } },
     { id: 4, name: 'Şeker Diyarı', soon: true },
     { id: 5, name: 'Volkan', soon: true },
   ];
@@ -229,7 +229,7 @@
       const side = rnd() < .5 ? .2 : .8;
       T.push(t(.18, .12, R, red), t(.82, .12, Y, red), t(side, .78, P, 10));
     } else {
-      T.push(t(.5, .12, R, red + (g.obstacles ? 2 : 6)), t(.5, .5, N, Math.round(10 + d * 20)));
+      T.push(t(.5, .12, R, red + (g.archers ? 0 : g.obstacles ? 2 : 6)), t(.5, .5, N, Math.round(10 + d * 20)));
     }
     if (g.archers) addArchers(rnd, T, two);   // önce okçular yer bulsun, gri kuleler kalan boşluğa
     const pairs = 2 + Math.floor(d * 3) - (g.archers ? 1 : 0);

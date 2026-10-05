@@ -188,7 +188,7 @@ Her adım kendi başına yayınlanabilir. A+B+C bittiğinde oyun "3 dünya, 75 s
 - **Son Hücum** (3. dakika): askerler 1,67 kat hızlı akar, geri sayım başlar. **4. dakikada süre dolar**, en güçlü taraf (üst çubuktaki güç) kazanır. Seviye hiçbir zaman 4 dakikayı geçmez.
 
 ### Okçu kulesi (uygulanan kural)
-- Veri: `{ ..., kind: 'archer' }`. Sahibi tarafsız değilse menzilindeki (`KS.ARCHER.range` = 0,17) en yakın düşman askerine ok atar: sv1 1,2 sn, sv2 0,8 sn, sv3 0,5 sn'de bir. Vurulan asker yok olur.
+- Veri: `{ ..., kind: 'archer' }`. Sahibi tarafsız değilse menzilinden (`KS.ARCHER.range` = 0,17) **geçen** en yakın düşman askerine ok atar; doğrudan okçuya saldıranları vurmaz (yoksa tek yolla alınamaz bir kale oluyordu): sv1 1,2 sn, sv2 0,8 sn, sv3 0,5 sn'de bir. Vurulan asker yok olur.
 - Okçu %70 hızla üretir; görüş hattında diğer kuleler gibi engeldir.
 - Yapay zekâ: düşman okçusunun menzilinden geçen yollarda akış kaybını (atış hızı) hesaba katar; okçuyu ele geçirmeye +6 puan.
 - Görsel: kapsama alanı sahibinin renginde zemin diski; oklar üst katmanda kısa çizgi.

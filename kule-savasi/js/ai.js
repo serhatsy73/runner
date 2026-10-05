@@ -68,7 +68,7 @@
   function archerDrain(f, to, team) {
     let loss = 0;
     for (const k of G.towers) {
-      if (k.kind !== 'archer' || k.team === NEUTRAL || k.team === team) continue;
+      if (k.kind !== 'archer' || k.team === NEUTRAL || k.team === team || k === to) continue;
       const dx = (to.nx - f.nx) * KS.ASPECT, dy = to.ny - f.ny;
       const px = (k.nx - f.nx) * KS.ASPECT, py = k.ny - f.ny;
       const u = Math.max(0, Math.min(1, (px * dx + py * dy) / (dx * dx + dy * dy || 1)));
