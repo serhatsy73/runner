@@ -162,12 +162,16 @@ Seviye ortasında hiçbir zaman reklam çıkmaz.
 | Adım | İçerik | Durum |
 |---|---|---|
 | **A** | Seviye editörü (`tools/editor.html`), doğrulayıcı (`Levels.validate`), engel/menzil üreten üreteç, 25'lik dünyalar, kayıt taşıma | ✅ |
-| **B** | Binalar: Okçu ✅, Kale, Hız, Ambar (oyun kuralı + yapay zekâ + 3B/2B görseller) | kısmen |
-| **C** | Dünya 3: Karlı Dağ — buz, tepeler, Okçu, Kale; 25 seviye + kar teması | iskelet: kar teması + 3 okçu seviyesi, kalanı üreteçten |
+| **B1** | Asker rütbeleri (kule seviyesine göre R1/R2/R3, güce dayalı çarpışma), seviyeye göre büyüyen okçu menzili, çit ve fıçı engelleri (Blender modelleri, editör araçları) | ✅ |
+| **B2** | Simetrik, çitle çevrili elle yapılmış haritalar: Çayır 10–15, Karlı Dağ 4–6; botlarla ölçülüp dengelendi | ✅ |
+| **B3** | Binalar: Kale, Hız Kulesi, Ambar (oyun kuralı + yapay zekâ + Blender modeli + 2B ikon) | sıradaki |
+| **C** | Dünya 3: Karlı Dağ — buz, tepeler, Okçu, Kale; 25 seviyenin tamamı elle; kar teması | iskelet: kar teması + 6 elle seviye (1–6), kalanı üreteçten |
 | **D** | Yetenekler (2 buton) + gelir bağlantısı | |
 | **E** | Dünya 4: Şeker Diyarı — portal, Hız, Ambar, Mor rakip; 25 seviye | |
 | **F** | Hedef çeşitleri + boss davranışları; Dünya 1–2'deki üreteç yuvalarının elle tasarlanması | |
 | **G** | Dünya 5: Volkan — lav, kapılar, Gözcü, Mancınık, 3 rakip; Sonsuz mod + günlük harita | |
+
+**Sıra:** B3 → C → D → F → E → G. Rütbeler ve çitler geldiği için F'deki "üreteç yuvalarını elle tasarlama" işi her dünyada 25 seviyenin tamamı için geçerli: hedef şablon, Çayır 10–15 gibi simetrik ve çitli haritalar.
 
 Her adım kendi başına yayınlanabilir. A+B+C bittiğinde oyun "3 dünya, 75 seviye, binalar" haline gelir: ilk gerçek oyuncu testi için hedef.
 
@@ -224,6 +228,20 @@ Her adım kendi başına yayınlanabilir. A+B+C bittiğinde oyun "3 dünya, 75 s
 | | | | 19 | %38 / %38 |
 | | | | 20 (boss) | %42–58 (süreyle biter) |
 
+### Çitli seviyeler (10'ar deneme, rütbeler ve çitler sonrası)
+
+| Seviye | Saldırgan / sabırlı | Not |
+|---|---|---|
+| 10, 11, 13 | %100 / %100 | |
+| 12 | %70 / %60 | koridor |
+| 14 | %70 / %40 | halka: oyuncu 26, kırmızı 14 |
+| 15 | %90 / %60 | çoğu 4. dakikada güçle biter; par 170 |
+| 54 | %70 / %20 | uzun kuşatma; par 170 |
+| 55 | %90 / %60 | |
+| 56 | %100 / %100 | |
+
+Üreteçten gelen zor yuvalar (37; 55, 60, 63, 69, 71) yer tutucudur, elle tasarlanınca değişecek.
+
 ## Oyuncu geri bildirimleri
 
 | Geri bildirim | Sebep | Çözüm |
@@ -231,6 +249,7 @@ Her adım kendi başına yayınlanabilir. A+B+C bittiğinde oyun "3 dünya, 75 s
 | "2. seviyeyi geçemedim, kulem 0'a düşünce asker üretmiyor" | Kule üretiyordu ama açık yollar her askeri anında gönderiyordu; sayı 0'da kalıyor ve kule savunmasız görünüyordu | Kuleye dokununca yolları durur; ilk boşalmada bir kez ipucu; rozetin altında üretim çubuğu; 1–2. seviyede rakip kişiliği kapalı, 2. seviye kolaylaştı |
 | "Asker çıkaran kulem üretmeye devam etmediği için tıkanıyorum" | Gönderilen her asker kuleden düşüyordu; yol açık kaldıkça kule 0'da kalıyordu | Temel kural değişti: yollar kuleyi boşaltmaz, kule büyümeye devam eder. Dengeyi korumak için akış yollar arasında bölünür, kuşatılan kuleye takviye giremez, 4. dakikada süre dolar |
 | "Kaleler ulaşamayacakları yere de asker gönderebiliyor; aradaki kule yokmuş gibi çizgi çekiliyor" | Görüş hattını sadece arazi (kaya, ağaç, su) kesiyordu, kuleler hesaba katılmıyordu | Aradaki kule de görüşü keser; etiket "Arada kule var", çarpı engelleyen kulenin üstünde görünür. 13 ve 20 hafifletildi |
+| "Kaleler arasında güç farkı yok; seviyeler birbirine çok benziyor" | Her kule aynı askeri atıyordu, haritalar üreteçten geldiği için benzer görünüyordu | Rütbeli askerler (kule seviyesine göre R1/R2/R3), seviyeye göre okçu menzili; çit ve fıçılarla simetrik elle yapılmış haritalar (Çayır 10–15, Karlı Dağ 4–6) |
 | "Rakibin askerleri daha hızlı gibi" | Yürüme hızı aynı (ölçüldü); ama 20'den 19'a inen kule hemen 1. seviyeye düşüp yavaş üretiyor ve seyrek gönderiyordu | Küçülme eşikleri büyümeden düşük (20'de büyür, 15'in altında küçülür; 40 / 33) |
 
 ## Geliştirme notları
