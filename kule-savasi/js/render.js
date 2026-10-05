@@ -19,7 +19,7 @@
   // ---------- Arka plan ----------
   R.buildBackground = () => {
     const { W, H, DPR, area } = V;
-    if (!cv.width || !cv.height) return;
+    if (!cv || !cv.width || !cv.height) return;
     bg = document.createElement('canvas');
     bg.width = cv.width; bg.height = cv.height;
     const b = bg.getContext('2d');

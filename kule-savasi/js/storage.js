@@ -8,7 +8,7 @@
   const fresh = () => ({
     unlocked: 1,
     stars: {},                                // { "3": 2, ... }
-    settings: { sound: true, haptics: true },
+    settings: { sound: true, haptics: true, view3d: true },
     adsRemoved: false,
     seen: {},                                 // görülen tanıtım kartları { range: true, ... }
     stats: { plays: 0, wins: 0, losses: 0 },

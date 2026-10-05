@@ -23,6 +23,9 @@
     el.help.addEventListener('click', () => { KS.Sfx.tap(); UI.showHelp(false); });
     addToggle(el.mapToggles, 'sound', 'Ses');
     if (navigator.vibrate) addToggle(el.mapToggles, 'haptics', 'Titreşim');
+    if (KS.Render3D && KS.Render3D.supported()) {
+      addToggle(el.mapToggles, 'view3d', 'Görünüm', on => on ? '3B' : '2B', () => location.reload());
+    }
     G.on('win', showWin);
     G.on('lose', showLose);
     G.on('capture', () => UI.updatePower());
@@ -266,20 +269,22 @@
     el.overlay.hidden = false;
   }
 
-  function addToggle(parent, key, label) {
+  function addToggle(parent, key, label, fmt, after) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'toggle';
     b.dataset.key = key;
+    if (fmt) b.classList.add('choice');
     const sync = () => {
       const on = Save.data.settings[key];
       b.setAttribute('aria-pressed', String(on));
-      b.textContent = `${label}: ${on ? 'Açık' : 'Kapalı'}`;
+      b.textContent = `${label}: ${fmt ? fmt(on) : on ? 'Açık' : 'Kapalı'}`;
     };
     b.addEventListener('click', () => {
       Save.setSetting(key, !Save.data.settings[key]);
       document.querySelectorAll(`.toggle[data-key="${key}"]`).forEach(t => t.dispatchEvent(new Event('sync')));
       KS.Sfx.tap();
+      if (after) after();
     });
     b.addEventListener('sync', sync);
     sync();

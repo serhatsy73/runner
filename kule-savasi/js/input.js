@@ -6,11 +6,11 @@
 (function (KS) {
   'use strict';
   const { PLAYER } = KS;
-  const G = KS.G;
+  const G = KS.G, V = KS.V;
 
-  const startReach = t => Math.max(G.towerR(t) * 1.3, 30);
-  const passReach = t => Math.max(G.towerR(t) * 1.1, 24);
-  const snapReach = t => Math.max(G.towerR(t) * 1.9, 46);
+  const startReach = t => Math.max(G.towerR(t) * 1.3, 30 * V.unit);
+  const passReach = t => Math.max(G.towerR(t) * 1.1, 24 * V.unit);
+  const snapReach = t => Math.max(G.towerR(t) * 1.9, 46 * V.unit);
   const mine = t => t.team === PLAYER;
 
   function segCross(a, b, c, d) {
@@ -44,10 +44,10 @@
         if (G.state !== 'play' || G.drag) return;
         e.preventDefault();
         try { cv.setPointerCapture(e.pointerId); } catch (err) { /* bazı tarayıcılar desteklemez */ }
-        const x = e.clientX, y = e.clientY;
+        const { x, y } = V.toLogical(e.clientX, e.clientY);
         const t = G.nearestTower(x, y, startReach, mine);
         if (t) {
-          G.drag = { type: 'link', id: e.pointerId, sources: [t], x, y, sx: x, sy: y, moved: false, over: null };
+          G.drag = { type: 'link', id: e.pointerId, sources: [t], x, y, sx: x, sy: y, cx: e.clientX, cy: e.clientY, moved: false, over: null };
           G.emit('select', t);
         } else {
           G.drag = { type: 'cut', id: e.pointerId, last: { x, y } };
@@ -58,10 +58,10 @@
       cv.addEventListener('pointermove', e => {
         const d = G.drag;
         if (!d || e.pointerId !== d.id) return;
-        const x = e.clientX, y = e.clientY;
+        const { x, y } = V.toLogical(e.clientX, e.clientY);
         if (d.type === 'link') {
-          d.x = x; d.y = y;
-          if (Math.hypot(x - d.sx, y - d.sy) > 14) d.moved = true;
+          d.x = x; d.y = y; d.cx = e.clientX; d.cy = e.clientY;
+          if (Math.hypot(x - d.sx, y - d.sy) > 14 * V.unit) d.moved = true;
           const passed = G.nearestTower(x, y, passReach, mine);
           if (passed && !d.sources.includes(passed)) { d.sources.push(passed); G.emit('select', passed); }
           const over = G.nearestTower(x, y, snapReach);

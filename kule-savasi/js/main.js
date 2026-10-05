@@ -1,17 +1,34 @@
-// Başlatma, ekran boyutu ve oyun döngüsü.
+// Başlatma, ekran boyutu ve oyun döngüsü. Görünüm: 3B (Three.js) ya da 2B (Canvas) — ayarlardan seçilir.
 (function (KS) {
   'use strict';
   const G = KS.G, V = KS.V, UI = KS.UI;
 
   const cv = document.getElementById('game');
+  const hud2d = document.getElementById('hud2d');
   const hud = document.querySelector('.hud');
+
+  let use3d = false;
+  if (KS.Save.data.settings.view3d && KS.Render3D && KS.Render3D.supported()) {
+    try { KS.Render3D.init(cv, hud2d); use3d = true; } catch (e) { console.error('3B başlatılamadı, 2B kullanılıyor', e); }
+  }
+  V.mode = use3d ? '3d' : '2d';
+  if (!use3d) {
+    hud2d.hidden = true;
+    KS.Render.init(cv);
+  }
 
   function resize() {
     V.DPR = Math.min(2, window.devicePixelRatio || 1);
     V.W = window.innerWidth; V.H = window.innerHeight;
+    const hudBottom = hud.getBoundingClientRect().bottom;
+    if (use3d) {
+      KS.Render3D.resize(hudBottom);
+      G.layout();
+      return;
+    }
     cv.width = Math.round(V.W * V.DPR); cv.height = Math.round(V.H * V.DPR);
     const a = V.area;
-    const top = hud.getBoundingClientRect().bottom + 22;
+    const top = hudBottom + 22;
     a.h = Math.max(200, V.H - 26 - top);
     a.w = Math.min(V.W - 32, a.h * .68);
     a.x = (V.W - a.w) / 2;
@@ -33,11 +50,10 @@
     } else {
       G.time += dt;
     }
-    KS.Render.draw();
+    if (use3d) KS.Render3D.draw(dt); else KS.Render.draw();
     requestAnimationFrame(frame);
   }
 
-  KS.Render.init(cv);
   KS.Input.init(cv);
   UI.init();
 

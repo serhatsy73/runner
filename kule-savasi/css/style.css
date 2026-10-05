@@ -20,6 +20,8 @@ body {
   -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
 }
 canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#hud2d { pointer-events: none; z-index: 1; }
+.hud { z-index: 2; }
 
 /* ---------- HUD ---------- */
 .hud {
@@ -119,6 +121,7 @@ canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
   background: #f4f0e6; border: 2px solid var(--line); border-radius: 999px; padding: 8px 14px;
 }
 .toggle[aria-pressed="false"] { color: var(--muted); text-decoration: line-through; }
+.toggle.choice[aria-pressed="false"] { text-decoration: none; color: var(--ink); }
 
 .eyebrow { display: block; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-d); margin-bottom: 4px; }
 .card p.intro { color: var(--ink); font-size: 17px; }

@@ -4,7 +4,9 @@
   'use strict';
   const { NEUTRAL, PLAYER, RED, YELLOW, CAP, RATE, SEND, lvlOf, ASPECT, OVERPROD, OVERPROD_RATE, SURGE_AT, RANGE_PER_LVL } = KS;
 
-  const V = KS.V = { W: 0, H: 0, DPR: 1, baseR: 24, speed: 70, area: { x: 0, y: 0, w: 0, h: 0 } };
+  // toLogical: ekran noktasını oyun koordinatına çevirir (2B'de aynı, 3B'de zemine izdüşüm)
+  // unit: 1 piksel kaç oyun birimi (dokunma eşikleri için)
+  const V = KS.V = { W: 0, H: 0, DPR: 1, baseR: 24, speed: 70, area: { x: 0, y: 0, w: 0, h: 0 }, mode: '2d', unit: 1, toLogical: (x, y) => ({ x, y }) };
 
   const G = KS.G = {
     state: 'menu',            // menu | play | paused | won | lost
