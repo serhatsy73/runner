@@ -17,7 +17,7 @@
     drag: null, playerLinked: false,
     lostTower: false, lastLost: null, revived: false,
     surge: false, surgeWarned: false, banner: null,
-    blocked: new Set(),       // engel yüzünden yol açılamayan kule çiftleri
+    blocked: new Map(),       // yol açılamayan kule çiftleri -> 'blocked' (arazi) | 'tower' (arada kule)
   };
 
   // ---------- Olaylar ----------
@@ -36,9 +36,10 @@
   G.ndist = (a, b) => Math.hypot((a.nx - b.nx) * ASPECT, a.ny - b.ny);
   G.rangeOf = t => G.cfg && G.cfg.range ? G.cfg.range * (1 + RANGE_PER_LVL * (t.lvl - 1)) : Infinity;
   const pairKey = (a, b) => a.id < b.id ? a.id * 256 + b.id : b.id * 256 + a.id;
-  // null: yol açılabilir · 'blocked': arada engel var · 'range': menzil dışında
+  // null: yol açılabilir · 'blocked': arada arazi engeli · 'tower': arada başka bir kule · 'range': menzil dışında
   G.linkProblem = (a, b) => {
-    if (G.blocked.has(pairKey(a, b))) return 'blocked';
+    const why = G.blocked.get(pairKey(a, b));
+    if (why) return why;
     if (G.ndist(a, b) > G.rangeOf(a) + 1e-9) return 'range';
     return null;
   };
@@ -87,10 +88,13 @@
     G.lostTower = false; G.lastLost = null; G.revived = false;
     G.surge = false; G.surgeWarned = false; G.banner = null;
     G.time = 0; G.playTime = 0; G.endTimer = 0;
-    G.blocked = new Set();
+    // görüş hattı: kuleler sabit olduğu için seviye başında bir kez hesaplanır
+    G.blocked = new Map();
     const obs = cfg.obstacles || [];
     for (const a of G.towers) for (const b of G.towers) {
-      if (a.id < b.id && KS.Terrain.blocks(obs, a, b)) G.blocked.add(pairKey(a, b));
+      if (a.id >= b.id) continue;
+      if (KS.Terrain.towerBlocks(G.towers, a, b, KS.TOWER_BLOCK)) G.blocked.set(pairKey(a, b), 'tower');
+      else if (KS.Terrain.blocks(obs, a, b)) G.blocked.set(pairKey(a, b), 'blocked');
     }
     G.aiParams = KS.AI.paramsFor(n);
     G.ai = cfg.ai.map((team, i) => ({ team, timer: G.aiParams.firstMove + i * .7 }));

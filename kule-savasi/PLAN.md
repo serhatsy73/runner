@@ -140,6 +140,7 @@ Seviye ortasında hiçbir zaman reklam çıkmaz.
 - **Akış gücü kulenin seviyesinden gelir** (saniyede 2 / 2,5 / 3,1 asker) ve açtığı yollar arasında **sırayla bölünür**. Tek yol tam güç, üç yol üçte birer. Birden fazla kuleyle tek hedefe yüklenmek kazandırır.
 - **Kuşatma:** son 1,2 saniyede düşman vurmuşsa kuleye takviye giremez (kırmızı işaret). Arkadan beslenen kule sonsuza kadar dayanamaz.
 - **Zıt yollar** ortada çarpışır; eşit akışlar birbirini sıfırlar.
+- **Görüş hattı:** arada kaya, ağaç, su ya da **başka bir kule** varsa yol açılamaz ("Arada kule var"). Ortadaki kuleyi almadan arkasındakine saldıramazsın.
 - **Son Hücum** (3. dakika): askerler 1,67 kat hızlı akar, geri sayım başlar. **4. dakikada süre dolar**, en güçlü taraf (üst çubuktaki güç) kazanır. Seviye hiçbir zaman 4 dakikayı geçmez.
 
 ## Seviye tasarımı kuralları (ölçümlerden çıkanlar)
@@ -168,9 +169,12 @@ Seviye ortasında hiçbir zaman reklam çıkmaz.
 |---|---|---|
 | "2. seviyeyi geçemedim, kulem 0'a düşünce asker üretmiyor" | Kule üretiyordu ama açık yollar her askeri anında gönderiyordu; sayı 0'da kalıyor ve kule savunmasız görünüyordu | Kuleye dokununca yolları durur; ilk boşalmada bir kez ipucu; rozetin altında üretim çubuğu; 1–2. seviyede rakip kişiliği kapalı, 2. seviye kolaylaştı |
 | "Asker çıkaran kulem üretmeye devam etmediği için tıkanıyorum" | Gönderilen her asker kuleden düşüyordu; yol açık kaldıkça kule 0'da kalıyordu | Temel kural değişti: yollar kuleyi boşaltmaz, kule büyümeye devam eder. Dengeyi korumak için akış yollar arasında bölünür, kuşatılan kuleye takviye giremez, 4. dakikada süre dolar |
+| "Kaleler ulaşamayacakları yere de asker gönderebiliyor; aradaki kule yokmuş gibi çizgi çekiliyor" | Görüş hattını sadece arazi (kaya, ağaç, su) kesiyordu, kuleler hesaba katılmıyordu | Aradaki kule de görüşü keser; etiket "Arada kule var", çarpı engelleyen kulenin üstünde görünür. 13 ve 20 hafifletildi |
 | "Rakibin askerleri daha hızlı gibi" | Yürüme hızı aynı (ölçüldü); ama 20'den 19'a inen kule hemen 1. seviyeye düşüp yavaş üretiyor ve seyrek gönderiyordu | Küçülme eşikleri büyümeden düşük (20'de büyür, 15'in altında küçülür; 40 / 33) |
 
 ## Geliştirme notları
+
+- **Test modu:** `js/config.js` içindeki `KS.TEST_UNLOCK_ALL = true` bütün seviyeleri açar (haritada sarı uyarı görünür). **Yayından önce `false` yapılmalı.**
 
 - Oyunu açmak için `index.html` yeterli, dosyadan açınca da çalışır. Bu yüzden ES modülleri yerine sırayla yüklenen, `window.KS` paylaşan dosyalar kullanılıyor.
 - Yeni bir seviye eklerken önce `tools/denge.html` ile ölçün (engeller, menzil ve kişilikler dahil):

@@ -33,10 +33,10 @@
   };
 
   // ---------- Kilitler ----------
-  const worldLocked = w => w.soon || Save.data.unlocked < w.from || Save.totalStars() < w.stars;
+  const worldLocked = w => w.soon || (!KS.TEST_UNLOCK_ALL && (Save.data.unlocked < w.from || Save.totalStars() < w.stars));
   UI.canPlay = n => {
     const w = Levels.worldOf(n);
-    return !!w && n <= Save.data.unlocked && !worldLocked(w);
+    return !!w && (KS.TEST_UNLOCK_ALL || n <= Save.data.unlocked) && !worldLocked(w);
   };
   // haritada "sıradaki" olarak parlayan seviye
   function currentLevel() {
@@ -105,7 +105,7 @@
     const total = Save.totalStars();
     el.mapStars.innerHTML = `${STAR} ${total} / ${Levels.count * 3}`;
     const cur = currentLevel();
-    el.worlds.innerHTML = '';
+    el.worlds.innerHTML = KS.TEST_UNLOCK_ALL ? '<p class="test-note">Test modu: bütün seviyeler açık</p>' : '';
     for (const w of Levels.worlds) {
       const sec = document.createElement('section');
       sec.className = 'world';
@@ -161,7 +161,7 @@
   // ---------- Kartlar ----------
   const HELP = `
     <ul class="steps">
-      <li><b>1</b><span>Mavi kulenden bir kuleye <strong>sürükle</strong>. Yol boyunca sürekli asker akar; kulen askerini harcamaz, <strong>büyümeye devam eder</strong>.</span></li>
+      <li><b>1</b><span>Mavi kulenden bir kuleye <strong>sürükle</strong>. Yol boyunca sürekli asker akar; kulen askerini harcamaz, <strong>büyümeye devam eder</strong>. Arada başka bir kule varsa yol açılamaz.</span></li>
       <li><b>2</b><span>Sürüklerken diğer mavi kulelerinin <strong>üstünden geç</strong>: hepsi birden saldırır.</span></li>
       <li><b>3</b><span>Düşman askeri vurdukça kulenin sayısı azalır, 0'a inince kule <strong>senin</strong> olur. 20 ve 40 askerde kule büyür: daha hızlı akıtır, daha çok yol açar.</span></li>
       <li><b>4</b><span>Kendi kulene <strong>dokun</strong>: ondan çıkan yollar durur. Tek bir yolu kesmek için çizginin üstünden <strong>kaydır</strong>.</span></li>

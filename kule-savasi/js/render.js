@@ -244,7 +244,8 @@
         label = verb + ' · ' + Math.floor(target.count) + (able.length > 1 ? '  (' + able.length + ' kule)' : '');
         color = TEAMS[target.team === NEUTRAL ? PLAYER : target.team].dark;
       } else {
-        label = srcs.some(s => G.linkProblem(s, target) === 'blocked') ? 'Yol kapalı' : 'Menzil dışında';
+        const why = srcs.map(s => G.linkProblem(s, target));
+        label = why.includes('tower') ? 'Arada kule var' : why.includes('blocked') ? 'Yol kapalı' : 'Menzil dışında';
         color = '#8a8499';
       }
     } else {

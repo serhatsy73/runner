@@ -52,6 +52,12 @@
       return false;
     },
 
+    // a ile b arasındaki düz çizgi başka bir kulenin içinden geçiyor mu?
+    towerBlocks(towers, a, b, r) {
+      const ax = a.nx * A, ay = a.ny, bx = b.nx * A, by = b.ny;
+      return towers.some(c => c !== a && c !== b && segDist(c.nx * A, c.ny, ax, ay, bx, by) < r);
+    },
+
     // Seviye tasarımı kontrolü için: kule bir engelin üstüne ya da çok yakınına mı konmuş?
     towerClear(obs, nx, ny) {
       return !pointBlocked(obs || [], nx * A, ny, .055);

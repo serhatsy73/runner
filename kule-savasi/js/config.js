@@ -33,6 +33,10 @@ window.KS = window.KS || {};
   KS.FINAL_AT = 240;              // süre dolar: en güçlü taraf kazanır (seviye hiçbir zaman 4 dakikayı geçmez)
   KS.SIEGE = 1.2;                 // son bu kadar saniyede düşman vurduysa kule kuşatmadadır: takviye giremez
   KS.RANGE_PER_LVL = .12;         // kule seviyesi başına menzil artışı
+  KS.TOWER_BLOCK = .042;          // aradaki kulenin görüşü kestiği yarıçap (tasarım birimi; kulenin görünen boyutundan biraz küçük)
+
+  // TEST: bütün seviyeler ve dünyalar açık. Yayından önce false yapılmalı.
+  KS.TEST_UNLOCK_ALL = true;
 
   // Tasarım birimi: x ekseni bu oranla küçültülür, böylece menzil ve engeller her ekranda aynı çalışır.
   // (Seviye verisinde x ve y 0..1 aralığında; mesafe = hypot(dx * ASPECT, dy))

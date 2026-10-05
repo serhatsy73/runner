@@ -144,6 +144,7 @@ canvas { touch-action: none; }
 .map-title .total { background: var(--card); border-radius: 999px; padding: 6px 12px; box-shadow: 0 3px 0 rgba(75,69,96,.14); color: var(--ink); white-space: nowrap; }
 .map-tools, .map-toggles { display: flex; gap: 8px; flex-wrap: wrap; }
 
+.test-note { margin: 4px 0 0; padding: 8px 12px; border-radius: 14px; background: #fff1c4; color: #8a6100; font-weight: 700; font-size: 14px; text-align: center; }
 .world { background: rgba(255,253,247,.72); border-radius: 28px; padding: 16px 14px 8px; margin-top: 14px; box-shadow: 0 5px 0 rgba(75,69,96,.1); }
 .world-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .world-head h2 { margin: 0; font-size: 22px; line-height: 1.15; }
