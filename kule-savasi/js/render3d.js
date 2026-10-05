@@ -16,7 +16,9 @@
   const THEMES = {
     meadow: { sky: '#cdefb5', ground: '#b9e39f', board: '#c9ecb0', petals: ['#ffffff', '#ffd3df', '#fff1a8', '#e3d7ff'] },
     lake:   { sky: '#c9eec2', ground: '#abdfb0', board: '#c3eac6', petals: ['#ffffff', '#cfe9ff', '#fff1a8', '#d9f0e0'] },
+    snow:   { sky: '#e6f2fa', ground: '#d9e7f0', board: '#eef5fa', petals: ['#ffffff', '#dfe9ff', '#fff1a8', '#ffd3df'], grass: '#c4dbe8' },
   };
+  const ARCHER_SCALE = [0, .95, 1.07, 1.18];
 
   let cv, hud, hctx, renderer, scene, camera, sun;
   let zoom = 60, ready = false, models = null, soldierGeo = null;
@@ -234,10 +236,18 @@
   function retint(t) {
     const n = towerNodes.get(t);
     if (!n || !ready) return;
-    if (n.lvl === t.lvl && n.team === t.team) return;
+    if (n.lvl === t.lvl && n.team === t.team && n.kind === t.kind) return;
     n.group.clear();
-    n.group.add(instance('castle_l' + t.lvl, t.team));
-    n.lvl = t.lvl; n.team = t.team;
+    if (t.kind === 'archer') {
+      const m = instance('archer', t.team); m.scale.setScalar(ARCHER_SCALE[t.lvl]); n.group.add(m);
+      const ring = new T.Mesh(new T.RingGeometry(.97, 1, 64), new T.MeshBasicMaterial({ color: TEAMS[t.team].dark, transparent: true, opacity: .5, depthWrite: false }));
+      ring.rotation.x = -Math.PI / 2; ring.position.y = .03; ring.scale.setScalar(KS.ARCHER.range * V.area.h); ring.renderOrder = 1; ring.visible = t.team !== NEUTRAL;
+      const disc = new T.Mesh(new T.CircleGeometry(1, 48), new T.MeshBasicMaterial({ color: TEAMS[t.team].fill, transparent: true, opacity: .12, depthWrite: false }));
+      disc.rotation.x = -Math.PI / 2; disc.position.y = .025; disc.scale.setScalar(KS.ARCHER.range * V.area.h); disc.visible = ring.visible;
+      n.group.add(ring, disc);
+      n.ringed = true;
+    } else n.group.add(instance('castle_l' + t.lvl, t.team));
+    n.lvl = t.lvl; n.team = t.team; n.kind = t.kind;
   }
 
   function buildTerrain() {
@@ -336,7 +346,7 @@
       spots.push([x, z, rnd()]);
     }
     const grassGeo = models.grass.geometry.clone().applyMatrix4(models.grass.matrixWorld);
-    const grass = new T.InstancedMesh(grassGeo, new T.MeshStandardMaterial({ color: '#79c25e', roughness: 1 }), spots.length);
+    const grass = new T.InstancedMesh(grassGeo, new T.MeshStandardMaterial({ color: th.grass || '#79c25e', roughness: 1 }), spots.length);
     let gi = 0;
     const flowers = [];
     for (const [x, z, k] of spots) {
@@ -442,6 +452,7 @@
       const sq = t.squish * .08;
       g.position.x = t.x + Math.sin(G.time * 70) * t.shake * .06;
       g.scale.set(pop * (1 + sq), pop * (1 - sq), pop * (1 + sq));
+      if (n.ringed) for (let i = 1; i < g.children.length; i++) g.children[i].scale.setScalar(KS.ARCHER.range * V.area.h / (pop * (1 + sq)));
     }
   }
 
@@ -597,11 +608,12 @@
   }
 
   const TOP_Y = [0, 1.4, 2.6, 3.0];     // rozetin durduğu yükseklik (bayrakların üstünde kalır)
+  const TOP_Y_ARCHER = [0, 2.1, 2.3, 2.5];
 
   function drawBadge(c, t, pxR) {
     const col = TEAMS[t.team];
     const pop = 1 + .22 * Math.sin(Math.min(1, t.pop) * Math.PI);
-    const p = project(t.x, TOP_Y[t.lvl] * pop, t.y);
+    const p = project(t.x, (t.kind === 'archer' ? TOP_Y_ARCHER : TOP_Y)[t.lvl] * pop, t.y);
     const n = String(Math.floor(t.count));
     const fs = Math.max(12, Math.round(pxR * .62));
     c.font = `700 ${fs}px ${FONT}`;
@@ -641,6 +653,14 @@
 
   function drawTextParticles(c, pxR) {
     for (const p of G.particles) {
+      if (p.type === 'arrow') {
+        const k = p.life / p.max, u = 1 - k;
+        const a = project(p.x, 1.35, p.y), b = project(p.tx, .25, p.ty);
+        const hx = a.x + (b.x - a.x) * u, hy = a.y + (b.y - a.y) * u, tx = a.x + (b.x - a.x) * Math.max(0, u - .25), ty = a.y + (b.y - a.y) * Math.max(0, u - .25);
+        c.strokeStyle = p.color; c.lineWidth = Math.max(1.5, pxR * .07); c.lineCap = 'round';
+        c.beginPath(); c.moveTo(tx, ty); c.lineTo(hx, hy); c.stroke();
+        continue;
+      }
       if (p.type !== 'text') continue;
       const k = p.life / p.max;
       const s = project(p.x, 1.2 + (1 - k) * 1.2, p.y);

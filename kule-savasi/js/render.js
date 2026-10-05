@@ -14,6 +14,7 @@
   const THEMES = {
     meadow: { top: '#cdefb5', bottom: '#b8e39c', field: 'rgba(236,250,222,.45)', petals: ['#ffffff', '#ffd3df', '#fff1a8', '#e3d7ff'] },
     lake:   { top: '#c9eec2', bottom: '#a9dfae', field: 'rgba(232,250,236,.45)', petals: ['#ffffff', '#cfe9ff', '#fff1a8', '#d9f0e0'] },
+    snow:   { top: '#eaf4fb', bottom: '#d3e6f2', field: 'rgba(255,255,255,.5)', petals: ['#ffffff', '#dfe9ff', '#fff1a8', '#ffd3df'], blades: ['rgba(170,200,220,.5)', 'rgba(205,225,240,.6)'] },
   };
 
   // ---------- Arka plan ----------
@@ -39,7 +40,8 @@
     b.lineCap = 'round';
     for (let i = 0; i < n; i++) {
       const x = rnd() * W, y = rnd() * H, s = 3 + rnd() * 4;
-      b.strokeStyle = rnd() < .5 ? 'rgba(120,180,90,.45)' : 'rgba(150,200,110,.5)';
+      const blades = th.blades || ['rgba(120,180,90,.45)', 'rgba(150,200,110,.5)'];
+      b.strokeStyle = blades[rnd() < .5 ? 0 : 1];
       b.lineWidth = 1.6;
       b.beginPath();
       b.moveTo(x - s * .6, y - s); b.lineTo(x, y);
@@ -93,6 +95,7 @@
 
     const lod = G.soldiers.length > LOD_SOLDIERS;
     for (const s of G.soldiers) drawSoldier(s, lod);
+    for (const t of G.towers) if (t.kind === 'archer' && t.team !== NEUTRAL) drawArcherRange(t);
     const sorted = G.towers.slice().sort((a, b) => a.y - b.y);
     for (const t of sorted) drawTower(t);
 
@@ -400,6 +403,7 @@
     const bw = r * 1.62, left = x - bw / 2, right = x + bw / 2;
     const top = y - r * .45, bot = y + r * .8;
     const cw = r * .42, ch = r * .34, rad = r * .38;
+    if (t.kind === 'archer') drawArcherBody(x, y, r, c, top, bot); else {
 
     // bayraklar (seviye 2 ve 3)
     if (t.team !== NEUTRAL && t.lvl >= 2) {
@@ -456,7 +460,8 @@
     ctx.lineTo(x + dw, bot);
     ctx.closePath(); ctx.fill();
 
-    drawFace(t, x, y + r * .08, r);
+    }
+    drawFace(t, x, y + (t.kind === 'archer' ? -r * .02 : r * .08), r * (t.kind === 'archer' ? .9 : 1));
     ctx.restore();
 
     // kuşatma işareti: bu sırada takviye giremez
@@ -517,6 +522,35 @@
     ctx.fillText(n, x, by - fs * .1);
   }
 
+  // Okçu kulesi: ahşap ayaklar, kulübe, sivri çatı
+  function drawArcherBody(x, y, r, c, top, bot) {
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#b98352'; ctx.lineWidth = Math.max(2, r * .12); ctx.lineCap = 'round';
+    for (const sx of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + sx * r * .55, bot); ctx.lineTo(x + sx * r * .45, top + r * .3); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(x - r * .5, bot - r * .25); ctx.lineTo(x + r * .5, top + r * .55); ctx.stroke();
+    ctx.fillStyle = '#e2b07a'; ctx.strokeStyle = '#b07a45'; ctx.lineWidth = Math.max(1.5, r * .07);
+    roundRect(ctx, x - r * .85, top + r * .25, r * 1.7, r * .16, r * .06); ctx.fill(); ctx.stroke();
+    const hw = r * .62, hb = top + r * .3, ht = top - r * .55;
+    ctx.fillStyle = c.fill; ctx.strokeStyle = c.dark; ctx.lineWidth = Math.max(2, r * .1);
+    roundRect(ctx, x - hw, ht, hw * 2, hb - ht, r * .12); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    roundRect(ctx, x - hw + r * .12, ht + r * .12, r * .14, (hb - ht) * .6, r * .07); ctx.fill();
+    ctx.fillStyle = c.dark;
+    ctx.beginPath(); ctx.moveTo(x - hw - r * .18, ht + r * .04); ctx.lineTo(x, ht - r * .62); ctx.lineTo(x + hw + r * .18, ht + r * .04); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, ht - r * .62, r * .08, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Okçunun kapsama alanı: sahibinin düşmanlarına ok atar
+  function drawArcherRange(t) {
+    const r = KS.ARCHER.range, a = V.area, c = TEAMS[t.team];
+    ctx.save();
+    ctx.globalAlpha = .55;
+    ctx.fillStyle = c.light; ctx.strokeStyle = c.dark; ctx.lineWidth = 1.5; ctx.setLineDash([5, 6]);
+    ctx.beginPath(); ctx.ellipse(t.x, t.y, r / KS.ASPECT * a.w, r * a.h, 0, 0, Math.PI * 2);
+    ctx.globalAlpha = .18; ctx.fill(); ctx.globalAlpha = .6; ctx.stroke();
+    ctx.restore();
+  }
+
   function drawFace(t, x, y, r) {
     const ex = r * .32, er = Math.max(1.6, r * .085);
     ctx.fillStyle = CHEEK;
@@ -568,7 +602,12 @@
     for (const p of G.particles) {
       const k = p.life / p.max;
       ctx.globalAlpha = Math.min(1, k * 1.5);
-      if (p.type === 'dot') {
+      if (p.type === 'arrow') {
+        const u = 1 - k, sx = p.x, sy = p.y - r * 1.3;
+        const hx = sx + (p.tx - sx) * u, hy = sy + (p.ty - sy) * u, tx = sx + (p.tx - sx) * Math.max(0, u - .25), ty = sy + (p.ty - sy) * Math.max(0, u - .25);
+        ctx.strokeStyle = p.color; ctx.lineWidth = Math.max(1.5, r * .07); ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
+      } else if (p.type === 'dot') {
         ctx.fillStyle = p.color;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (.5 + k * .5), 0, Math.PI * 2); ctx.fill();
       } else if (p.type === 'star') {

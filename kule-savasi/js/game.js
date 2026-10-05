@@ -81,7 +81,7 @@
     G.levelNo = n; G.cfg = cfg; G.tempo = KS.tempo(n);
     G.towers = cfg.towers.map((d, i) => ({
       id: i, nx: d.x, ny: d.y, team: d.team, count: d.count, x: 0, y: 0,
-      lvl: lvlOf(d.count), pop: 0, shake: 0, squish: 0,
+      lvl: lvlOf(d.count), pop: 0, shake: 0, squish: 0, kind: d.kind || 'barracks', shotT: 0,
     }));
     G.lanes = []; G.soldiers = []; G.particles = []; G.trail = [];
     G.drag = null; G.playerLinked = false;
@@ -138,7 +138,7 @@
     const prodMul = G.tempo.prod;
     for (const t of G.towers) {
       if (t.team !== NEUTRAL && t.count < CAP) {
-        const rate = RATE[t.lvl] * prodMul * (t.count >= OVERPROD ? OVERPROD_RATE : 1);
+        const rate = RATE[t.lvl] * prodMul * (t.count >= OVERPROD ? OVERPROD_RATE : 1) * (t.kind === 'archer' ? KS.ARCHER.prod : 1);
         t.count = Math.min(CAP, t.count + rate * dt);
       }
       const up = lvlOf(Math.floor(t.count));
@@ -175,6 +175,7 @@
       s.age += dt;
     }
     collide();
+    archers(dt);
 
     for (const s of G.soldiers) {
       if (s.dead) continue;
@@ -224,6 +225,32 @@
         fx.burst(pos.x, pos.y, '#ffffff', 5, .6);
         if (A.team === PLAYER || B.team === PLAYER) G.emit('clash');
       }
+    }
+  }
+
+  // tasarım birimi (0..1 alan koordinatı) — menzil hesapları için
+  G.designOf = (x, y) => ({ nx: (x - V.area.x) / V.area.w, ny: (y - V.area.y) / V.area.h });
+
+  // Okçu kuleleri: menzildeki en yakın düşman askerine ok atar
+  function archers(dt) {
+    for (const t of G.towers) {
+      if (t.kind !== 'archer' || t.team === NEUTRAL) continue;
+      t.shotT += dt;
+      const iv = KS.ARCHER.interval[t.lvl];
+      if (t.shotT < iv) continue;
+      let best = null, bd = KS.ARCHER.range, bpos = null;
+      for (const s of G.soldiers) {
+        if (s.dead || s.team === t.team) continue;
+        const pos = G.soldierPos(s);
+        const d = G.ndist(t, G.designOf(pos.x, pos.y));
+        if (d < bd) { bd = d; best = s; bpos = pos; }
+      }
+      if (!best) { t.shotT = iv; continue; }
+      t.shotT = 0;
+      best.dead = true;
+      G.particles.push({ type: 'arrow', x: t.x, y: t.y, tx: bpos.x, ty: bpos.y, vx: 0, vy: 0, life: .22, max: .22, color: KS.INK });
+      fx.burst(bpos.x, bpos.y, KS.TEAMS[best.team].fill, 3, .4);
+      G.emit('shot', { tower: t, team: best.team });
     }
   }
 

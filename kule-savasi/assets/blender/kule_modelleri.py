@@ -19,6 +19,7 @@ Malzeme adları oyunda anlam taşır (render3d.js):
 
 Nesneler (hepsi orijinde, tabanı z=0'da durur; Blender'ın -Y yönü oyunda kameraya bakar):
     castle_l1, castle_l2, castle_l3      kale (kule seviyesine göre)
+    archer                               okçu kulesi (seviyeye göre ölçeklenir)
     soldier_body, soldier_helmet, soldier_eyes   asker (ayrı parçalar: oyunda toplu çizilir)
     tree, rock, bridge, grass, flower
 """
@@ -265,6 +266,45 @@ def castle(level):
     return join(parts, name)
 
 
+def archer():
+    """Okçu kulesi: ahşap ayaklı gözetleme kulesi, takım renkli kulübe, sivri çatı, kawaii yüz ve yay."""
+    parts = []
+    parts.append(cylinder('archer_base', 0.5, 0.12, (0, 0, 0), 'stone', verts=24))
+    for sx, sy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+        leg = cylinder('archer_leg', 0.045, 0.78, (sx * 0.3, sy * 0.3, 0.12), 'wood', verts=8)
+        parts.append(leg)
+    # çapraz destekler
+    for sgn in (-1, 1):
+        b = box('archer_brace', (0.04, 0.9, 0.04), (sgn * 0.3, 0, 0.5), 'wood')
+        b.rotation_euler = (math.radians(50 * sgn), 0, 0)
+        parts.append(b)
+    parts.append(cylinder('archer_deck', 0.46, 0.07, (0, 0, 0.88), 'wood_light', verts=20))
+    hut = cylinder('archer_hut', 0.34, 0.42, (0, 0, 0.95), 'team', verts=20)
+    parts.append(hut)
+    parts += face('archer', 0.34, 1.16, scale=0.75)
+    # korkuluk
+    for i in range(10):
+        a = i / 10 * math.pi * 2
+        parts.append(cylinder('archer_post', 0.018, 0.16, (math.cos(a) * 0.43, math.sin(a) * 0.43, 0.95), 'wood', verts=6))
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.43, minor_radius=0.018, major_segments=24, minor_segments=6, location=(0, 0, 1.11))
+    parts.append(finish(active(), 'archer_rail', 'wood', smooth=True))
+    parts.append(cone('archer_roof', 0.5, 0.0, 0.45, (0, 0, 1.36), 'team_dark', verts=20))
+    parts.append(sphere('archer_knob', 0.05, (0, 0, 1.83), 'team_dark', seg=10, rings=6))
+    # yay: kulübenin önünde, hafif yana
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.14, minor_radius=0.014, major_segments=20, minor_segments=5,
+                                     location=(0.26, -0.3, 1.2), rotation=(math.pi / 2, 0, 0))
+    bow = finish(active(), 'archer_bow', 'wood', smooth=True)
+    apply_all(bow)
+    bm = bmesh.new()
+    bm.from_mesh(bow.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.x > 0.26 + 0.02], context='VERTS')   # yarım yay (-X yarısı)
+    bm.to_mesh(bow.data)
+    bm.free()
+    parts.append(bow)
+    parts.append(box('archer_string', (0.006, 0.006, 0.27), (0.27, -0.3, 1.2), 'eye'))
+    return join(parts, 'archer')
+
+
 def soldier():
     """Asker üç parça: gövde (takım rengi), miğfer (koyu takım rengi), gözler. Oyunda toplu (instanced) çizilir."""
     body = sphere('soldier_body', 0.17, (0, 0, 0.2), 'team', scale=(1, 0.92, 1.15))
@@ -349,7 +389,7 @@ def flower():
 
 def main():
     reset_scene()
-    objs = [castle(1), castle(2), castle(3)] + soldier() + [tree(), rock(), bridge(), grass(), flower()]
+    objs = [castle(1), castle(2), castle(3), archer()] + soldier() + [tree(), rock(), bridge(), grass(), flower()]
     # nesneleri yan yana diz (Blender'da bakarken karışmasınlar); oyun her birini orijine göre kullanır
     for i, o in enumerate(objs):
         o.location = (0, 0, 0)

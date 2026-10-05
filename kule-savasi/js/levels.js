@@ -14,7 +14,7 @@
   const { NEUTRAL: N, PLAYER: P, RED: R, YELLOW: Y } = KS;
   const A = KS.ASPECT;
   const PER_WORLD = 25;
-  const t = (x, y, team, count) => ({ x, y, team, count });
+  const t = (x, y, team, count, kind) => kind ? { x, y, team, count, kind } : { x, y, team, count };
   const rock = (x, y, r) => ({ type: 'rock', x, y, r: r || .036 });
   const tree = (x, y, r) => ({ type: 'tree', x, y, r: r || .04 });
   const lake = (x, y, rx, ry) => ({ type: 'lake', x, y, rx, ry });
@@ -36,6 +36,10 @@
     rocks: {
       title: 'Kayalar ve ağaçlar',
       text: 'Yollar kayaların ve ağaçların <strong>içinden geçemez</strong>. Önü kapalı bir kuleye sürüklersen çizgi gri görünür. Etrafından dolaş!',
+    },
+    archer: {
+      title: 'Okçu Kulesi',
+      text: 'Okçu kulesi, <strong>menzilindeki</strong> düşman askerlerine ok atar; büyüdükçe daha hızlı atar. Yanından geçen her yol sahibine pahalıya mal olur. <strong>Okçuyu ele geçir</strong>, koridor senin olsun!',
     },
     river: {
       title: 'Nehir ve köprü',
@@ -131,11 +135,27 @@
     ], obstacles: [river([[-.05, .5], [1.05, .5]], .07, [[.3, .5], [.7, .5]])] },
   };
 
+  // ---------- Dünya 3: Karlı Dağ (okçu kulesi; buz ve tepeler sonra) ----------
+  const SNOW = {
+    1: { par: 90, ai: [R], range: .5, intro: 'archer', towers: [   // ortadaki okçuyu al
+      t(.5, .88, P, 22), t(.5, .12, R, 16), t(.5, .5, N, 10, 'archer'),
+      t(.22, .68, N, 6), t(.78, .68, N, 6), t(.22, .32, N, 6), t(.78, .32, N, 6),
+    ]},
+    2: { par: 110, ai: [R], range: .45, tip: 'İki okçu, iki koridor', towers: [
+      t(.5, .9, P, 22), t(.5, .1, R, 20), t(.3, .5, N, 8, 'archer'), t(.7, .5, N, 8, 'archer'),
+      t(.5, .68, N, 10), t(.5, .32, N, 10), t(.15, .75, N, 6), t(.85, .75, N, 6), t(.15, .25, N, 6), t(.85, .25, N, 6),
+    ], obstacles: [rock(.5, .5, .036)] },
+    3: { par: 130, ai: [R], range: .48, tip: 'Kırmızının okçusu yolu tutuyor: yandan dolaş', towers: [
+      t(.5, .88, P, 25), t(.5, .12, R, 22), t(.5, .36, R, 12, 'archer'),
+      t(.2, .6, N, 8), t(.8, .6, N, 8), t(.5, .62, N, 14), t(.2, .3, N, 8), t(.8, .3, N, 8),
+    ], obstacles: [tree(.35, .48), tree(.65, .48)] },
+  };
+
   // gen: üretecin bu dünyada kullandığı özellikler
   const WORLDS = [
     { id: 1, name: 'Çayır', theme: 'meadow', stars: 0, hand: MEADOW, gen: { range: 0, obstacles: false, baseRed: 12 } },
-    { id: 2, name: 'Göl Kıyısı', theme: 'lake', stars: 30, hand: LAKE, gen: { range: .5, obstacles: true, baseRed: 11 } },
-    { id: 3, name: 'Karlı Dağ', soon: true },
+    { id: 2, name: 'Göl Kıyısı', theme: 'lake', stars: 30, hand: LAKE, gen: { range: .5, obstacles: true, baseRed: 9 } },
+    { id: 3, name: 'Karlı Dağ', theme: 'snow', stars: 70, hand: SNOW, gen: { range: .5, obstacles: true, lakes: false, archers: true, baseRed: 12 } },
     { id: 4, name: 'Şeker Diyarı', soon: true },
     { id: 5, name: 'Volkan', soon: true },
   ];
@@ -203,7 +223,7 @@
     const T = [t(.5, .88, P, 22 + wi * 2)];
     const free = (x, y) => T.every(o => ndist(o, { x, y }) >= .17);
     const ncount = () => Math.min(35, 4 + Math.floor(rnd() * (6 + d * 22)));
-    const red = Math.round(g.baseRed + d * 26);
+    const red = Math.round(g.baseRed + d * (g.obstacles ? 18 : 26));
 
     if (two) {
       const side = rnd() < .5 ? .2 : .8;
@@ -225,17 +245,31 @@
     const slow = g.range || g.obstacles ? 1.6 : 1;
     const cfg = { par: Math.round((45 + T.length * 5 + (two ? 15 : 0)) * slow), ai: two ? [R, Y] : [R], towers: T };
     if (g.range) cfg.range = g.range - d * .05;
-    if (g.obstacles) cfg.obstacles = genObstacles(rnd, T, d, two);
+    if (g.archers) addArchers(rnd, T, two);
+    if (g.obstacles) cfg.obstacles = genObstacles(rnd, T, d, two, g.lakes !== false);
     return cfg;
   }
 
-  function genObstacles(rnd, T, d, two) {
+  // simetrik bir çift tarafsız okçu kulesi
+  function addArchers(rnd, T, two) {
+    const free = (x, y) => T.every(o => ndist(o, { x, y }) >= .17);
+    for (let tries = 0; tries < 200; tries++) {
+      const x = .2 + rnd() * .25, y = two ? .3 + rnd() * .4 : .3 + rnd() * .2;
+      const mx = 1 - x, my = two ? y : 1 - y;
+      if (free(x, y) && free(mx, my) && ndist({ x, y }, { x: mx, y: my }) >= .17) {
+        T.push(t(x, y, N, 8, 'archer'), t(mx, my, N, 8, 'archer'));
+        return;
+      }
+    }
+  }
+
+  function genObstacles(rnd, T, d, two, lakes) {
     const obs = [];
     const clear = (x, y, r) => T.every(o => ndist(o, { x, y }) >= r + .075);
-    const want = 1 + Math.floor(d * 2.5);
+    const want = 1 + Math.floor(d * 1.6);
     for (let tries = 0; obs.length < want && tries < 300; tries++) {
       const kind = rnd();
-      if (kind < .3) {
+      if (kind < .3 && lakes) {
         const rx = .07 + rnd() * .05, ry = .07 + rnd() * .05, x = .5, y = .3 + rnd() * .4;
         if (clear(x, y, Math.max(rx / A, ry))) obs.push(lake(x, y, rx, ry));
       } else {

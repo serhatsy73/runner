@@ -33,7 +33,11 @@ window.KS = window.KS || {};
   KS.FINAL_AT = 240;              // süre dolar: en güçlü taraf kazanır (seviye hiçbir zaman 4 dakikayı geçmez)
   KS.SIEGE = 1.2;                 // son bu kadar saniyede düşman vurduysa kule kuşatmadadır: takviye giremez
   KS.RANGE_PER_LVL = .12;         // kule seviyesi başına menzil artışı
-  KS.TOWER_BLOCK = .042;          // aradaki kulenin görüşü kestiği yarıçap (tasarım birimi; kulenin görünen boyutundan biraz küçük)
+  KS.TOWER_BLOCK = .042;
+
+  // Binalar. kind: 'barracks' (kışla, varsayılan) | 'archer' (okçu kulesi)
+  // Okçu: sahibinin düşmanı olan askerlere menzilinde ok atar; hız seviyesiyle artar. Daha yavaş üretir.
+  KS.ARCHER = { range: .17, interval: [0, 1.2, .8, .5], prod: .7 };          // aradaki kulenin görüşü kestiği yarıçap (tasarım birimi; kulenin görünen boyutundan biraz küçük)
 
   // TEST: bütün seviyeler ve dünyalar açık. Yayından önce false yapılmalı.
   KS.TEST_UNLOCK_ALL = true;
@@ -47,9 +51,9 @@ window.KS = window.KS || {};
 
   // Oyun temposu: ilk dünyada hızlı ve refleks ağırlıklı, ilerledikçe sakinleşip stratejiye döner
   KS.tempo = n => {
-    if (n <= 10) return { speed: 1.18, prod: 1.1 };
-    if (n <= 20) return { speed: 1.05, prod: 1 };
-    return { speed: .92, prod: .95 };
+    if (n <= 25) return { speed: 1.18, prod: 1.1 };
+    if (n <= 50) return { speed: 1.05, prod: 1 };
+    return { speed: .95, prod: .97 };
   };
 
   KS.rng = seed => () => {

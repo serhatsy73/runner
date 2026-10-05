@@ -341,6 +341,14 @@
       const t = cfg.towers[sel.i];
       teamsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.team === t.team));
       $('selCount').value = t.count;
+      const wrap = document.createElement('div'); wrap.className = 'teams'; wrap.style.gridTemplateColumns = 'repeat(2, 1fr)';
+      for (const [k, label] of [['barracks', 'Kışla'], ['archer', 'Okçu']]) {
+        const b = document.createElement('button'); b.textContent = label; b.style.background = '#f4f0e6';
+        b.classList.toggle('on', (t.kind || 'barracks') === k);
+        b.addEventListener('click', () => { if (k === 'barracks') delete t.kind; else t.kind = k; apply(); });
+        wrap.appendChild(b);
+      }
+      extra.appendChild(wrap);
     } else if (sel && sel.kind === 'obs' && cfg.obstacles[sel.i]) {
       const o = cfg.obstacles[sel.i];
       const num = (label, key, step, min, max) => {
@@ -368,7 +376,7 @@
     if (cfg.intro) out.intro = cfg.intro;
     if (cfg.tip) out.tip = cfg.tip;
     if (cfg.persona) out.persona = cfg.persona;
-    out.towers = cfg.towers.map(t => ({ x: r(t.x), y: r(t.y), team: t.team, count: t.count }));
+    out.towers = cfg.towers.map(t => { const o = { x: r(t.x), y: r(t.y), team: t.team, count: t.count }; if (t.kind && t.kind !== 'barracks') o.kind = t.kind; return o; });
     if (cfg.obstacles.length) out.obstacles = cfg.obstacles.map(o => {
       const c = Object.assign({}, o);
       for (const k of ['x', 'y', 'r', 'rx', 'ry', 'w']) if (k in c) c[k] = r(c[k]);

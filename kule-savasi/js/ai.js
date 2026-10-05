@@ -55,12 +55,26 @@
     // f yeni bir yol açarsa akışı mevcut yollarıyla bölünür
     const share = G.flowOf(f) / (G.lanesFrom(f).length + 1);
     let eff = flowInto(to, team) + (includeSelf ? share : 0) - regen(to);
+    // yol düşman bir okçunun menzilinden geçiyorsa askerlerin bir kısmı yolda düşer
+    eff -= archerDrain(f, to, team);
     // üçüncü tarafların saldırısı da hedefi eritir
     eff += G.lanes.reduce((s, l) => s + (l.to === to && l.team !== team && l.team !== to.team ? G.laneFlow(l) : 0), 0);
     // hedef bize doğru yol açmışsa askerler ortada çarpışır
     const back = G.findLane(to, f);
     if (back) eff -= G.laneFlow(back);
     return eff;
+  }
+
+  function archerDrain(f, to, team) {
+    let loss = 0;
+    for (const k of G.towers) {
+      if (k.kind !== 'archer' || k.team === NEUTRAL || k.team === team) continue;
+      const dx = (to.nx - f.nx) * KS.ASPECT, dy = to.ny - f.ny;
+      const px = (k.nx - f.nx) * KS.ASPECT, py = k.ny - f.ny;
+      const u = Math.max(0, Math.min(1, (px * dx + py * dy) / (dx * dx + dy * dy || 1)));
+      if (Math.hypot(px - dx * u, py - dy * u) < KS.ARCHER.range) loss += 1 / KS.ARCHER.interval[k.lvl];
+    }
+    return loss;
   }
 
   function shuffle(a) {
@@ -123,7 +137,7 @@
           if (time > patience) continue;
           // asıl düşman: rakipler için oyuncu; (denge aracında oyuncu yerine oynarken) oyuncu için rakipler
           const foe = team === PLAYER ? to.team !== NEUTRAL : to.team === PLAYER;
-          score = 40 - time * 1.2 - d * 10
+          score = 40 - time * 1.2 - d * 10 + (to.kind === 'archer' ? 6 : 0)
             + (foe ? aggro : to.team === NEUTRAL ? per.neutral : RIVAL)
             + (flowInto(to, team) > 0 ? P.focus : 0);
         }

@@ -73,6 +73,7 @@
     else if (c.prev === PLAYER) { notes([392, 294], .12, { type: 'sawtooth', vol: .06, dur: .22 }); buzz([30, 40, 30]); }
     else if (c.prev === NEUTRAL && throttle('aicap', 300)) tone(330, .12, { type: 'triangle', vol: .05 });
   });
+  G.on('shot', h => { if (h.team === PLAYER ? throttle('shotP', 120) : throttle('shot', 160)) tone(1500, .05, { type: 'triangle', vol: h.team === PLAYER ? .07 : .035, to: 900 }); });
   G.on('denied', () => { tone(220, .12, { type: 'square', vol: .05, to: 170 }); buzz([15, 30, 15]); });
   G.on('surge', () => { notes([392, 523, 659, 784], .09, { type: 'sawtooth', vol: .06, dur: .18 }); buzz([40, 30, 40]); });
   G.on('win', () => { notes([523, 659, 784, 1046, 1319], .1, { type: 'triangle', vol: .14, dur: .22 }); buzz([30, 50, 30, 50, 90]); });
