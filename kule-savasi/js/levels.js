@@ -108,10 +108,10 @@
       t(.25, .65, N, 8), t(.75, .65, N, 8), t(.25, .35, N, 8), t(.75, .35, N, 8),
     ], obstacles: [barrel(.38, .76), barrel(.62, .76), barrel(.38, .24), barrel(.62, .24), barrel(.5, .68), barrel(.5, .32)] },
     14: { par: 90, ai: [R], tip: 'Merkez çitle çevrili: köşelerden gir', towers: [   // ring
-      t(.5, .9, P, 24), t(.5, .1, R, 16), t(.5, .5, N, 18),
+      t(.5, .9, P, 26), t(.5, .1, R, 14), t(.5, .5, N, 18),
       t(.2, .75, N, 8), t(.8, .75, N, 8), t(.12, .5, N, 10), t(.88, .5, N, 10), t(.2, .25, N, 8), t(.8, .25, N, 8),
     ], obstacles: [fence(.4, .38, .6, .38), fence(.4, .62, .6, .62), fence(.38, .44, .38, .56), fence(.62, .44, .62, .56)] },
-    15: { par: 150, ai: [R], towers: [   // çift geçit: uzun çit, iki kapı
+    15: { par: 170, ai: [R], towers: [   // çift geçit: uzun çit, iki kapı
       t(.5, .9, P, 24), t(.5, .1, R, 20),
       t(.36, .62, N, 8), t(.64, .62, N, 8), t(.36, .38, N, 8), t(.64, .38, N, 8),
       t(.15, .72, N, 6), t(.85, .72, N, 6), t(.15, .28, N, 6), t(.85, .28, N, 6),
@@ -183,7 +183,7 @@
   };
 
   Object.assign(SNOW, {
-    4: { par: 150, ai: [R], range: .5, tip: 'Okçular çitlerin arkasında', towers: [
+    4: { par: 170, ai: [R], range: .5, tip: 'Okçular çitlerin arkasında', towers: [
       t(.5, .9, P, 26), t(.5, .1, R, 14), t(.3, .5, N, 10, 'archer'), t(.7, .5, N, 10, 'archer'),
       t(.5, .7, N, 10), t(.5, .3, N, 10), t(.15, .78, N, 6), t(.85, .78, N, 6), t(.15, .22, N, 6), t(.85, .22, N, 6),
     ], obstacles: [fence(.2, .6, .37, .6), fence(.63, .6, .8, .6), fence(.2, .4, .37, .4), fence(.63, .4, .8, .4)] },
