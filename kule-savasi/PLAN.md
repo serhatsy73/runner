@@ -162,8 +162,8 @@ Seviye ortasında hiçbir zaman reklam çıkmaz.
 | Adım | İçerik | Durum |
 |---|---|---|
 | **A** | Seviye editörü (`tools/editor.html`), doğrulayıcı (`Levels.validate`), engel/menzil üreten üreteç, 25'lik dünyalar, kayıt taşıma | ✅ |
-| **B** | Binalar: Okçu, Kale, Hız, Ambar (oyun kuralı + yapay zekâ + 3B/2B görseller) | |
-| **C** | Dünya 3: Karlı Dağ — buz, tepeler, Okçu, Kale; 25 seviye + kar teması | |
+| **B** | Binalar: Okçu ✅, Kale, Hız, Ambar (oyun kuralı + yapay zekâ + 3B/2B görseller) | kısmen |
+| **C** | Dünya 3: Karlı Dağ — buz, tepeler, Okçu, Kale; 25 seviye + kar teması | iskelet: kar teması + 3 okçu seviyesi, kalanı üreteçten |
 | **D** | Yetenekler (2 buton) + gelir bağlantısı | |
 | **E** | Dünya 4: Şeker Diyarı — portal, Hız, Ambar, Mor rakip; 25 seviye | |
 | **F** | Hedef çeşitleri + boss davranışları; Dünya 1–2'deki üreteç yuvalarının elle tasarlanması | |
@@ -186,6 +186,12 @@ Her adım kendi başına yayınlanabilir. A+B+C bittiğinde oyun "3 dünya, 75 s
 - **Zıt yollar** ortada çarpışır; eşit akışlar birbirini sıfırlar.
 - **Görüş hattı:** arada kaya, ağaç, su ya da **başka bir kule** varsa yol açılamaz ("Arada kule var"). Ortadaki kuleyi almadan arkasındakine saldıramazsın.
 - **Son Hücum** (3. dakika): askerler 1,67 kat hızlı akar, geri sayım başlar. **4. dakikada süre dolar**, en güçlü taraf (üst çubuktaki güç) kazanır. Seviye hiçbir zaman 4 dakikayı geçmez.
+
+### Okçu kulesi (uygulanan kural)
+- Veri: `{ ..., kind: 'archer' }`. Sahibi tarafsız değilse menzilindeki (`KS.ARCHER.range` = 0,17) en yakın düşman askerine ok atar: sv1 1,2 sn, sv2 0,8 sn, sv3 0,5 sn'de bir. Vurulan asker yok olur.
+- Okçu %70 hızla üretir; görüş hattında diğer kuleler gibi engeldir.
+- Yapay zekâ: düşman okçusunun menzilinden geçen yollarda akış kaybını (atış hızı) hesaba katar; okçuyu ele geçirmeye +6 puan.
+- Görsel: kapsama alanı sahibinin renginde zemin diski; oklar üst katmanda kısa çizgi.
 
 ## Seviye tasarımı kuralları (ölçümlerden çıkanlar)
 

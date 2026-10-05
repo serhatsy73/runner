@@ -231,7 +231,8 @@
     } else {
       T.push(t(.5, .12, R, red + (g.obstacles ? 2 : 6)), t(.5, .5, N, Math.round(10 + d * 20)));
     }
-    const pairs = 2 + Math.floor(d * 3);
+    if (g.archers) addArchers(rnd, T, two);   // önce okçular yer bulsun, gri kuleler kalan boşluğa
+    const pairs = 2 + Math.floor(d * 3) - (g.archers ? 1 : 0);
     for (let made = 0, tries = 0; made < pairs && tries < 4000; tries++) {
       let x, y, mx, my;
       if (two) { x = .12 + rnd() * .32; y = .26 + rnd() * .44; mx = 1 - x; my = y; }
@@ -245,7 +246,6 @@
     const slow = g.range || g.obstacles ? 1.6 : 1;
     const cfg = { par: Math.round((45 + T.length * 5 + (two ? 15 : 0)) * slow), ai: two ? [R, Y] : [R], towers: T };
     if (g.range) cfg.range = g.range - d * .05;
-    if (g.archers) addArchers(rnd, T, two);
     if (g.obstacles) cfg.obstacles = genObstacles(rnd, T, d, two, g.lakes !== false);
     return cfg;
   }
@@ -254,7 +254,7 @@
   function addArchers(rnd, T, two) {
     const free = (x, y) => T.every(o => ndist(o, { x, y }) >= .17);
     for (let tries = 0; tries < 200; tries++) {
-      const x = .2 + rnd() * .25, y = two ? .3 + rnd() * .4 : .3 + rnd() * .2;
+      const x = .15 + rnd() * .33, y = two ? .3 + rnd() * .4 : .28 + rnd() * .2;
       const mx = 1 - x, my = two ? y : 1 - y;
       if (free(x, y) && free(mx, my) && ndist({ x, y }, { x: mx, y: my }) >= .17) {
         T.push(t(x, y, N, 8, 'archer'), t(mx, my, N, 8, 'archer'));
