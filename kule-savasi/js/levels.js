@@ -134,7 +134,7 @@
   // gen: üretecin bu dünyada kullandığı özellikler
   const WORLDS = [
     { id: 1, name: 'Çayır', theme: 'meadow', stars: 0, hand: MEADOW, gen: { range: 0, obstacles: false, baseRed: 12 } },
-    { id: 2, name: 'Göl Kıyısı', theme: 'lake', stars: 30, hand: LAKE, gen: { range: .45, obstacles: true, baseRed: 16 } },
+    { id: 2, name: 'Göl Kıyısı', theme: 'lake', stars: 30, hand: LAKE, gen: { range: .5, obstacles: true, baseRed: 11 } },
     { id: 3, name: 'Karlı Dağ', soon: true },
     { id: 4, name: 'Şeker Diyarı', soon: true },
     { id: 5, name: 'Volkan', soon: true },
@@ -209,7 +209,7 @@
       const side = rnd() < .5 ? .2 : .8;
       T.push(t(.18, .12, R, red), t(.82, .12, Y, red), t(side, .78, P, 10));
     } else {
-      T.push(t(.5, .12, R, red + 6), t(.5, .5, N, Math.round(10 + d * 20)));
+      T.push(t(.5, .12, R, red + (g.obstacles ? 2 : 6)), t(.5, .5, N, Math.round(10 + d * 20)));
     }
     const pairs = 2 + Math.floor(d * 3);
     for (let made = 0, tries = 0; made < pairs && tries < 4000; tries++) {
@@ -221,8 +221,10 @@
       T.push(t(x, y, N, c), t(mx, my, N, c));
       made++;
     }
-    const cfg = { par: 45 + T.length * 5 + (two ? 15 : 0) + wi * 20, ai: two ? [R, Y] : [R], towers: T };
-    if (g.range) cfg.range = g.range - d * .06;
+    // menzilli/engelli haritalar daha uzun sürer: hedef süre ona göre
+    const slow = g.range || g.obstacles ? 1.6 : 1;
+    const cfg = { par: Math.round((45 + T.length * 5 + (two ? 15 : 0)) * slow), ai: two ? [R, Y] : [R], towers: T };
+    if (g.range) cfg.range = g.range - d * .05;
     if (g.obstacles) cfg.obstacles = genObstacles(rnd, T, d, two);
     return cfg;
   }
